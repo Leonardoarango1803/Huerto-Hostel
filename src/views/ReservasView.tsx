@@ -59,8 +59,7 @@ const FILTER_OPTIONS = [
 ];
 
 export function ReservasView() {
-  const { user } = useAuth();
-  const _isAdmin = user?.role === "ADMINISTRADOR";
+
 
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);

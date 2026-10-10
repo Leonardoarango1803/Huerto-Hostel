@@ -14,6 +14,7 @@ interface ButtonProps {
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   className?: string;
+  title?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
@@ -41,12 +42,14 @@ export function Button({
   disabled,
   type = "button",
   className = "",
+  title,
   onClick,
 }: ButtonProps) {
   return (
     <button
       type={type}
       disabled={disabled || loading}
+      title={title}
       onClick={onClick}
       className={`inline-flex items-center font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
