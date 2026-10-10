@@ -5,7 +5,7 @@ type Variant = "primary" | "secondary" | "danger" | "ghost" | "success";
 type Size = "sm" | "md" | "lg";
 
 interface ButtonProps {
-  children: ReactNode;
+  children?: ReactNode;
   variant?: Variant;
   size?: Size;
   loading?: boolean;

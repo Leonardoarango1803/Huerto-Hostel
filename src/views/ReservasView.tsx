@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Download, Plus, LogIn, CreditCard, Trash2 } from "lucide-react";
 import { NuevoIngresoModal } from "../components/NuevoIngresoModal";
-import { useAuth } from "../context/AuthContext";
 import { reservasApi } from "../api/reservas";
 import { habitacionesApi } from "../api/habitaciones";
 import { clientesApi } from "../api/clientes";
