@@ -1,493 +1,460 @@
+import { useState, useEffect, useMemo } from "react";
+import { FileText, Check, DoorOpen, BedDouble, Sun, AlertCircle } from "lucide-react";
+import { estadiasApi } from "../api/estadias";
+import { reservasApi } from "../api/reservas";
+import { useAuth } from "../context/AuthContext";
+import type { Estadia, SaldoResponse, ResumenCheckout, PagoReserva } from "../api/types";
 import {
-  Search,
-  FileText,
-  Check,
-  ArrowRight,
-  Sun,
-  Briefcase,
-  Clock,
-  AlertCircle,
-} from "lucide-react";
+  Button,
+  Badge,
+  SearchBar,
+  KpiCard,
+  LoadingState,
+  EmptyState,
+  AlertBanner,
+  ConfirmModal,
+  FormModal,
+  FormField,
+  Input,
+  Select,
+  estadoEstadiaToVariant,
+} from "../components/ui";
+
+interface CheckoutForm {
+  metodoPago: string;
+  monto: string;
+}
+
+function formatFecha(fecha?: string) {
+  if (!fecha) return "—";
+  return new Date(fecha).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 export function CheckoutView() {
-  return (
-    <div className="space-y-5 bg-[#f5f6f8] min-h-screen -m-8 p-6 font-sans text-slate-800 text-xs">
-      {/* Top Header info */}
-      <div className="flex justify-between items-center text-[11px] text-slate-500 border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-700">
-            Operaciones de Recepción
-          </span>
-          <span>/</span>
-          <span>Jueves 24 de Octubre 2024 - 16:42 PET</span>
-        </div>
-        <div className="flex items-center gap-4 text-[10px]">
-          <span className="flex items-center gap-1.5 text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>{" "}
-            Conexión Local Estable
-          </span>
-          <span className="bg-slate-200/80 px-2 py-0.5 rounded text-slate-700 font-semibold">
-            Caja Abierta: S/ 850.00
-          </span>
-        </div>
-      </div>
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMINISTRADOR";
+  const [estadias, setEstadias] = useState<Estadia[]>([]);
+  const [resumen, setResumen] = useState<ResumenCheckout | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
-      {/* Title & Main Actions */}
-      <div className="flex justify-between items-start">
+  const [saldoDetalle, setSaldoDetalle] = useState<SaldoResponse | null>(null);
+  const [saldoLoading, setSaldoLoading] = useState(false);
+  const [pagosAdelanto, setPagosAdelanto] = useState<PagoReserva[]>([]);
+
+  const [showLiquidacion, setShowLiquidacion] = useState(false);
+  const [liquidacionLoading, setLiquidacionLoading] = useState(false);
+  const [liquidacionError, setLiquidacionError] = useState<string | null>(null);
+  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>({ metodoPago: "EFECTIVO", monto: "" });
+
+  const [confirmExpresa, setConfirmExpresa] = useState<number | null>(null);
+  const [expresaLoading, setExpresaLoading] = useState(false);
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  async function cargarDatos() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [ests] = await Promise.all([
+        estadiasApi.listar("EN_CURSO"),
+        estadiasApi.resumenCheckout().then(setResumen).catch(() => null),
+      ]);
+      setEstadias(ests);
+      if (ests.length > 0) setSelectedId(ests[0].idEstadia);
+    } catch {
+      setError("No se pudieron cargar las estadías activas. Verifica la conexión.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedId) cargarSaldo(selectedId);
+  }, [selectedId]);
+
+  useEffect(() => {
+    const estadia = estadias.find((e) => e.idEstadia === selectedId);
+    const idReserva = estadia?.reserva.idReserva;
+    if (!idReserva) { setPagosAdelanto([]); return; }
+    reservasApi.listarPagos(idReserva)
+      .then((p) => setPagosAdelanto(Array.isArray(p) ? p : []))
+      .catch(() => setPagosAdelanto([]));
+  }, [selectedId, estadias]);
+
+  async function cargarSaldo(id: number) {
+    setSaldoLoading(true);
+    setSaldoDetalle(null);
+    try {
+      const saldo = await estadiasApi.saldo(id);
+      setSaldoDetalle(saldo);
+    } catch {
+      /* saldo no disponible */
+    } finally {
+      setSaldoLoading(false);
+    }
+  }
+
+  async function procesarCheckoutExpresa() {
+    if (!confirmExpresa) return;
+    setExpresaLoading(true);
+    try {
+      await estadiasApi.checkout(confirmExpresa);
+      setConfirmExpresa(null);
+      setSuccessMsg("Check-out realizado correctamente. Habitación enviada a limpieza.");
+      setSelectedId(null);
+      setSaldoDetalle(null);
+      await cargarDatos();
+    } catch {
+      setError("Error al procesar el check-out.");
+      setConfirmExpresa(null);
+    } finally {
+      setExpresaLoading(false);
+    }
+  }
+
+  async function procesarLiquidacion() {
+    if (!selectedId) return;
+    const monto = parseFloat(checkoutForm.monto);
+    if (isNaN(monto) || monto < 0) {
+      setLiquidacionError("Ingresa un monto válido.");
+      return;
+    }
+    setLiquidacionLoading(true);
+    setLiquidacionError(null);
+    try {
+      const pagoBody = monto > 0
+        ? { metodoPago: checkoutForm.metodoPago, monto, concepto: "LIQUIDACION_CHECKOUT" }
+        : undefined;
+      await estadiasApi.checkout(selectedId, pagoBody);
+      setShowLiquidacion(false);
+      setSuccessMsg("Liquidación y check-out completados. Habitación enviada a limpieza.");
+      setSelectedId(null);
+      setSaldoDetalle(null);
+      await cargarDatos();
+    } catch {
+      setLiquidacionError("Error al procesar la liquidación. Verifica el saldo e intenta nuevamente.");
+    } finally {
+      setLiquidacionLoading(false);
+    }
+  }
+
+  const filtradas = useMemo(() => {
+    if (!searchTerm) return estadias;
+    const q = searchTerm.toLowerCase();
+    return estadias.filter((e) => {
+      const nombre = `${e.reserva.cliente.nombres} ${e.reserva.cliente.apellidos}`.toLowerCase();
+      return (
+        nombre.includes(q) ||
+        e.reserva.cliente.numeroDocumento.includes(q) ||
+        e.habitacion.numero.toLowerCase().includes(q)
+      );
+    });
+  }, [estadias, searchTerm]);
+
+  const selectedEstadia = estadias.find((e) => e.idEstadia === selectedId);
+
+  return (
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+      {/* Header */}
+      <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">
-            Recepción &gt; Control de Salidas
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            Recepción &gt; Check-out
           </p>
-          <h1 className="text-xl font-bold text-slate-900 mt-0.5">
-            Salidas y Check-out del Día
-          </h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-0.5">Salidas y Check-out del Día</h1>
           <p className="text-slate-500 text-[11px] mt-0.5">
-            Supervisión de salidas programadas, verificación de folios de
-            consumo, entrega de llaves e inspección de housekeeping hacia el
-            estado disponible.
+            Supervisión de salidas, verificación de folios y liquidación de estadías.
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-white border border-slate-300 text-slate-700 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-slate-50">
-            <FileText size={14} /> Reporte de Salidas
-          </button>
-          <button className="bg-[#1b4332] hover:bg-[#143427] text-white font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
-            <Check size={14} /> Salida Expresa
-          </button>
+          <Button variant="secondary" icon={<FileText size={13} />}>
+            Reporte de Salidas
+          </Button>
         </div>
       </div>
 
-      {/* 4 Summary Cards */}
+      {successMsg && <AlertBanner type="success" message={successMsg} />}
+      {error && <AlertBanner type="error" message={error} />}
+
+      {/* KPIs */}
       <div className="grid grid-cols-4 gap-3">
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Salidas Programadas
-          </p>
-          <div className="flex justify-between items-baseline mt-2">
-            <span className="text-2xl font-bold text-slate-900">
-              8{" "}
-              <span className="text-xs font-medium text-slate-500">
-                habitaciones
-              </span>
-            </span>
+        <KpiCard
+          title="Salidas Programadas"
+          value={resumen?.salidaHoy ?? estadias.length}
+          subtitle="hoy"
+          icon={<DoorOpen size={16} />}
+          color="slate"
+        />
+        <KpiCard
+          title="Pendiente de Cobro"
+          value={resumen ? `S/ ${Number(resumen.pendienteCobro).toFixed(2)}` : "—"}
+          subtitle="folios con saldo"
+          icon={<AlertCircle size={16} />}
+          color="amber"
+        />
+        <KpiCard
+          title="Liquidado Hoy"
+          value={resumen ? `S/ ${Number(resumen.liquidadoHoy).toFixed(2)}` : "—"}
+          subtitle="check-outs completados"
+          icon={<Check size={16} />}
+          color="green"
+        />
+        <KpiCard
+          title="A Limpieza"
+          value={resumen?.aCuartoLimpieza ?? "—"}
+          subtitle="habitaciones"
+          icon={<Sun size={16} />}
+          color="blue"
+        />
+      </div>
+
+      {/* Layout principal */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* Lista estadías */}
+        <div className="col-span-7 space-y-3">
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2">
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por huésped, DNI o habitación"
+              className="flex-1"
+            />
           </div>
-          <p className="text-[10px] text-slate-400 mt-2">
-            3 Pendientes • 4 Completados • 1 Late
-          </p>
+
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            {loading ? (
+              <LoadingState />
+            ) : filtradas.length === 0 ? (
+              <EmptyState
+                title="Sin estadías activas"
+                description="No hay estadías EN_CURSO en este momento."
+                icon={<BedDouble size={28} className="text-slate-300" />}
+              />
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {filtradas.map((e) => {
+                  const saldo = Number(e.reserva.montoAlojamientoTotal);
+                  const isSelected = selectedId === e.idEstadia;
+                  return (
+                    <div
+                      key={e.idEstadia}
+                      onClick={() => setSelectedId(e.idEstadia)}
+                      className={`p-3 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50 border-l-4 border-[#1b4332]" : "hover:bg-slate-50"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-slate-900">
+                              {e.reserva.cliente.nombres} {e.reserva.cliente.apellidos}
+                            </span>
+                            <Badge variant={estadoEstadiaToVariant(e.estadoEstadia)} label="En curso" />
+                          </div>
+                          <div className="text-[10px] text-slate-500 flex gap-3 mt-0.5 flex-wrap">
+                            <span>Hab. {e.habitacion.numero} — {e.habitacion.tipoHabitacion.nombre}</span>
+                            <span>{e.reserva.cliente.tipoDocumento} {e.reserva.cliente.numeroDocumento}</span>
+                            <span>Check-in: {formatFecha(e.fechaCheckinReal)}</span>
+                            <span>Salida prevista: {formatFecha(e.reserva.fechaCheckoutPrevisto)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-bold text-slate-900">S/ {saldo.toFixed(2)}</p>
+                          <p className="text-[10px] text-slate-400">{e.reserva.numNoches} noches</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-          <div className="flex justify-between items-center">
-            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-              Pendiente de Cobro
-            </p>
-            <span className="bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-bold">
-              3 folios
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">S/ 842.00</p>
-          <p className="text-[10px] text-slate-400 mt-2">
-            3 folios con saldo a regularizar en mostrador
-          </p>
-        </div>
+        {/* Panel de detalle */}
+        <div className="col-span-5 space-y-3">
+          {selectedEstadia ? (
+            <>
+              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Folio de Estadía</p>
+                  <h2 className="text-sm font-bold text-slate-900">
+                    {selectedEstadia.reserva.cliente.nombres} {selectedEstadia.reserva.cliente.apellidos}
+                  </h2>
+                  <p className="text-[11px] text-slate-500">Hab. {selectedEstadia.habitacion.numero} · {selectedEstadia.habitacion.tipoHabitacion.nombre}</p>
+                </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-          <div className="flex justify-between items-center">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Total Liquidado Hoy
-            </p>
-            <span className="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold">
-              POS OK
-            </span>
-          </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">S/ 1,890.00</p>
-          <p className="text-[10px] text-slate-400 mt-2">
-            4 Check-outs • Caja POS conciliada
-          </p>
-        </div>
+                <div className="space-y-1.5 text-[11px]">
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24">Check-in real</span>
+                    <span>{formatFecha(selectedEstadia.fechaCheckinReal)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24">Salida prevista</span>
+                    <span>{formatFecha(selectedEstadia.reserva.fechaCheckoutPrevisto)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24">Noches</span>
+                    <span>{selectedEstadia.reserva.numNoches}</span>
+                  </div>
+                </div>
 
-        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            A Limpieza / Cuartos
-          </p>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            5{" "}
-            <span className="text-xs font-medium text-slate-500">
-              en proceso
-            </span>
-          </p>
-          <p className="text-[10px] text-slate-400 mt-2">
-            Rosa Torres (Turno Tarde) activo
-          </p>
+                {saldoLoading ? (
+                  <div className="h-24 bg-slate-100 animate-pulse rounded-lg" />
+                ) : saldoDetalle ? (
+                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs">
+                    <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resumen de Folio</p>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-slate-600">
+                        <span>Alojamiento</span>
+                        <span className="font-semibold">S/ {Number(saldoDetalle.totalAlojamiento).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Consumo Total</span>
+                        <span className="font-semibold">S/ {Number(saldoDetalle.totalConsumos).toFixed(2)}</span>
+                      </div>
+                      <div className="border-t border-slate-200 pt-1.5 flex justify-between font-semibold text-slate-700">
+                        <span>Total</span>
+                        <span>S/ {(Number(saldoDetalle.totalAlojamiento) + Number(saldoDetalle.totalConsumos)).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Adelanto de Pagos</span>
+                        <span className="font-semibold">− S/ {Number(saldoDetalle.totalPagos).toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <div className={`flex justify-between font-bold text-sm border-t pt-2 ${saldoDetalle.saldoPendiente <= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      <span>{saldoDetalle.saldoPendiente <= 0 ? "Saldo pagado" : "Saldo pendiente"}</span>
+                      <span>S/ {Math.abs(Number(saldoDetalle.saldoPendiente)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-lg p-3 text-center text-[11px] text-slate-400">
+                    Saldo no disponible
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {saldoDetalle && saldoDetalle.saldoPendiente <= 0 ? (
+                  <Button
+                    variant="success"
+                    icon={<Check size={13} />}
+                    className="w-full justify-center"
+                    onClick={() => setConfirmExpresa(selectedEstadia.idEstadia)}
+                  >
+                    Salida Expresa (Saldo Pagado)
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    icon={<DoorOpen size={13} />}
+                    className="w-full justify-center"
+                    onClick={() => {
+                      setCheckoutForm({ metodoPago: "EFECTIVO", monto: saldoDetalle ? String(saldoDetalle.saldoPendiente.toFixed(2)) : "" });
+                      setLiquidacionError(null);
+                      setShowLiquidacion(true);
+                    }}
+                  >
+                    Procesar Liquidación y Salida
+                  </Button>
+                )}
+
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-center text-slate-500"
+                    onClick={() => setConfirmExpresa(selectedEstadia.idEstadia)}
+                  >
+                    Forzar Check-out sin pago
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+              <p className="text-xs text-slate-400">Selecciona una estadía para ver el folio y procesar la salida</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Grid Principal: 2 columnas */}
-      <div className="grid grid-cols-3 gap-5">
-        {/* Columna Izquierda: Listado (2 cols) */}
-        <div className="col-span-2 space-y-3">
-          {/* Filters Bar */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-            <div className="flex justify-between items-center gap-3">
-              <div className="relative flex-1">
-                <Search
-                  size={14}
-                  className="absolute left-3 top-2.5 text-slate-400"
-                />
-                <input
-                  type="text"
-                  placeholder="Buscar por huésped, hab, id, DNI, DNI o número de folio..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none"
-                />
+      {/* Modal Liquidación */}
+      <FormModal
+        open={showLiquidacion}
+        title="Liquidación y Check-out"
+        subtitle={`${selectedEstadia?.reserva.cliente.nombres ?? ""} — Hab. ${selectedEstadia?.habitacion.numero ?? ""}`}
+        submitLabel="Confirmar Pago y Check-out"
+        loading={liquidacionLoading}
+        onClose={() => setShowLiquidacion(false)}
+        onSubmit={procesarLiquidacion}
+        size="sm"
+      >
+        {liquidacionError && <AlertBanner type="error" message={liquidacionError} dismissible={false} />}
+        {saldoDetalle && (
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs mb-1">
+            <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resumen de Folio</p>
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-slate-600">
+                <span>Alojamiento</span>
+                <span className="font-semibold">S/ {Number(saldoDetalle.totalAlojamiento).toFixed(2)}</span>
               </div>
-              <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Clock size={12} /> Límite estándar: 12:00 PM (Tolerancia 12:30
-                PM)
-              </span>
-            </div>
-
-            <div className="flex gap-1.5 border-t border-slate-100 pt-2.5">
-              <button className="bg-slate-800 text-white font-semibold px-2.5 py-1 rounded-md text-[11px]">
-                Todos (8)
-              </button>
-              <button className="bg-slate-100 text-slate-600 font-semibold px-2.5 py-1 rounded-md text-[11px]">
-                Pendientes 3
-              </button>
-              <button className="bg-emerald-50 text-emerald-800 font-semibold px-2.5 py-1 rounded-md text-[11px]">
-                Completados 4
-              </button>
-              <button className="bg-amber-50 text-amber-800 font-semibold px-2.5 py-1 rounded-md text-[11px]">
-                Late Check-out 1
-              </button>
-            </div>
-          </div>
-
-          {/* Card 1: Mateo Silva */}
-          <div className="bg-white p-4 rounded-xl border-l-4 border-l-orange-500 border border-slate-200 shadow-sm space-y-3">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-orange-100 text-orange-700 font-bold rounded-lg flex items-center justify-center text-sm">
-                  102
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Mateo Silva Carrión
-                    </h3>
-                    <span className="bg-orange-100 text-orange-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
-                      EN MOSTRADOR - VENCIDO
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    DNI 72491028 (Lima) • Matrimonial Jardín • #RES-2024-108 (3
-                    noches)
-                  </p>
-                </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Consumo Total</span>
+                <span className="font-semibold">S/ {Number(saldoDetalle.totalConsumos).toFixed(2)}</span>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] text-orange-600 font-semibold flex items-center gap-1 justify-end">
-                  <Clock size={11} /> 12:00 PM (Demorado)
-                </p>
+              <div className="border-t border-slate-200 pt-1.5 flex justify-between font-semibold text-slate-700">
+                <span>Total</span>
+                <span>S/ {(Number(saldoDetalle.totalAlojamiento) + Number(saldoDetalle.totalConsumos)).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-emerald-700">
+                <span>Adelanto de Pagos</span>
+                <span className="font-semibold">− S/ {Number(saldoDetalle.totalPagos).toFixed(2)}</span>
               </div>
             </div>
-
-            <div className="grid grid-cols-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
-              <div>
-                <p className="text-[9px] text-slate-400">
-                  Total Consumos + Est.
-                </p>
-                <p className="font-bold text-slate-800">S/ 507.00</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-slate-400">Anticipos / Seña</p>
-                <p className="font-bold text-slate-800">-S/ 200.00</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-orange-600 font-bold">
-                  Saldo Pendiente
-                </p>
-                <p className="font-bold text-orange-600 text-sm">S/ 307.00</p>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-1 text-[10px]">
-              <div className="flex gap-4 text-slate-500">
-                <span>
-                  🔑 Llave:{" "}
-                  <strong className="text-slate-700">Pendiente</strong>
-                </span>
-                <span>
-                  🔍 Inspección:{" "}
-                  <strong className="text-slate-700">En curso</strong>
-                </span>
-                <span>
-                  🧳 Custodia:{" "}
-                  <strong className="text-slate-700">No solicita</strong>
-                </span>
-              </div>
-              <button className="bg-[#1b4332] hover:bg-[#143427] text-white px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
-                Procesar Liquidación y Salida <ArrowRight size={13} />
-              </button>
+            <div className="flex justify-between font-bold text-sm border-t pt-2 text-red-700">
+              <span>Saldo pendiente a cobrar</span>
+              <span>S/ {Number(saldoDetalle.saldoPendiente).toFixed(2)}</span>
             </div>
           </div>
+        )}
+        <FormField label="Método de pago" required>
+          <Select
+            value={checkoutForm.metodoPago}
+            onChange={(e) => setCheckoutForm({ ...checkoutForm, metodoPago: e.target.value })}
+          >
+            <option value="EFECTIVO">Efectivo</option>
+            <option value="TARJETA_POS">Tarjeta POS</option>
+            <option value="TRANSFERENCIA">Transferencia</option>
+            <option value="PASARELA_ONLINE">Pasarela Online</option>
+          </Select>
+        </FormField>
+        <FormField label="Monto a cobrar (S/)" required>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={checkoutForm.monto}
+            onChange={(e) => setCheckoutForm({ ...checkoutForm, monto: e.target.value })}
+            placeholder="0.00"
+          />
+        </FormField>
+      </FormModal>
 
-          {/* Card 2: Antoine Dubois */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-slate-100 text-slate-700 font-bold rounded-lg flex items-center justify-center text-sm">
-                  204
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-sm">
-                      Antoine Dubois
-                    </h3>
-                    <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                      Late Check-out Autorizado
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-400">
-                    Pasaporte FR-88912 • Suite Oasis • #RES-2024-099
-                  </p>
-                </div>
-              </div>
-              <div className="text-right text-[10px] text-slate-500">
-                <span>Salida extendida: 14:30 PM (+S/ 40.00)</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
-              <div>
-                <p className="text-[9px] text-slate-400">
-                  Consumos (Bar & Tours)
-                </p>
-                <p className="font-bold text-slate-800">S/ 160.00</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-slate-400">Estadía Base</p>
-                <p className="font-bold text-emerald-700">Cancelado 100%</p>
-              </div>
-              <div>
-                <p className="text-[9px] text-slate-500 font-bold">
-                  Por Cobrar
-                </p>
-                <p className="font-bold text-slate-900">S/ 160.00</p>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center pt-1 text-[10px]">
-              <div className="flex gap-4 text-slate-500">
-                <span>
-                  🔑 Llave:{" "}
-                  <strong className="text-slate-700">Pendiente</strong>
-                </span>
-                <span>
-                  🔍 Inspección:{" "}
-                  <strong className="text-emerald-700">Conforme</strong>
-                </span>
-                <span>
-                  🧳 Custodia:{" "}
-                  <strong className="text-slate-700">Sí (Ticket #09)</strong>
-                </span>
-              </div>
-              <button className="bg-[#1b4332] text-white px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1">
-                Cobrar y Check-out <ArrowRight size={13} />
-              </button>
-            </div>
-          </div>
-
-          {/* Card 3: Carla Paredes (Completado) */}
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 opacity-85 shadow-sm flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-emerald-100 text-emerald-800 font-bold rounded-lg flex items-center justify-center text-xs">
-                104
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-slate-800">Carla Paredes</h4>
-                  <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-1.5 py-0.2 rounded">
-                    Check-out Completado
-                  </span>
-                  <span className="text-[9px] text-amber-700 bg-amber-50 px-1 py-0.2 rounded font-semibold">
-                    Hab. en Limpieza
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Hab Familiar • Salida: 10:15 AM • Boleta B001-0045 (S/ 350.00)
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 font-bold block">
-                Saldo: S/ 0.00
-              </span>
-              <button className="text-emerald-800 hover:underline text-[10px] font-semibold">
-                Folio Cerrado
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Columna Derecha: Widgets (1 col) */}
-        <div className="space-y-4">
-          {/* Widget 1: Protocolo Check-out */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                <Check size={14} className="text-emerald-700" /> Protocolo
-                Check-out
-              </h3>
-              <span className="text-[9px] text-slate-400 uppercase font-semibold">
-                GUÍA RECEPCIÓ
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400">
-              Pasos obligatorios para recepción antes de autorizar la salida
-              física del huésped:
-            </p>
-
-            <ol className="space-y-2.5 text-[11px] text-slate-700">
-              <li className="flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>
-                  <strong className="block text-slate-800">
-                    Revisar consumos de última hora:
-                  </strong>
-                  <span className="text-[10px] text-slate-400">
-                    Consultar frigobar, consumos en cafetería y tienda de
-                    artesanías.
-                  </span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  2
-                </span>
-                <div>
-                  <strong className="block text-slate-800">
-                    Validar abonos en el folio:
-                  </strong>
-                  <span className="text-[10px] text-slate-400">
-                    Comprobar depósitos previos y señas antes de emitir
-                    liquidación.
-                  </span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>
-                  <strong className="block text-slate-800">
-                    Cobrar saldo pendiente:
-                  </strong>
-                  <span className="text-[10px] text-slate-400">
-                    Aceptar Efectivo, tarjeta vía POS Ipay o Yape/Plin si no hay
-                    tarjeta.
-                  </span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  4
-                </span>
-                <div>
-                  <strong className="block text-slate-800">
-                    Recibir llaves físicas & controles:
-                  </strong>
-                  <span className="text-[10px] text-slate-400">
-                    Verificar llave de habitación + mando de aire acondicionado
-                    / TV.
-                  </span>
-                </div>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-4 h-4 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                  5
-                </span>
-                <div>
-                  <strong className="block text-slate-800">
-                    Notificar a Housekeeping:
-                  </strong>
-                  <span className="text-[10px] text-slate-400">
-                    Cambiar habitación a "Sucia / Limpieza" en sistema para
-                    Rosa.
-                  </span>
-                </div>
-              </li>
-            </ol>
-          </div>
-
-          {/* Widget 2: Custodia de Equipaje */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                <Briefcase size={14} className="text-slate-700" /> Custodia de
-                Equipaje
-              </h3>
-              <span className="bg-amber-100 text-amber-800 text-[9px] font-bold px-1.5 py-0.2 rounded">
-                3 en Bodega
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400">
-              Huéspedes en tours de tarde por Huacachina / Nazca antes de su bus
-              nocturno:
-            </p>
-
-            <div className="space-y-2 text-[10px]">
-              <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                <div>
-                  <span className="font-bold text-amber-800">#09</span>{" "}
-                  <span className="font-semibold text-slate-700">
-                    Antoine Dubois (Hab. 204)
-                  </span>
-                  <p className="text-[9px] text-slate-400">
-                    1 Mochila senderismo + 1 Maleta
-                  </p>
-                </div>
-                <span className="text-slate-400 font-medium">
-                  Retiro: 18:30 PET (Cruz del Sur)
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                <div>
-                  <span className="font-bold text-amber-800">#08</span>{" "}
-                  <span className="font-semibold text-slate-700">
-                    Luciana Cárdenas (Ex-108)
-                  </span>
-                  <p className="text-[9px] text-slate-400">
-                    2 Carry-on pequeños
-                  </p>
-                </div>
-                <span className="text-slate-400 font-medium">
-                  Retiro: 19:00 PET (Oltursa)
-                </span>
-              </div>
-            </div>
-
-            <button className="w-full border border-slate-300 hover:bg-slate-50 text-slate-700 py-1.5 rounded-lg font-semibold text-[11px] flex items-center justify-center gap-1">
-              + Registrar Nuevo Equipaje
-            </button>
-          </div>
-
-          {/* Widget 3: Clima en Ica */}
-          <div className="bg-[#1b4332] text-white p-4 rounded-xl shadow-sm space-y-2">
-            <div className="flex items-center gap-2">
-              <Sun size={18} className="text-amber-300" />
-              <h4 className="font-bold text-xs">Clima en Ica (Hoy)</h4>
-            </div>
-            <p className="text-[10px] text-emerald-100 leading-relaxed">
-              27°C Sol radiante y despejado. Gran afluencia de pasajeros hacia
-              Huacachina a las 17:00. Recordar ofrecer botella de agua fría al
-              cerrar check-out.
-            </p>
-          </div>
-        </div>
-      </div>
+      {/* Confirm Salida Expresa */}
+      <ConfirmModal
+        open={!!confirmExpresa}
+        title="Confirmar Check-out"
+        message="¿Confirmas la salida? La habitación pasará a estado 'Pendiente Limpieza'."
+        confirmLabel="Confirmar Salida"
+        variant="primary"
+        loading={expresaLoading}
+        onConfirm={procesarCheckoutExpresa}
+        onCancel={() => setConfirmExpresa(null)}
+      />
     </div>
   );
 }

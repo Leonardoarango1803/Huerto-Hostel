@@ -1,611 +1,698 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Download, Plus, LogIn, CreditCard, Trash2 } from "lucide-react";
+import { NuevoIngresoModal } from "../components/NuevoIngresoModal";
+import { useAuth } from "../context/AuthContext";
+import { reservasApi } from "../api/reservas";
+import { habitacionesApi } from "../api/habitaciones";
+import { clientesApi } from "../api/clientes";
+import type { Reserva, Habitacion, Cliente, NuevaReservaRequest, PagoReserva } from "../api/types";
 import {
-  Download,
-  Search,
-  Printer,
-  FileText,
-  Clock,
-  User,
-  Phone,
-  Mail,
-  BedDouble,
-  ChevronLeft,
-  ChevronRight,
-  History,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  Calendar,
-} from "lucide-react";
+  Button,
+  Badge,
+  SearchBar,
+  FilterPills,
+  KpiCard,
+  LoadingState,
+  EmptyState,
+  AlertBanner,
+  ConfirmModal,
+  FormModal,
+  FormField,
+  Input,
+  Select,
+  estadoReservaToVariant,
+} from "../components/ui";
+
+const estadoLabel: Record<string, string> = {
+  PENDIENTE_ADELANTO: "Pendiente",
+  CONFIRMADA: "Confirmada",
+  EN_CURSO: "Activa",
+  CANCELADA: "Cancelada",
+  COMPLETADA: "Completada",
+};
+
+const canalLabel: Record<string, string> = {
+  ONLINE: "En Línea",
+  PRESENCIAL: "Mostrador",
+};
+
+function formatFecha(fecha: string) {
+  return new Date(fecha).toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatCodigo(id: number) {
+  return `RES-${String(id).padStart(3, "0")}`;
+}
+
+const FILTER_OPTIONS = [
+  { label: "Pendiente", value: "PENDIENTE_ADELANTO" },
+  { label: "Confirmada", value: "CONFIRMADA" },
+  { label: "Activa", value: "EN_CURSO" },
+  { label: "Completada", value: "COMPLETADA" },
+  { label: "Cancelada", value: "CANCELADA" },
+  { label: "Todas", value: "TODAS" },
+];
 
 export function ReservasView() {
-  const [selectedFolioId, setSelectedFolioId] = useState("RES-2024-108");
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMINISTRADOR";
+
+  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilters, setActiveFilters] = useState<string[]>(["PENDIENTE_ADELANTO"]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const reservations = [
-    {
-      id: "RES-2024-108",
-      channel: "Mostrador",
-      time: "11:24",
-      guestName: "Mateo Silva Carrión",
-      docType: "DNI",
-      docNumber: "72491028",
-      phone: "+51 956 123 456",
-      email: "mateo.silva@email.com",
-      room: "Hab 102",
-      roomType: "Matrimonial Jardín",
-      checkIn: "24/10/2024",
-      checkInSub: "14:00 Check-in",
-      checkOut: "27/10/2024",
-      checkOutSub: "3 noches • 2 pax",
-      total: "515.00",
-      pending: "215.00",
-      status: "En estadía",
-      statusColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
-    },
-    {
-      id: "RES-2024-109",
-      channel: "WhatsApp",
-      time: "09:15",
-      guestName: "Luciana Vega Wong",
-      docType: "CE",
-      docNumber: "004819201",
-      phone: "+51 987 654 321",
-      email: "luciana.vega@email.com",
-      room: "Hab 204",
-      roomType: "Doble Estándar",
-      checkIn: "25/10/2024",
-      checkInSub: "Reserva ant.",
-      checkOut: "28/10/2024",
-      checkOutSub: "3 noches • 2 pax",
-      total: "420.00",
-      pending: "0.00",
-      status: "Confirmada",
-      statusColor: "bg-blue-100 text-blue-800 border-blue-300",
-    },
-    {
-      id: "RES-2024-110",
-      channel: "Mostrador",
-      time: "14:02",
-      guestName: "Rodrigo Paredes Soto",
-      docType: "DNI",
-      docNumber: "45192837",
-      phone: "+51 912 345 678",
-      email: "rodrigo.paredes@email.com",
-      room: "Dorm 108-B",
-      roomType: "Cama Compartida",
-      checkIn: "24/10/2024",
-      checkInSub: "14:02 Check-in",
-      checkOut: "25/10/2024",
-      checkOutSub: "1 noche • 1 pax",
-      total: "65.00",
-      pending: "0.00",
-      status: "Finalizada",
-      statusColor: "bg-slate-200 text-slate-800 border-slate-300",
-    },
-    {
-      id: "RES-2024-111",
-      channel: "Teléfono",
-      time: "16:30",
-      guestName: "Valeria Castro Ruiz",
-      docType: "DNI",
-      docNumber: "10293847",
-      phone: "+51 944 556 677",
-      email: "valeria.castro@email.com",
-      room: "Hab 201",
-      roomType: "Familiar Palmeras",
-      checkIn: "28/10/2024",
-      checkInSub: "Pendiente llegada",
-      checkOut: "31/10/2024",
-      checkOutSub: "3 noches • 4 pax",
-      total: "680.00",
-      pending: "680.00",
-      status: "Pendiente",
-      statusColor: "bg-amber-100 text-amber-800 border-amber-300",
-    },
-    {
-      id: "RES-2024-105",
-      channel: "Mostrador",
-      time: "18:10",
-      guestName: "Jean-Pierre Dupont",
-      docType: "PAS",
-      docNumber: "FRA-99210",
-      phone: "+33 612 345 678",
-      email: "jp.dupont@email.com",
-      room: "Hab 105",
-      roomType: "Matrimonial",
-      checkIn: "22/10/2024",
-      checkInSub: "No-show",
-      checkOut: "24/10/2024",
-      checkOutSub: "Anulada",
-      total: "0.00",
-      pending: "0.00",
-      status: "Cancelada",
-      statusColor: "bg-red-100 text-red-800 border-red-300",
-    },
-  ];
+  const [showNuevoIngreso, setShowNuevoIngreso] = useState(false);
 
-  const selectedFolio =
-    reservations.find((r) => r.id === selectedFolioId) || reservations[0];
+  useEffect(() => {
+    if ((location.state as { openNuevoIngreso?: boolean })?.openNuevoIngreso) {
+      setShowNuevoIngreso(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state]);
+
+  const [confirmCancel, setConfirmCancel] = useState<number | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [hiddenCanceladas, setHiddenCanceladas] = useState<number[]>([]);
+  const [confirmBorrar, setConfirmBorrar] = useState<number | null>(null);
+
+  const [showNuevaReserva, setShowNuevaReserva] = useState(false);
+  const [habitaciones, setHabitaciones] = useState<Habitacion[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [form, setForm] = useState<NuevaReservaRequest>({
+    idCliente: 0,
+    idHabitacion: 0,
+    fechaCheckinPrevisto: "",
+    fechaCheckoutPrevisto: "",
+    canalReserva: "PRESENCIAL",
+    observaciones: "",
+  });
+
+  // Pagos de la reserva seleccionada
+  const [pagosReserva, setPagosReserva] = useState<PagoReserva[]>([]);
+
+  // Adelanto payment state
+  const [showAdelanto, setShowAdelanto] = useState(false);
+  const [adelantoMonto, setAdelantoMonto] = useState("");
+  const [adelantoMetodo, setAdelantoMetodo] = useState("EFECTIVO");
+  const [adelantoLoading, setAdelantoLoading] = useState(false);
+  const [adelantoError, setAdelantoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    cargarReservas();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) { setPagosReserva([]); return; }
+    reservasApi.listarPagos(selectedId)
+      .then(setPagosReserva)
+      .catch(() => setPagosReserva([]));
+  }, [selectedId]);
+
+  async function cargarReservas() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await reservasApi.listar();
+    setReservas(data);
+    const primera = (activeFilters.length > 0
+        ? data.find((r) => activeFilters.includes(r.estadoReserva))
+        : null)
+      ?? data.find((r) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva))
+      ?? data[0] ?? null;
+    setSelectedId(primera?.idReserva ?? null);
+    } catch {
+      setError("No se pudieron cargar las reservas. Verifica la conexión con el servidor.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function abrirNuevaReserva() {
+    setShowNuevaReserva(true);
+    setFormError(null);
+    setForm({ idCliente: 0, idHabitacion: 0, fechaCheckinPrevisto: "", fechaCheckoutPrevisto: "", canalReserva: "PRESENCIAL", observaciones: "" });
+    const [habs, clts] = await Promise.all([
+      habitacionesApi.listar("DISPONIBLE").catch(() => []),
+      clientesApi.listar().catch(() => []),
+    ]);
+    setHabitaciones(habs);
+    setClientes(clts);
+  }
+
+  async function crearReserva() {
+    if (!form.idCliente || !form.idHabitacion || !form.fechaCheckinPrevisto || !form.fechaCheckoutPrevisto) {
+      setFormError("Completa todos los campos requeridos.");
+      return;
+    }
+    setFormLoading(true);
+    setFormError(null);
+    try {
+      await reservasApi.crear(form);
+      setShowNuevaReserva(false);
+      setSuccessMsg("Reserva creada correctamente.");
+      await cargarReservas();
+    } catch {
+      setFormError("Error al crear la reserva. Verifica los datos e intenta nuevamente.");
+    } finally {
+      setFormLoading(false);
+    }
+  }
+
+  async function cancelarReserva() {
+    if (!confirmCancel) return;
+    setConfirmLoading(true);
+    try {
+      await reservasApi.cambiarEstado(confirmCancel, "CANCELADA");
+      setConfirmCancel(null);
+      setSuccessMsg("Reserva cancelada.");
+      await cargarReservas();
+    } catch {
+      setError("No se pudo cancelar la reserva.");
+      setConfirmCancel(null);
+    } finally {
+      setConfirmLoading(false);
+    }
+  }
+
+  async function hacerCheckin(idReserva: number) {
+    try {
+      await reservasApi.realizarCheckin(idReserva);
+      setSuccessMsg("Check-in realizado correctamente.");
+      await cargarReservas();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? "No se pudo realizar el check-in.");
+    }
+  }
+
+  async function registrarAdelanto() {
+    if (!selectedId || !adelantoMonto || Number(adelantoMonto) <= 0) {
+      setAdelantoError("Ingresa un monto válido.");
+      return;
+    }
+    setAdelantoLoading(true);
+    setAdelantoError(null);
+    try {
+      await reservasApi.registrarAdelanto(selectedId, {
+        monto: Number(adelantoMonto),
+        metodoPago: adelantoMetodo,
+      });
+      setShowAdelanto(false);
+      setAdelantoMonto("");
+      setSuccessMsg("Adelanto registrado. Reserva confirmada.");
+      await cargarReservas();
+    } catch {
+      setAdelantoError("No se pudo registrar el adelanto.");
+    } finally {
+      setAdelantoLoading(false);
+    }
+  }
+
+  const filtradas = useMemo(() => {
+    return reservas
+      .filter((r) => !hiddenCanceladas.includes(r.idReserva))
+      .filter((r) => {
+        if (activeFilters.length === 0) return r.estadoReserva !== "CANCELADA";
+        return activeFilters.includes(r.estadoReserva);
+      })
+      .filter((r) => {
+        if (!searchTerm) return true;
+        const q = searchTerm.toLowerCase();
+        const nombre = `${r.cliente.nombres} ${r.cliente.apellidos}`.toLowerCase();
+        return (
+          nombre.includes(q) ||
+          r.cliente.numeroDocumento.includes(q) ||
+          formatCodigo(r.idReserva).toLowerCase().includes(q) ||
+          r.habitacion.numero.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        if (activeFilters.length > 0) return 0;
+        if (a.estadoReserva === "CANCELADA" && b.estadoReserva !== "CANCELADA") return 1;
+        if (a.estadoReserva !== "CANCELADA" && b.estadoReserva === "CANCELADA") return -1;
+        return 0;
+      });
+  }, [reservas, activeFilters, searchTerm, hiddenCanceladas]);
+
+  const selectedReserva = reservas.find((r) => r.idReserva === selectedId);
+
+  const kpiTotal = reservas.filter((r) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva)).length;
+  const kpiConfirmadas = reservas.filter((r) => r.estadoReserva === "CONFIRMADA").length;
+  const kpiPendiente = reservas.filter((r) => r.estadoReserva === "PENDIENTE_ADELANTO").length;
 
   return (
     <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
-      {/* Top Header Bar */}
-      <div className="flex justify-between items-center text-[11px] text-slate-500 border-b border-slate-200 pb-2.5">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-700">
-            El Huerto Hostel — Ica, PE
-          </span>
-          <span className="bg-amber-500/10 text-amber-800 font-bold px-2 py-0.5 rounded text-[9px]">
-            PANEL DE ADMINISTRACIÓN
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-[10px]">
-          <span>15:42 PET • 14 Nov 2026</span>
-          <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>{" "}
-            Recepción Activa
-          </span>
-          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-300">
-            <div className="w-5 h-5 rounded-full bg-emerald-800 text-white font-bold flex items-center justify-center text-[9px]">
-              AM
-            </div>
-            <span className="font-bold text-slate-800">Alejandro Morales</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Header Título & Botón Exportar */}
+      {/* Header */}
       <div className="flex justify-between items-start pt-1">
         <div>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-            AUDITORÍA PRESENCIAL • Recepción El Huerto (Ica)
+            Recepción &gt; Reservas
           </p>
-          <h1 className="text-xl font-bold text-slate-900 mt-0.5">
-            Supervisión Central de Reservas
-          </h1>
+          <h1 className="text-xl font-bold text-slate-900 mt-0.5">Gestión de Reservas</h1>
           <p className="text-slate-500 text-[11px] mt-0.5">
-            Consulta integral y auditoría de reservas presenciales registradas
-            directamente en el counter por el personal de turno. Sin
-            intermediarios OTA ni pasarelas virtuales.
+            Registro, seguimiento y gestión de reservas del hostel.
           </p>
         </div>
-        <button className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm text-xs">
-          <Download size={14} /> Exportar Lista (CSV / PDF)
-        </button>
-      </div>
-
-      {/* KPI Cards Top */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">
-            Ocupación Física
-          </p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-slate-900">87.5%</span>
-            <span className="text-[10px] text-slate-500 font-medium">
-              14/16 habs
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">
-            Saldos en Counter
-          </p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-slate-900">S/ 1,480</span>
-            <span className="text-[10px] text-amber-700 font-semibold">
-              por liquidar
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">
-            Entradas Hoy
-          </p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-slate-900">6 Pax</span>
-            <span className="text-[10px] text-slate-500 font-medium">
-              4 Check-in
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">
-            Personal Activo
-          </p>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-2xl font-bold text-slate-900">2 Turnos</span>
-            <span className="text-[10px] text-slate-500">
-              C. Vidal / C. Mendoza
-            </span>
-          </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            icon={<Download size={13} />}
+            onClick={() => {
+              const header = "Código,Huésped,Documento,Habitación,Tipo,Check-in,Check-out,Noches,Monto,Canal,Estado";
+              const rows = filtradas.map((r) =>
+                [
+                  formatCodigo(r.idReserva),
+                  `${r.cliente.nombres} ${r.cliente.apellidos}`,
+                  `${r.cliente.tipoDocumento} ${r.cliente.numeroDocumento}`,
+                  `Hab. ${r.habitacion.numero}`,
+                  r.habitacion.tipoHabitacion.nombre,
+                  formatFecha(r.fechaCheckinPrevisto),
+                  formatFecha(r.fechaCheckoutPrevisto),
+                  r.numNoches,
+                  Number(r.montoAlojamientoTotal).toFixed(2),
+                  canalLabel[r.canalReserva] ?? r.canalReserva,
+                  estadoLabel[r.estadoReserva] ?? r.estadoReserva,
+                ].join(",")
+              );
+              const BOM = "﻿";
+              const csv = BOM + [header, ...rows].join("\n");
+              const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+              const a = document.createElement("a");
+              a.href = URL.createObjectURL(blob);
+              a.download = "reservas.csv";
+              a.click();
+            }}
+          >
+            Exportar CSV
+          </Button>
+          <Button icon={<Plus size={13} />} onClick={abrirNuevaReserva}>
+            Nueva Reserva
+          </Button>
         </div>
       </div>
 
-      {/* Barra de Búsqueda y Filtros */}
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 max-w-xl">
-          <div className="relative flex-1">
-            <Search
-              size={14}
-              className="absolute left-3 top-2.5 text-slate-400"
-            />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar código, huésped o DNI"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-700 focus:outline-none"
-            />
-          </div>
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
-            <Calendar size={13} /> Este mes - Oct
-          </button>
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">
-            Estado: Todos
-          </button>
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">
-            Pago: Todos
-          </button>
-        </div>
-        <div className="text-[10px] text-slate-400 flex items-center gap-3">
-          <span>Visualizando 6 registros presenciales filtrados</span>
-          <span>•</span>
-          <span>Canales: Mostrador / WhatsApp Directo Ica</span>
-          <button className="text-emerald-800 hover:underline font-semibold">
-            Restablecer vista
-          </button>
-        </div>
+      {successMsg && <AlertBanner type="success" message={successMsg} />}
+      {error && <AlertBanner type="error" message={error} />}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3">
+        <KpiCard title="Reservas Activas" value={kpiTotal} subtitle="sin canceladas ni completadas" color="slate" />
+        <KpiCard title="Confirmadas" value={kpiConfirmadas} subtitle="adelanto pagado, esperan check-in" color="blue" />
+        <KpiCard title="Pendiente de Adelanto" value={kpiPendiente} subtitle="requieren pago de adelanto para confirmar" color="amber" />
       </div>
 
-      {/* Grid Principal (8 cols Tabla + Bitácora / 4 cols Folio Detail) */}
+      {/* Búsqueda y filtros */}
+      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-1">
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por código, huésped, DNI o habitación"
+            className="flex-1 max-w-xs"
+          />
+          <FilterPills options={FILTER_OPTIONS} activeValues={activeFilters} onSelectMulti={setActiveFilters} />
+        </div>
+        <span className="text-[10px] text-slate-400">{filtradas.length} registros</span>
+      </div>
+
+      {/* Layout principal */}
       <div className="grid grid-cols-12 gap-4">
-        {/* Columna Izquierda (8 cols) */}
-        <div className="col-span-8 space-y-4">
-          {/* Tabla de Reservas */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Tabla */}
+        <div className="col-span-7 bg-white rounded-xl border border-slate-200 overflow-hidden">
+          {loading ? (
+            <LoadingState />
+          ) : filtradas.length === 0 ? (
+            <EmptyState
+              title="Sin reservas"
+              description={searchTerm || activeFilter !== "TODAS" ? "Cambia los filtros para ver resultados." : "Aún no hay reservas registradas."}
+              action={<Button onClick={abrirNuevaReserva} icon={<Plus size={13} />}>Nueva Reserva</Button>}
+            />
+          ) : (
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
                   <th className="p-3">Código</th>
                   <th className="p-3">Huésped</th>
                   <th className="p-3">Habitación</th>
-                  <th className="p-3">Fecha Entrada</th>
-                  <th className="p-3">Fecha Salida</th>
-                  <th className="p-3">Total</th>
-                  <th className="p-3 text-center">Estado</th>
+                  <th className="p-3">Check-in</th>
+                  <th className="p-3">Estado</th>
+                  <th className="p-3">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {reservations.map((item) => {
-                  const isSelected = selectedFolioId === item.id;
-                  return (
-                    <tr
-                      key={item.id}
-                      onClick={() => setSelectedFolioId(item.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? "bg-emerald-50/60 font-medium"
-                          : "hover:bg-slate-50/80"
-                      }`}
-                    >
-                      <td className="p-3 font-bold text-slate-900">
-                        <span className="block text-emerald-800">
-                          #{item.id}
-                        </span>
-                        <span className="text-[9px] text-slate-400 font-normal">
-                          {item.channel} {item.time}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-bold text-slate-800 block">
-                          {item.guestName}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {item.docType} {item.docNumber}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-bold text-slate-800 block">
-                          {item.room}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {item.roomType}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="block text-slate-800">
-                          {item.checkIn}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {item.checkInSub}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="block text-slate-800">
-                          {item.checkOut}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          {item.checkOutSub}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-bold text-slate-900 block">
-                          S/ {item.total}
-                        </span>
-                        <span
-                          className={`text-[9px] font-semibold ${
-                            parseFloat(item.pending) > 0
-                              ? "text-amber-700"
-                              : "text-slate-400"
-                          }`}
+              <tbody>
+                {filtradas.map((r) => (
+                  <tr
+                    key={r.idReserva}
+                    onClick={() => setSelectedId(r.idReserva)}
+                    className={`border-b border-slate-100 cursor-pointer transition-colors ${
+                      selectedId === r.idReserva ? "bg-emerald-50" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <td className="p-3 font-mono font-semibold text-[11px] text-slate-700">
+                      {formatCodigo(r.idReserva)}
+                      <div className="text-[9px] text-slate-400 font-normal">{canalLabel[r.canalReserva]}</div>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-semibold">{r.cliente.nombres} {r.cliente.apellidos}</div>
+                      <div className="text-[10px] text-slate-400">{r.cliente.tipoDocumento} {r.cliente.numeroDocumento}</div>
+                    </td>
+                    <td className="p-3">
+                      <div className="font-semibold">Hab. {r.habitacion.numero}</div>
+                      <div className="text-[10px] text-slate-400">{r.habitacion.tipoHabitacion.nombre}</div>
+                    </td>
+                    <td className="p-3 text-slate-600">{formatFecha(r.fechaCheckinPrevisto)}</td>
+                    <td className="p-3">
+                      <Badge variant={estadoReservaToVariant(r.estadoReserva)} label={estadoLabel[r.estadoReserva] ?? r.estadoReserva} />
+                    </td>
+                    <td className="p-3 flex gap-1">
+                      {r.estadoReserva === "PENDIENTE_ADELANTO" && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); setConfirmCancel(r.idReserva); }}
                         >
-                          {parseFloat(item.pending) > 0
-                            ? `Pend: S/ ${item.pending}`
-                            : "Liquidado"}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center">
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.statusColor}`}
-                        >
-                          {item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          Cancelar
+                        </Button>
+                      )}
+                      {r.estadoReserva === "CANCELADA" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={<Trash2 size={11} />}
+                          onClick={(e) => { e.stopPropagation(); setConfirmBorrar(r.idReserva); }}
+                          title="Borrar del historial"
+                        />
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
-
-            {/* Pagination Footer */}
-            <div className="p-3 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-[10px] text-slate-500">
-              <span>
-                Filas por página: 15 • Total registros supervisados: 148
-              </span>
-              <div className="flex items-center gap-1">
-                <button className="p-1 hover:bg-slate-200 rounded">
-                  <ChevronLeft size={14} />
-                </button>
-                <button className="px-2 py-0.5 bg-slate-800 text-white rounded font-bold">
-                  1
-                </button>
-                <button className="px-2 py-0.5 hover:bg-slate-200 rounded">
-                  2
-                </button>
-                <button className="px-2 py-0.5 hover:bg-slate-200 rounded">
-                  3
-                </button>
-                <button className="p-1 hover:bg-slate-200 rounded">
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Bitácora de Eventos en Counter */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                <History size={14} className="text-slate-600" /> Bitácora de
-                Eventos en Counter
-              </h3>
-              <span className="text-[10px] text-slate-400 font-medium">
-                Turno Mañana/Tarde — 24 Oct
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-[10px]">
-              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1">
-                <div className="flex justify-between font-bold text-slate-700">
-                  <span>Camila Mendoza</span>
-                  <span className="text-slate-400">15:10 PET</span>
-                </div>
-                <p className="text-slate-600">
-                  Registró consumo presencial:{" "}
-                  <strong className="text-slate-800">
-                    1x Salchipapa Huerto (S/ 15.00)
-                  </strong>{" "}
-                  cargado al folio #RES-2024-108.
-                </p>
-              </div>
-
-              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1">
-                <div className="flex justify-between font-bold text-slate-700">
-                  <span>Carlos Vidal</span>
-                  <span className="text-slate-400">14:32 PET</span>
-                </div>
-                <p className="text-slate-600">
-                  Cobro en efectivo de{" "}
-                  <strong className="text-slate-800">S/ 100.00</strong> como
-                  abono para Hab 102 (Boleta física #B01-449).
-                </p>
-              </div>
-
-              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1">
-                <div className="flex justify-between font-bold text-slate-700">
-                  <span>Camila Mendoza</span>
-                  <span className="text-slate-400">11:24 PET</span>
-                </div>
-                <p className="text-slate-600">
-                  Creación presencial y check-in inmediato de reserva{" "}
-                  <strong className="text-slate-800">#RES-2024-108</strong>{" "}
-                  (Huésped Mateo Silva).
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* Columna Derecha: Panel Lateral Detalle del Folio (4 cols) */}
-        <div className="col-span-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          {/* Status Header */}
-          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
-            <span className="bg-slate-800 text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-              EXPEDIENTE AUDITADO
-            </span>
-            <div className="text-right">
-              <p className="text-[10px] text-slate-400">
-                Folio #{selectedFolio.id}
-              </p>
-              <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded uppercase">
-                {selectedFolio.status}
-              </span>
-            </div>
-          </div>
-
-          <h2 className="text-base font-bold text-slate-900">
-            Supervisión de Folio
-          </h2>
-
-          {/* Identidad del Huésped */}
-          <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-100">
-            <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold uppercase">
-              <span>Identidad del Huésped</span>
-              <User size={13} />
-            </div>
-            <p className="font-bold text-slate-900 text-sm">
-              {selectedFolio.guestName}
-            </p>
-            <div className="text-[10px] text-slate-600 space-y-0.5">
-              <p>
-                DOCUMENTO:{" "}
-                <strong className="text-slate-800">
-                  {selectedFolio.docType} {selectedFolio.docNumber}
-                </strong>
-              </p>
-              <p className="flex items-center gap-1">
-                <Phone size={10} /> {selectedFolio.phone}
-              </p>
-              <p className="flex items-center gap-1">
-                <Mail size={10} /> {selectedFolio.email}
-              </p>
-            </div>
-          </div>
-
-          {/* Alojamiento Presencial */}
-          <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-100 text-[10px]">
-            <div className="flex justify-between items-center text-slate-400 font-bold uppercase">
-              <span>Alojamiento Presencial</span>
-              <BedDouble size={13} />
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="font-bold text-slate-900 text-xs">
-                {selectedFolio.room}
-              </span>
-              <span className="text-slate-500">Tarifa Pactada</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-slate-500">
-                {selectedFolio.roomType} • 2 Huéspedes
-              </span>
-              <span className="font-bold text-slate-900">
-                S/ 150.00 / noche
-              </span>
-            </div>
-            <p className="text-slate-400 pt-1 border-t border-slate-200/60">
-              📅 24 al 27 Octubre 2026 —{" "}
-              <strong className="text-slate-700">3 noches (S/ 450.00)</strong>
-            </p>
-          </div>
-
-          {/* Abonos Presenciales */}
-          <div className="space-y-1 text-[10px]">
-            <div className="flex justify-between text-slate-400 font-bold uppercase border-b border-slate-100 pb-1">
-              <span>Abonos Presenciales</span>
-              <span className="text-slate-800 font-bold">Total: S/ 300.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>
-                Anticipo en Caja{" "}
-                <span className="text-slate-400">
-                  (Yape Presencial • 20/10 11:30)
-                </span>
-              </span>
-              <span className="font-semibold text-slate-800">S/ 200.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>
-                Abono Check-in{" "}
-                <span className="text-slate-400">
-                  (Efectivo Mostrador • 24/10 14:32)
-                </span>
-              </span>
-              <span className="font-semibold text-slate-800">S/ 100.00</span>
-            </div>
-          </div>
-
-          {/* Consumos en Propiedad */}
-          <div className="space-y-1 text-[10px]">
-            <div className="flex justify-between text-slate-400 font-bold uppercase border-b border-slate-100 pb-1">
-              <span>Consumos en Propiedad</span>
-              <span className="text-slate-800 font-bold">Total: S/ 65.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>2x Desayunos Continental Huerto</span>
-              <span className="font-semibold text-slate-800">S/ 30.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>1x Servicio de Lavandería (Bolsa 3kg)</span>
-              <span className="font-semibold text-slate-800">S/ 20.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>1x Salchipapa Huerto Oasis</span>
-              <span className="font-semibold text-slate-800">S/ 15.00</span>
-            </div>
-          </div>
-
-          {/* Caja Resumen Financiero */}
-          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl space-y-1.5 text-[11px]">
-            <div className="flex justify-between text-slate-600">
-              <span>Hospedaje base (3 noches):</span>
-              <span>S/ 450.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>Consumos internos cargados:</span>
-              <span>+ S/ 65.00</span>
-            </div>
-            <div className="flex justify-between text-slate-600 border-b border-amber-200/60 pb-1">
-              <span>Abonos recibidos en caja:</span>
-              <span>- S/ 300.00</span>
-            </div>
-            <div className="flex justify-between items-baseline pt-1">
-              <div>
-                <strong className="block text-amber-900 font-bold text-xs">
-                  SALDO PENDIENTE DE COBRO
-                </strong>
-                <span className="text-[9px] text-amber-700">
-                  A liquidar en Counter al Check-out
-                </span>
+        {/* Panel de detalle */}
+        <div className="col-span-5 space-y-3">
+          {selectedReserva ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Detalle de Reserva</p>
+                  <h2 className="text-sm font-bold text-slate-900">{formatCodigo(selectedReserva.idReserva)}</h2>
+                </div>
+                <Badge
+                  variant={estadoReservaToVariant(selectedReserva.estadoReserva)}
+                  label={estadoLabel[selectedReserva.estadoReserva]}
+                />
               </div>
-              <span className="text-xl font-bold text-amber-800">
-                S/ {selectedFolio.pending}
-              </span>
+
+              <div className="space-y-2 text-[11px]">
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-24 flex-shrink-0">Huésped</span>
+                  <span className="font-semibold">{selectedReserva.cliente.nombres} {selectedReserva.cliente.apellidos}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-slate-400 w-24 flex-shrink-0">Documento</span>
+                  <span>{selectedReserva.cliente.tipoDocumento} {selectedReserva.cliente.numeroDocumento}</span>
+                </div>
+                {selectedReserva.cliente.telefono && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Teléfono</span>
+                    <span>{selectedReserva.cliente.telefono}</span>
+                  </div>
+                )}
+                {selectedReserva.cliente.correo && (
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Email</span>
+                    <span className="truncate">{selectedReserva.cliente.correo}</span>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 pt-2 space-y-2">
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Habitación</span>
+                    <span className="font-semibold">Hab. {selectedReserva.habitacion.numero} — {selectedReserva.habitacion.tipoHabitacion.nombre}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Check-in</span>
+                    <span>{formatFecha(selectedReserva.fechaCheckinPrevisto)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Check-out</span>
+                    <span>{formatFecha(selectedReserva.fechaCheckoutPrevisto)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Noches</span>
+                    <span>{selectedReserva.numNoches}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-24 flex-shrink-0">Canal</span>
+                    <span>{canalLabel[selectedReserva.canalReserva]}</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-2 bg-slate-50 rounded-lg p-3 space-y-1.5">
+                  <div className="flex justify-between font-bold text-slate-800 text-sm">
+                    <span>Total Alojamiento</span>
+                    <span>S/ {Number(selectedReserva.montoAlojamientoTotal).toFixed(2)}</span>
+                  </div>
+                  {pagosReserva.length > 0 && (() => {
+                    const totalAdelanto = pagosReserva.reduce((s, p) => s + Number(p.monto), 0);
+                    const restante = Number(selectedReserva.montoAlojamientoTotal) - totalAdelanto;
+                    return (
+                      <>
+                        <div className="flex justify-between text-emerald-700 text-[11px]">
+                          <span>Adelanto pagado</span>
+                          <span className="font-semibold">− S/ {totalAdelanto.toFixed(2)}</span>
+                        </div>
+                        <div className={`flex justify-between font-bold text-[12px] border-t border-slate-200 pt-1 ${restante <= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                          <span>{restante <= 0 ? "Pagado completo" : "Restante a pagar"}</span>
+                          <span>S/ {Math.abs(restante).toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                  {selectedReserva.estadoReserva === "CANCELADA" && (
+                    <p className="text-[10px] text-slate-400 italic mt-1">
+                      ℹ Las reservas canceladas se eliminan del historial después de 1 día.
+                    </p>
+                  )}
+                </div>
+
+                {selectedReserva.observaciones && (
+                  <div className="border-t border-slate-100 pt-2">
+                    <span className="text-slate-400 block mb-1">Observaciones</span>
+                    <p className="text-slate-700 italic">{selectedReserva.observaciones}</p>
+                  </div>
+                )}
+
+                {selectedReserva.estadoReserva === "PENDIENTE_ADELANTO" && (
+                  <>
+                    {showAdelanto ? (
+                      <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] font-bold text-amber-700 uppercase">Registrar Adelanto</p>
+                        {adelantoError && <AlertBanner type="error" message={adelantoError} dismissible={false} />}
+                        <div className="flex gap-2">
+                          <select
+                            className="border border-slate-300 rounded-md px-2 py-1 text-xs flex-1"
+                            value={adelantoMetodo}
+                            onChange={(e) => setAdelantoMetodo(e.target.value)}
+                          >
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA_POS">Tarjeta POS</option>
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                            <option value="PASARELA_ONLINE">Pasarela Online</option>
+                          </select>
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            placeholder="Monto S/"
+                            className="border border-slate-300 rounded-md px-2 py-1 text-xs w-28"
+                            value={adelantoMonto}
+                            onChange={(e) => setAdelantoMonto(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={registrarAdelanto} loading={adelantoLoading} className="flex-1 justify-center">
+                            Confirmar pago
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setShowAdelanto(false)} className="flex-1 justify-center">
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        icon={<CreditCard size={13} />}
+                        className="w-full justify-center"
+                        onClick={() => { setShowAdelanto(true); setAdelantoError(null); }}
+                      >
+                        Registrar Adelanto
+                      </Button>
+                    )}
+                    {!showAdelanto && (
+                      <Button
+                        variant="success"
+                        icon={<LogIn size={13} />}
+                        className="w-full justify-center"
+                        onClick={() => hacerCheckin(selectedReserva.idReserva)}
+                      >
+                        Check-In
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {selectedReserva.estadoReserva === "CONFIRMADA" && (
+                  <Button
+                    variant="success"
+                    icon={<LogIn size={13} />}
+                    className="w-full justify-center"
+                    onClick={() => hacerCheckin(selectedReserva.idReserva)}
+                  >
+                    Check-In
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Trazabilidad de Registro */}
-          <p className="text-[9px] text-slate-400 leading-tight">
-            🛡️ <strong>Trazabilidad de Registro:</strong> Registrada
-            presencialmente por Recepcionista <strong>Camila Mendoza</strong> el
-            20/10/2026 a las 11:24 PET en Terminal Recepción 01.
-          </p>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-1">
-            <button className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px]">
-              <Printer size={13} /> Imprimir Folio
-            </button>
-            <button className="flex-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[10px]">
-              <FileText size={13} /> Exportar Folio PDF
-            </button>
-          </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+              <p className="text-xs text-slate-400">Selecciona una reserva para ver el detalle</p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Modal Nueva Reserva */}
+      <FormModal
+        open={showNuevaReserva}
+        title="Nueva Reserva"
+        subtitle="Registra una reserva presencial en el counter"
+        submitLabel="Crear Reserva"
+        loading={formLoading}
+        onClose={() => setShowNuevaReserva(false)}
+        onSubmit={crearReserva}
+        size="md"
+      >
+        {formError && <AlertBanner type="error" message={formError} dismissible={false} />}
+
+        <FormField label="Cliente" required>
+          <Select
+            value={form.idCliente || ""}
+            onChange={(e) => setForm({ ...form, idCliente: Number(e.target.value) })}
+          >
+            <option value="">— Seleccionar cliente —</option>
+            {clientes.map((c) => (
+              <option key={c.idCliente} value={c.idCliente}>
+                {c.nombres} {c.apellidos} ({c.tipoDocumento} {c.numeroDocumento})
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <FormField label="Habitación disponible" required>
+          <Select
+            value={form.idHabitacion || ""}
+            onChange={(e) => setForm({ ...form, idHabitacion: Number(e.target.value) })}
+          >
+            <option value="">— Seleccionar habitación —</option>
+            {habitaciones.map((h) => (
+              <option key={h.idHabitacion} value={h.idHabitacion}>
+                Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche)
+              </option>
+            ))}
+          </Select>
+        </FormField>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Fecha Check-in" required>
+            <Input
+              type="date"
+              value={form.fechaCheckinPrevisto}
+              onChange={(e) => setForm({ ...form, fechaCheckinPrevisto: e.target.value })}
+            />
+          </FormField>
+          <FormField label="Fecha Check-out" required>
+            <Input
+              type="date"
+              value={form.fechaCheckoutPrevisto}
+              onChange={(e) => setForm({ ...form, fechaCheckoutPrevisto: e.target.value })}
+            />
+          </FormField>
+        </div>
+
+        <FormField label="Canal">
+          <Select
+            value={form.canalReserva}
+            onChange={(e) => setForm({ ...form, canalReserva: e.target.value as "ONLINE" | "PRESENCIAL" })}
+          >
+            <option value="PRESENCIAL">Mostrador (Presencial)</option>
+            <option value="ONLINE">En Línea</option>
+          </Select>
+        </FormField>
+
+        <FormField label="Observaciones">
+          <Input
+            type="text"
+            value={form.observaciones}
+            placeholder="Notas adicionales (opcional)"
+            onChange={(e) => setForm({ ...form, observaciones: e.target.value })}
+          />
+        </FormField>
+      </FormModal>
+
+      {/* Modal Confirmar Cancelación */}
+      <ConfirmModal
+        open={!!confirmCancel}
+        title="Cancelar reserva"
+        message={`¿Confirmas la cancelación de ${confirmCancel ? formatCodigo(confirmCancel) : ""}? Esta acción no puede deshacerse.`}
+        confirmLabel="Sí, cancelar"
+        loading={confirmLoading}
+        onConfirm={cancelarReserva}
+        onCancel={() => setConfirmCancel(null)}
+      />
+
+      {/* Modal Borrar del historial */}
+      <ConfirmModal
+        open={!!confirmBorrar}
+        title="Borrar del historial"
+        message="¿Deseas ocultar esta reserva cancelada del historial? Las reservas canceladas se eliminan automáticamente después de 1 día."
+        confirmLabel="Sí, borrar"
+        variant="danger"
+        onConfirm={() => {
+          if (confirmBorrar) {
+            setHiddenCanceladas((prev) => [...prev, confirmBorrar]);
+            if (selectedId === confirmBorrar) setSelectedId(null);
+          }
+          setConfirmBorrar(null);
+        }}
+        onCancel={() => setConfirmBorrar(null)}
+      />
+
+      {/* Modal Nuevo Ingreso (walk-in rápido con búsqueda DNI) */}
+      <NuevoIngresoModal
+        open={showNuevoIngreso}
+        onClose={() => setShowNuevoIngreso(false)}
+        onSuccess={async () => {
+          setSuccessMsg("Ingreso registrado correctamente.");
+          await cargarReservas();
+        }}
+      />
     </div>
   );
 }

@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Backend Maven build artifacts
+backend/target/
+
+# Environment files with secrets (nunca subir al repo)
+.env
+backend/.env
+*.env.local
+
+# Claude Code session files
+.claude/

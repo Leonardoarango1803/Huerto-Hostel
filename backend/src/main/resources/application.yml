@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: huerto-hostel
+
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      minimum-idle: 1
+      maximum-pool-size: 5
+      idle-timeout: 120000
+      max-lifetime: 900000
+      keepalive-time: 30000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=10m
+
+server:
+  port: ${PORT:8091}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: 28800000  # 8 horas
+
+  cors:
+    allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+
+  decolecta:
+    api-key: ${DECOLECTA_API_KEY}
+    base-url: https://api.decolecta.com
+
+logging:
+  level:
+    root: WARN
+    pe.edu.utp.huertohostel: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type: WARN
+    org.flywaydb: WARN
+    com.zaxxer.hikari: WARN
+    org.springframework.web: WARN
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
