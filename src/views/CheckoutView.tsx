@@ -43,7 +43,7 @@ export function CheckoutView() {
 
   const [saldoDetalle, setSaldoDetalle] = useState<SaldoResponse | null>(null);
   const [saldoLoading, setSaldoLoading] = useState(false);
-  const [pagosAdelanto, setPagosAdelanto] = useState<PagoReserva[]>([]);
+  const [_pagosAdelanto, setPagosAdelanto] = useState<PagoReserva[]>([]);
 
   const [showLiquidacion, setShowLiquidacion] = useState(false);
   const [liquidacionLoading, setLiquidacionLoading] = useState(false);

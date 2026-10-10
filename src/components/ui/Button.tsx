@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost" | "success";
@@ -14,7 +14,7 @@ interface ButtonProps {
   disabled?: boolean;
   type?: "button" | "submit" | "reset";
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 const variantClasses: Record<Variant, string> = {

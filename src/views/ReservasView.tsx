@@ -60,7 +60,7 @@ const FILTER_OPTIONS = [
 
 export function ReservasView() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMINISTRADOR";
+  const _isAdmin = user?.role === "ADMINISTRADOR";
 
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
@@ -337,7 +337,7 @@ export function ReservasView() {
           ) : filtradas.length === 0 ? (
             <EmptyState
               title="Sin reservas"
-              description={searchTerm || activeFilter !== "TODAS" ? "Cambia los filtros para ver resultados." : "Aún no hay reservas registradas."}
+              description={searchTerm || activeFilters.includes("TODAS") === false ? "Cambia los filtros para ver resultados." : "Aún no hay reservas registradas."}
               action={<Button onClick={abrirNuevaReserva} icon={<Plus size={13} />}>Nueva Reserva</Button>}
             />
           ) : (
