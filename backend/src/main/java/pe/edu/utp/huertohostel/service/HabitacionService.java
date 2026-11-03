@@ -60,6 +60,10 @@ public class HabitacionService {
 
     @Transactional
     public Habitacion cambiarEstado(@NonNull Integer id, EstadoOperativoHab nuevoEstado) {
+        // OCUPADA y RESERVADO los gobiernan la reserva y el check-in; a mano permitian saltarse la caja.
+        if (nuevoEstado == EstadoOperativoHab.OCUPADA || nuevoEstado == EstadoOperativoHab.RESERVADO) {
+            throw new IllegalStateException("Ese estado lo gobiernan la reserva y el check-in; no se cambia a mano.");
+        }
         Habitacion habitacion = obtenerPorId(id);
         habitacion.setEstadoOperativo(nuevoEstado);
         return habitacionRepository.save(habitacion);

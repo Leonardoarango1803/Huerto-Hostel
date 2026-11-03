@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { LogIn, BedDouble, User, Calendar, Search, CheckCircle, AlertCircle } from "lucide-react";
 import api from "../api/axiosConfig";
+import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
+import { esCajaCerrada, mensajeDeError } from "../api/errores";
 
 interface Reserva {
   idReserva: number;
@@ -21,6 +23,7 @@ interface Estadia {
 }
 
 export function CheckInView() {
+  const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,8 +58,8 @@ export function CheckInView() {
       });
       setReservas((prev) => prev.filter((r) => r.idReserva !== idReserva));
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Error al realizar el check-in.";
-      setMensaje({ tipo: "error", texto: msg });
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "Error al realizar el check-in.") });
+      if (esCajaCerrada(err)) refrescarCaja();
     } finally {
       setProcesando(null);
     }
@@ -183,7 +186,8 @@ export function CheckInView() {
                   <td className="p-3 text-center">
                     <button
                       onClick={() => hacerCheckin(r.idReserva)}
-                      disabled={procesando === r.idReserva}
+                      disabled={procesando === r.idReserva || cajaCerrada}
+                      title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                       className="bg-[#1b4332] hover:bg-[#143427] disabled:bg-slate-300 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 mx-auto"
                     >
                       <LogIn size={11} />

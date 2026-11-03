@@ -3,6 +3,8 @@ import { FileText, Check, DoorOpen, BedDouble, Sun, AlertCircle } from "lucide-r
 import { estadiasApi } from "../api/estadias";
 import { reservasApi } from "../api/reservas";
 import { useAuth } from "../context/AuthContext";
+import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
+import { esCajaCerrada, mensajeDeError } from "../api/errores";
 import type { Estadia, SaldoResponse, ResumenCheckout, PagoReserva } from "../api/types";
 import {
   Button,
@@ -33,6 +35,7 @@ function formatFecha(fecha?: string) {
 export function CheckoutView() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMINISTRADOR";
+  const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [resumen, setResumen] = useState<ResumenCheckout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,8 +113,9 @@ export function CheckoutView() {
       setSelectedId(null);
       setSaldoDetalle(null);
       await cargarDatos();
-    } catch {
-      setError("Error al procesar el check-out.");
+    } catch (err) {
+      setError(mensajeDeError(err, "Error al procesar el check-out."));
+      if (esCajaCerrada(err)) refrescarCaja();
       setConfirmExpresa(null);
     } finally {
       setExpresaLoading(false);
@@ -137,8 +141,9 @@ export function CheckoutView() {
       setSelectedId(null);
       setSaldoDetalle(null);
       await cargarDatos();
-    } catch {
-      setLiquidacionError("Error al procesar la liquidación. Verifica el saldo e intenta nuevamente.");
+    } catch (err) {
+      setLiquidacionError(mensajeDeError(err, "Error al procesar la liquidación. Verifica el saldo e intenta nuevamente."));
+      if (esCajaCerrada(err)) refrescarCaja();
     } finally {
       setLiquidacionLoading(false);
     }
@@ -353,6 +358,8 @@ export function CheckoutView() {
                     variant="primary"
                     icon={<DoorOpen size={13} />}
                     className="w-full justify-center"
+                    disabled={cajaCerrada}
+                    title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                     onClick={() => {
                       setCheckoutForm({ metodoPago: "EFECTIVO", monto: saldoDetalle ? String(saldoDetalle.saldoPendiente.toFixed(2)) : "" });
                       setLiquidacionError(null);
@@ -389,10 +396,14 @@ export function CheckoutView() {
         subtitle={`${selectedEstadia?.reserva.cliente.nombres ?? ""} — Hab. ${selectedEstadia?.habitacion.numero ?? ""}`}
         submitLabel="Confirmar Pago y Check-out"
         loading={liquidacionLoading}
+        submitDisabled={cajaCerrada}
         onClose={() => setShowLiquidacion(false)}
         onSubmit={procesarLiquidacion}
         size="sm"
       >
+        {cajaCerrada && (
+          <AlertBanner type="warning" message="La caja esta cerrada: abre el turno para cobrar el saldo." dismissible={false} />
+        )}
         {liquidacionError && <AlertBanner type="error" message={liquidacionError} dismissible={false} />}
         {saldoDetalle && (
           <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs mb-1">

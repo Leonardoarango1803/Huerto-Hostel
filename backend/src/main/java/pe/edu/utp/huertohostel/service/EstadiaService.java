@@ -10,6 +10,7 @@ import pe.edu.utp.huertohostel.entity.Pago;
 import pe.edu.utp.huertohostel.entity.EstadoEstadia;
 import pe.edu.utp.huertohostel.entity.EstadoOperativoHab;
 import pe.edu.utp.huertohostel.entity.EstadoReserva;
+import pe.edu.utp.huertohostel.entity.OrigenTareaLimpieza;
 import pe.edu.utp.huertohostel.repository.ConsumoEstadiaRepository;
 import pe.edu.utp.huertohostel.repository.EstadiaRepository;
 import pe.edu.utp.huertohostel.repository.HabitacionRepository;
@@ -37,17 +38,32 @@ public class EstadiaService {
     private final PagoRepository pagoRepository;
     private final HabitacionRepository habitacionRepository;
     private final ReservaRepository reservaRepository;
+    private final LimpiezaService limpiezaService;
+    private final PagoService pagoService;
+    private final CajaService cajaService;
+    private final InventarioService inventarioService;
+    private final UsuarioActualService usuarioActualService;
 
     public EstadiaService(EstadiaRepository estadiaRepository,
                           ConsumoEstadiaRepository consumoEstadiaRepository,
                           PagoRepository pagoRepository,
                           HabitacionRepository habitacionRepository,
-                          ReservaRepository reservaRepository) {
+                          ReservaRepository reservaRepository,
+                          LimpiezaService limpiezaService,
+                          PagoService pagoService,
+                          CajaService cajaService,
+                          InventarioService inventarioService,
+                          UsuarioActualService usuarioActualService) {
+        this.inventarioService = inventarioService;
+        this.usuarioActualService = usuarioActualService;
         this.estadiaRepository = estadiaRepository;
         this.consumoEstadiaRepository = consumoEstadiaRepository;
         this.pagoRepository = pagoRepository;
         this.habitacionRepository = habitacionRepository;
         this.reservaRepository = reservaRepository;
+        this.limpiezaService = limpiezaService;
+        this.pagoService = pagoService;
+        this.cajaService = cajaService;
     }
 
     public List<Estadia> listarTodas() {
@@ -150,6 +166,11 @@ public class EstadiaService {
         consumo.setTotalConsumo(total);
         consumo.setFechaRegistro(LocalDateTime.now());
         ConsumoEstadia saved = consumoEstadiaRepository.save(consumo);
+
+        // Lo vendido sin pasar por una comanda (recepcion, solicitud del portal) tambien consume insumos:
+        // las comandas descuentan al entregarse (ComandaService) y no llegan por este camino.
+        inventarioService.descontarPorReceta(saved.getProducto(), saved.getCantidad(),
+                "CONSUMO-" + saved.getIdConsumo(), usuarioActualService.empleadoOpcional());
         return consumoEstadiaRepository.findById(saved.getIdConsumo()).orElse(saved);
     }
 
@@ -157,11 +178,17 @@ public class EstadiaService {
     public Estadia realizarCheckout(@NonNull Integer idEstadia, Pago pagoFinal) {
         Estadia estadia = obtenerPorId(idEstadia);
 
-        if (pagoFinal != null && pagoFinal.getMonto() != null
-                && pagoFinal.getMonto().compareTo(BigDecimal.ZERO) > 0) {
+        boolean hayPagoFinal = pagoFinal != null && pagoFinal.getMonto() != null
+                && pagoFinal.getMonto().compareTo(BigDecimal.ZERO) > 0;
+        // Con saldo 0 y sin pago final no se toca dinero: el huesped puede salir con la caja cerrada.
+        if (hayPagoFinal || calcularSaldo(idEstadia).compareTo(BigDecimal.ZERO) > 0) {
+            cajaService.exigirCajaAbiertaSiEsPersonal();
+        }
+
+        if (hayPagoFinal) {
             pagoFinal.setEstadia(estadia);
-            pagoFinal.setFechaPago(LocalDateTime.now());
-            pagoRepository.save(pagoFinal);
+            // Por PagoService para que el cobro entre al turno y al arqueo (antes se guardaba directo).
+            pagoService.registrar(pagoFinal);
         }
 
         BigDecimal saldo = calcularSaldo(idEstadia);
@@ -180,6 +207,10 @@ public class EstadiaService {
         Habitacion habitacionCheckout = Objects.requireNonNull(estadia.getHabitacion());
         habitacionCheckout.setEstadoOperativo(EstadoOperativoHab.PENDIENTE_LIMPIEZA);
         habitacionRepository.save(habitacionCheckout);
+
+        // Housekeeping recoge la habitacion desde su propia bandeja de tareas.
+        limpiezaService.crearPara(habitacionCheckout, OrigenTareaLimpieza.CHECK_OUT,
+                "Generada automaticamente por el check-out de la estadia #" + idEstadia);
 
         return estadia;
     }

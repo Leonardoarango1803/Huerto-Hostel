@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { CreditCard, Search, CheckCircle, AlertCircle, DollarSign } from "lucide-react";
 import api from "../api/axiosConfig";
+import { pasarelaApi } from "../api/caja";
+import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
+import { esCajaCerrada, mensajeDeError } from "../api/errores";
 
 interface Estadia {
   idEstadia: number;
@@ -34,6 +37,7 @@ export function PagosView() {
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [selectedEstadia, setSelectedEstadia] = useState<Estadia | null>(null);
   const [saldo, setSaldo] = useState<number | null>(null);
+  const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [form, setForm] = useState({
@@ -46,6 +50,8 @@ export function PagosView() {
   const [loadingSaldo, setLoadingSaldo] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
+  const [pasarela, setPasarela] = useState({ monto: "", simularRechazo: false });
+  const [procesandoPasarela, setProcesandoPasarela] = useState(false);
 
   useEffect(() => {
     api.get<Estadia[]>("/api/v1/estadias?estado=EN_CURSO")
@@ -96,10 +102,55 @@ export function PagosView() {
       // Actualizar saldo
       const saldoRes = await api.get<SaldoResponse>(`/api/v1/estadias/${selectedEstadia.idEstadia}/saldo`);
       setSaldo(saldoRes.data.saldoPendiente);
-    } catch {
-      setMensaje({ tipo: "error", texto: "Error al registrar el pago." });
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "Error al registrar el pago.") });
+      if (esCajaCerrada(err)) refrescarCaja();
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const refrescarSaldoYPagos = async (idEstadia: number, idReserva?: number) => {
+    const saldoRes = await api.get<SaldoResponse>(`/api/v1/estadias/${idEstadia}/saldo`);
+    setSaldo(saldoRes.data.saldoPendiente);
+    if (idReserva) {
+      const pagosRes = await api.get<Pago[]>(`/api/v1/reservas/${idReserva}/pagos`);
+      setPagos(pagosRes.data);
+    }
+  };
+
+  const cobrarConPasarela = async () => {
+    if (!selectedEstadia || !pasarela.monto) return;
+    setProcesandoPasarela(true);
+    setMensaje(null);
+    try {
+      const res = await pasarelaApi.simular({
+        idEstadia: selectedEstadia.idEstadia,
+        monto: parseFloat(pasarela.monto),
+        concepto: form.conceptoPago,
+        simularRechazo: pasarela.simularRechazo,
+      });
+      if (res.aprobado) {
+        setMensaje({
+          tipo: "ok",
+          texto: `${res.mensaje} Operacion ${res.codigoOperacion}.`,
+        });
+        setPasarela({ monto: "", simularRechazo: false });
+        await refrescarSaldoYPagos(
+          selectedEstadia.idEstadia,
+          selectedEstadia.reserva?.idReserva
+        );
+      } else {
+        setMensaje({
+          tipo: "error",
+          texto: `${res.mensaje} Operacion ${res.codigoOperacion}.`,
+        });
+      }
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "Error al procesar el pago en la pasarela.") });
+      if (esCajaCerrada(err)) refrescarCaja();
+    } finally {
+      setProcesandoPasarela(false);
     }
   };
 
@@ -290,11 +341,63 @@ export function PagosView() {
                 </div>
                 <button
                   onClick={registrarPago}
-                  disabled={!form.monto || parseFloat(form.monto) <= 0 || guardando}
+                  disabled={!form.monto || parseFloat(form.monto) <= 0 || guardando || cajaCerrada}
+                  title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                   className="bg-[#1b4332] hover:bg-[#143427] disabled:bg-slate-300 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5"
                 >
                   <CheckCircle size={12} />
                   {guardando ? "Registrando..." : "Confirmar pago"}
+                </button>
+              </div>
+
+              {/* Pasarela de pago simulada (sandbox) */}
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+                <h3 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                  <CreditCard size={13} className="text-blue-700" /> Pasarela de pago simulada
+                  <span className="text-[9px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-bold">
+                    SANDBOX
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Entorno de prueba: genera un codigo de operacion y registra el cobro como
+                  PASARELA ONLINE. No se envian datos reales de tarjeta.
+                </p>
+                <div className="grid grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+                      Monto a cobrar (S/)
+                    </label>
+                    <input
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      value={pasarela.monto}
+                      onChange={(e) => setPasarela((p) => ({ ...p, monto: e.target.value }))}
+                      placeholder="0.00"
+                      className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-[11px] text-slate-600 pb-1.5">
+                    <input
+                      type="checkbox"
+                      checked={pasarela.simularRechazo}
+                      onChange={(e) =>
+                        setPasarela((p) => ({ ...p, simularRechazo: e.target.checked }))
+                      }
+                    />
+                    Simular rechazo de la operacion
+                  </label>
+                </div>
+                <button
+                  onClick={cobrarConPasarela}
+                  disabled={
+                    !pasarela.monto || parseFloat(pasarela.monto) <= 0 || procesandoPasarela || cajaCerrada
+                  }
+                  title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
+                  className="bg-blue-700 hover:bg-blue-800 disabled:bg-slate-300 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5"
+                >
+                  <CreditCard size={12} />
+                  {procesandoPasarela ? "Procesando..." : "Procesar con pasarela"}
                 </button>
               </div>
 

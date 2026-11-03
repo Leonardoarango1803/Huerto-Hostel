@@ -4,6 +4,8 @@ import { clientesApi } from "../api/clientes";
 import { habitacionesApi } from "../api/habitaciones";
 import { reservasApi } from "../api/reservas";
 import { consultarDni } from "../api/decolecta";
+import { useCaja } from "../context/CajaContext";
+import { mensajeDeError } from "../api/errores";
 import type { Cliente, Habitacion, NuevoClienteRequest } from "../api/types";
 import { AlertBanner, FormField, Input, Select } from "./ui";
 import { Button } from "./ui/Button";
@@ -28,6 +30,7 @@ function getTomorrow() {
 }
 
 export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
+  const { cajaCerrada } = useCaja();
   const [paso, setPaso] = useState<1 | 2>(1);
 
   // Paso 1
@@ -54,9 +57,18 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
   // General
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Si la reserva se creo pero el check-in fallo (p. ej. cerraron la caja a mitad del tramite),
+  // guardamos su id para no ofrecer "confirmar" otra vez y duplicarla.
+  const [reservaCreada, setReservaCreada] = useState<number | null>(null);
+
+  // Reservar no exige caja; el check-in inmediato si. Con la caja cerrada se deshabilita.
+  useEffect(() => {
+    if (cajaCerrada) setCheckinInmediato(false);
+  }, [cajaCerrada]);
 
   useEffect(() => {
     if (!open) return;
+    setReservaCreada(null);
     setPaso(1);
     setDni("");
     setClienteStatus("idle");
@@ -128,8 +140,14 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
       return;
     }
 
+    if (checkinInmediato && cajaCerrada) {
+      setError("La caja esta cerrada: abre el turno para hacer el check-in, o desmarca el check-in inmediato para solo reservar.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    let idReservaCreada: number | null = null;
 
     try {
       let idCliente: number;
@@ -156,6 +174,7 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
         fechaCheckoutPrevisto: fechaCheckout,
         canalReserva: "PRESENCIAL",
       });
+      idReservaCreada = reserva.idReserva;
 
       if (checkinInmediato) {
         await reservasApi.realizarCheckin(reserva.idReserva);
@@ -164,9 +183,15 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "Ocurrió un error. Verifica los datos e intenta nuevamente.");
+      const msg = mensajeDeError(err, "Ocurrió un error. Verifica los datos e intenta nuevamente.");
+      if (idReservaCreada !== null) {
+        // La reserva SI quedo creada: avisarlo y refrescar el listado, sin ofrecer duplicarla.
+        setReservaCreada(idReservaCreada);
+        setError(`La reserva #${idReservaCreada} se creo, pero el check-in no se pudo completar: ${msg} Hazlo despues desde Reservas.`);
+        onSuccess();
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -331,10 +356,11 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
               </div>
 
               {fechaCheckin === getToday() && (
-                <label className="flex items-start gap-2.5 cursor-pointer bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+                <label className={`flex items-start gap-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 ${cajaCerrada ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                   <input
                     type="checkbox"
                     checked={checkinInmediato}
+                    disabled={cajaCerrada}
                     onChange={(e) => setCheckinInmediato(e.target.checked)}
                     className="w-4 h-4 mt-0.5 accent-emerald-600 shrink-0"
                   />
@@ -343,7 +369,9 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
                       <LogIn size={12} /> Check-in inmediato
                     </p>
                     <p className="text-[10px] text-emerald-600 mt-0.5">
-                      El huésped entra a la habitación ahora mismo.
+                      {cajaCerrada
+                        ? "La caja esta cerrada: puedes crear la reserva, pero el check-in requiere abrirla."
+                        : "El huésped entra a la habitación ahora mismo."}
                     </p>
                   </div>
                 </label>
@@ -365,12 +393,20 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
             </>
           ) : (
             <>
-              <Button variant="secondary" onClick={() => { setError(null); setPaso(1); }}>
-                ← Atrás
-              </Button>
-              <Button variant="primary" loading={loading} onClick={confirmar}>
-                {checkinInmediato ? "Confirmar y hacer Check-in" : "Confirmar Asignación"}
-              </Button>
+              {reservaCreada === null ? (
+                <>
+                  <Button variant="secondary" onClick={() => { setError(null); setPaso(1); }}>
+                    ← Atrás
+                  </Button>
+                  <Button variant="primary" loading={loading} onClick={confirmar}>
+                    {checkinInmediato ? "Confirmar y hacer Check-in" : "Confirmar Asignación"}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="primary" onClick={onClose} className="ml-auto">
+                  Cerrar
+                </Button>
+              )}
             </>
           )}
         </div>

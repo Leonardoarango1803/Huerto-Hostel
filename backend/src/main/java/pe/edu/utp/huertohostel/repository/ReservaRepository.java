@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import pe.edu.utp.huertohostel.entity.EstadoReserva;
 import pe.edu.utp.huertohostel.entity.Reserva;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -15,6 +16,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer> {
     List<Reserva> findByHabitacionIdHabitacionAndEstadoReservaIn(Integer idHabitacion, List<EstadoReserva> estados);
 
     long countByEstadoReservaNotIn(List<EstadoReserva> estados);
+
+    List<Reserva> findByEstadoReservaIn(List<EstadoReserva> estados);
 
     // Usa constantes de enum explícitas para evitar comparación con strings en JPQL
     @Query("""
@@ -29,4 +32,11 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer> {
             @Param("checkin") LocalDate checkin,
             @Param("checkout") LocalDate checkout,
             @Param("estadosExcluidos") List<EstadoReserva> estadosExcluidos);
+
+    /** Ingreso por alojamiento de las reservas vigentes (excluye canceladas). */
+    @Query("""
+            SELECT COALESCE(SUM(r.montoAlojamientoTotal), 0) FROM Reserva r
+            WHERE r.estadoReserva NOT IN :estadosExcluidos
+            """)
+    BigDecimal sumAlojamiento(@Param("estadosExcluidos") List<EstadoReserva> estadosExcluidos);
 }

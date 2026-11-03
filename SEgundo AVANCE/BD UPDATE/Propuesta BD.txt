@@ -1,0 +1,354 @@
+======================================================================
+-- SCRIPT DE CREACIÓN DE BASE DE DATOS - EL HUERTO HOSTEL PMS
+======================================================================
+-- 1. LIMPIEZA DE ENTORNO
+DROP TABLE IF EXISTS bitacora_turno CASCADE;
+DROP TABLE IF EXISTS turno_caja CASCADE;
+DROP TABLE IF EXISTS pago CASCADE;
+DROP TABLE IF EXISTS cargo_folio CASCADE;
+DROP TABLE IF EXISTS solicitud_servicio CASCADE;
+DROP TABLE IF EXISTS tarea_limpieza CASCADE;
+DROP TABLE IF EXISTS incidencia_mantenimiento CASCADE;
+DROP TABLE IF EXISTS detalle_comanda CASCADE;
+DROP TABLE IF EXISTS comanda CASCADE;
+DROP TABLE IF EXISTS movimiento_inventario CASCADE;
+DROP TABLE IF EXISTS receta_item CASCADE;
+DROP TABLE IF EXISTS insumo CASCADE;
+DROP TABLE IF EXISTS proveedor CASCADE;
+DROP TABLE IF EXISTS item_catalogo CASCADE;
+DROP TABLE IF EXISTS folio CASCADE;
+DROP TABLE IF EXISTS estadia_huesped CASCADE;
+DROP TABLE IF EXISTS estadia CASCADE;
+DROP TABLE IF EXISTS reserva_huesped CASCADE;
+DROP TABLE IF EXISTS reserva CASCADE;
+DROP TABLE IF EXISTS habitacion CASCADE;
+DROP TABLE IF EXISTS tipo_habitacion CASCADE;
+DROP TABLE IF EXISTS huesped CASCADE;
+DROP TABLE IF EXISTS empleado CASCADE;
+DROP TABLE IF EXISTS usuario_rol CASCADE;
+DROP TABLE IF EXISTS usuario CASCADE;
+DROP TABLE IF EXISTS rol CASCADE;
+DROP TABLE IF EXISTS configuracion_sistema CASCADE;
+DROP TYPE IF EXISTS tipo_usuario_enum CASCADE;
+DROP TYPE IF EXISTS area_destino_enum CASCADE;
+DROP TYPE IF EXISTS estado_habitacion_enum CASCADE;
+DROP TYPE IF EXISTS canal_reserva_enum CASCADE;
+DROP TYPE IF EXISTS estado_reserva_enum CASCADE;
+DROP TYPE IF EXISTS estado_estadia_enum CASCADE;
+DROP TYPE IF EXISTS estado_comanda_enum CASCADE;
+DROP TYPE IF EXISTS canal_pago_enum CASCADE;
+DROP TYPE IF EXISTS metodo_pago_enum CASCADE;
+DROP TYPE IF EXISTS estado_pago_enum CASCADE;
+DROP TYPE IF EXISTS tipo_comprobante_enum CASCADE;
+DROP TYPE IF EXISTS tipo_cargo_enum CASCADE;
+DROP TYPE IF EXISTS tipo_mov_inventario_enum CASCADE;
+DROP TYPE IF EXISTS estado_tarea_limpieza_enum CASCADE;
+DROP TYPE IF EXISTS origen_tarea_limpieza_enum CASCADE;
+DROP TYPE IF EXISTS estado_solicitud_enum CASCADE;
+DROP TYPE IF EXISTS estado_incidencia_enum CASCADE;
+DROP TYPE IF EXISTS tipo_incidencia_enum CASCADE;
+DROP TYPE IF EXISTS estado_turno_enum CASCADE;
+-- 2. TIPOS ENUM
+CREATE TYPE tipo_usuario_enum AS ENUM ('PERSONAL', 'CLIENTE');
+CREATE TYPE area_destino_enum AS ENUM ('COCINA', 'BAR', 'VENTA_DIRECTA', 'SERVICIOS');
+CREATE TYPE estado_habitacion_enum AS ENUM ('DISPONIBLE', 'OCUPADA', 'PENDIENTE_LIMPIEZA', 'EN_LIMPIEZA', 'MANTENIMIENTO');
+CREATE TYPE canal_reserva_enum AS ENUM ('ONLINE', 'PRESENCIAL');
+CREATE TYPE estado_reserva_enum AS ENUM ('PENDIENTE_ADELANTO', 'CONFIRMADA', 'EN_ESTADIA', 'FINALIZADA', 'CANCELADA', 'NO_SHOW');
+CREATE TYPE estado_estadia_enum AS ENUM ('ACTIVA', 'FINALIZADA');
+CREATE TYPE estado_comanda_enum AS ENUM ('PENDIENTE', 'EN_PREPARACION', 'PREPARADA', 'ENTREGADA', 'CANCELADA');
+CREATE TYPE canal_pago_enum AS ENUM ('PORTAL', 'RECEPCION');
+CREATE TYPE metodo_pago_enum AS ENUM ('EFECTIVO', 'POS', 'QR_YAPE_PLIN', 'PASARELA');
+CREATE TYPE estado_pago_enum AS ENUM ('PENDIENTE', 'APROBADO', 'RECHAZADO', 'ANULADO');
+CREATE TYPE tipo_comprobante_enum AS ENUM ('BOLETA', 'FACTURA', 'RECIBO_INTERNO');
+CREATE TYPE tipo_cargo_enum AS ENUM ('ALOJAMIENTO', 'CONSUMO', 'SERVICIO', 'OTRO');
+CREATE TYPE tipo_mov_inventario_enum AS ENUM ('ENTRADA', 'SALIDA_CONSUMO', 'AJUSTE_MERMA');
+CREATE TYPE estado_tarea_limpieza_enum AS ENUM ('PENDIENTE', 'EN_PROCESO', 'COMPLETADA');
+CREATE TYPE origen_tarea_limpieza_enum AS ENUM ('CHECK_OUT', 'SOLICITUD_HUESPED', 'PROGRAMADO');
+CREATE TYPE estado_solicitud_enum AS ENUM ('PENDIENTE', 'ASIGNADA', 'EN_ATENCION', 'ATENDIDA', 'CANCELADA');
+CREATE TYPE estado_incidencia_enum AS ENUM ('PENDIENTE', 'EN_REPARACION', 'RESUELTO');
+CREATE TYPE tipo_incidencia_enum AS ENUM ('GRIFERIA_DUCHA', 'AIRE_ACONDICIONADO', 'ELECTRICO_FOCO', 'CERRADURA_VENTANA', 'OTRO');
+CREATE TYPE estado_turno_enum AS ENUM ('ABIERTO', 'CERRADO', 'AUDITADO');
+-- 3. TABLAS BASE
+CREATE TABLE configuracion_sistema (
+    id_config SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id_config = 1),
+    nombre_comercial VARCHAR(100) NOT NULL,
+    ruc VARCHAR(11) NOT NULL,
+    direccion VARCHAR(150) NOT NULL,
+    telefono VARCHAR(20),
+    hora_checkin TIME NOT NULL DEFAULT '1400',
+    hora_checkout TIME NOT NULL DEFAULT '1100',
+    tolerancia_cancelacion_horas INTEGER NOT NULL DEFAULT 4,
+    fondo_fijo_inicial NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    moneda VARCHAR(5) NOT NULL DEFAULT 'PEN',
+    cierre_ciego_turnos BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE TABLE rol (
+    id_rol SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre VARCHAR(30) NOT NULL UNIQUE
+);
+CREATE TABLE usuario (
+    id_usuario BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    username VARCHAR(50) UNIQUE,
+    email VARCHAR(100) UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    tipo_usuario tipo_usuario_enum NOT NULL,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE usuario_rol (
+    id_usuario BIGINT NOT NULL REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    id_rol SMALLINT NOT NULL REFERENCES rol(id_rol) ON DELETE CASCADE,
+    PRIMARY KEY (id_usuario, id_rol)
+);
+CREATE TABLE empleado (
+    id_empleado INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario BIGINT NOT NULL UNIQUE REFERENCES usuario(id_usuario) ON DELETE CASCADE,
+    nombres VARCHAR(80) NOT NULL,
+    apellidos VARCHAR(80) NOT NULL,
+    num_documento VARCHAR(20) NOT NULL UNIQUE,
+    telefono VARCHAR(20),
+    turno_habitual VARCHAR(50)
+);
+CREATE TABLE huesped (
+    id_huesped BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_usuario BIGINT UNIQUE REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+    tipo_documento VARCHAR(20) NOT NULL DEFAULT 'DNI',
+    num_documento VARCHAR(20) NOT NULL UNIQUE,
+    nombres VARCHAR(80) NOT NULL,
+    apellidos VARCHAR(80) NOT NULL,
+    telefono VARCHAR(20),
+    nacionalidad VARCHAR(50) DEFAULT 'Peruana',
+    ciudad_origen VARCHAR(80),
+    observaciones TEXT
+);
+CREATE TABLE tipo_habitacion (
+    id_tipo_habitacion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL UNIQUE,
+    descripcion TEXT,
+    aforo_adultos SMALLINT NOT NULL DEFAULT 2 CHECK (aforo_adultos  0),
+    aforo_ninos SMALLINT NOT NULL DEFAULT 0 CHECK (aforo_ninos = 0),
+    tarifa_base_noche NUMERIC(10,2) NOT NULL CHECK (tarifa_base_noche = 0),
+    amenidades TEXT[]
+);
+CREATE TABLE habitacion (
+    id_habitacion INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    numero_habitacion VARCHAR(10) NOT NULL UNIQUE,
+    id_tipo_habitacion INTEGER NOT NULL REFERENCES tipo_habitacion(id_tipo_habitacion) ON DELETE RESTRICT,
+    piso SMALLINT NOT NULL DEFAULT 1,
+    estado_operativo estado_habitacion_enum NOT NULL DEFAULT 'DISPONIBLE',
+    ubicacion_sector VARCHAR(50)
+);
+CREATE TABLE reserva (
+    id_reserva BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo_reserva VARCHAR(15) NOT NULL UNIQUE,
+    id_huesped_titular BIGINT NOT NULL REFERENCES huesped(id_huesped) ON DELETE RESTRICT,
+    id_tipo_habitacion INTEGER NOT NULL REFERENCES tipo_habitacion(id_tipo_habitacion) ON DELETE RESTRICT,
+    id_habitacion_asignada INTEGER REFERENCES habitacion(id_habitacion) ON DELETE SET NULL,
+    fecha_entrada DATE NOT NULL,
+    fecha_salida DATE NOT NULL,
+    num_adultos SMALLINT NOT NULL DEFAULT 1 CHECK (num_adultos  0),
+    num_ninos SMALLINT NOT NULL DEFAULT 0 CHECK (num_ninos = 0),
+    canal canal_reserva_enum NOT NULL DEFAULT 'ONLINE',
+    estado estado_reserva_enum NOT NULL DEFAULT 'PENDIENTE_ADELANTO',
+    tarifa_acordada_noche NUMERIC(10,2) NOT NULL CHECK (tarifa_acordada_noche = 0),
+    monto_adelanto_requerido NUMERIC(10,2) NOT NULL DEFAULT 0.00 CHECK (monto_adelanto_requerido = 0),
+    eta_hora TIME,
+    fecha_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_fechas_reserva CHECK (fecha_salida  fecha_entrada)
+);
+CREATE TABLE reserva_huesped (
+    id_reserva BIGINT NOT NULL REFERENCES reserva(id_reserva) ON DELETE CASCADE,
+    id_huesped BIGINT NOT NULL REFERENCES huesped(id_huesped) ON DELETE RESTRICT,
+    PRIMARY KEY (id_reserva, id_huesped)
+);
+CREATE TABLE estadia (
+    id_estadia BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_reserva BIGINT UNIQUE REFERENCES reserva(id_reserva) ON DELETE SET NULL,
+    id_habitacion INTEGER NOT NULL REFERENCES habitacion(id_habitacion) ON DELETE RESTRICT,
+    fecha_hora_checkin TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_hora_checkout_previsto TIMESTAMPTZ NOT NULL,
+    fecha_hora_checkout_real TIMESTAMPTZ,
+    estado estado_estadia_enum NOT NULL DEFAULT 'ACTIVA',
+    id_empleado_checkin INTEGER NOT NULL REFERENCES empleado(id_empleado) ON DELETE RESTRICT,
+    id_empleado_checkout INTEGER REFERENCES empleado(id_empleado) ON DELETE RESTRICT,
+    CONSTRAINT chk_fechas_estadia CHECK (fecha_hora_checkout_real IS NULL OR fecha_hora_checkout_real = fecha_hora_checkin)
+);
+CREATE TABLE estadia_huesped (
+    id_estadia BIGINT NOT NULL REFERENCES estadia(id_estadia) ON DELETE CASCADE,
+    id_huesped BIGINT NOT NULL REFERENCES huesped(id_huesped) ON DELETE RESTRICT,
+    parentesco VARCHAR(30),
+    PRIMARY KEY (id_estadia, id_huesped)
+);
+CREATE TABLE folio (
+    id_folio BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_estadia BIGINT NOT NULL UNIQUE REFERENCES estadia(id_estadia) ON DELETE CASCADE,
+    fecha_apertura TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cerrado BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE TABLE proveedor (
+    id_proveedor INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    contacto VARCHAR(80),
+    telefono VARCHAR(20),
+    email VARCHAR(100)
+);
+CREATE TABLE item_catalogo (
+    id_item INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    area_destino area_destino_enum NOT NULL,
+    precio_publico NUMERIC(10,2) NOT NULL CHECK (precio_publico = 0),
+    requiere_receta BOOLEAN NOT NULL DEFAULT FALSE,
+    controla_stock_directo BOOLEAN NOT NULL DEFAULT FALSE,
+    activo BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE TABLE insumo (
+    id_insumo INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo VARCHAR(20) NOT NULL UNIQUE,
+    nombre VARCHAR(100) NOT NULL,
+    unidad_medida VARCHAR(20) NOT NULL,
+    stock_actual NUMERIC(12,3) NOT NULL DEFAULT 0.000 CHECK (stock_actual = 0),
+    stock_minimo NUMERIC(12,3) NOT NULL DEFAULT 0.000 CHECK (stock_minimo = 0),
+    costo_unitario_promedio NUMERIC(10,2) NOT NULL DEFAULT 0.00 CHECK (costo_unitario_promedio = 0),
+    es_producto_venta_directa BOOLEAN NOT NULL DEFAULT FALSE,
+    id_proveedor_habitual INTEGER REFERENCES proveedor(id_proveedor) ON DELETE SET NULL
+);
+CREATE TABLE receta_item (
+    id_item INTEGER NOT NULL REFERENCES item_catalogo(id_item) ON DELETE CASCADE,
+    id_insumo INTEGER NOT NULL REFERENCES insumo(id_insumo) ON DELETE RESTRICT,
+    cantidad_requerida NUMERIC(10,3) NOT NULL CHECK (cantidad_requerida  0),
+    PRIMARY KEY (id_item, id_insumo)
+);
+CREATE TABLE movimiento_inventario (
+    id_movimiento BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_insumo INTEGER NOT NULL REFERENCES insumo(id_insumo) ON DELETE RESTRICT,
+    tipo_movimiento tipo_mov_inventario_enum NOT NULL,
+    cantidad NUMERIC(12,3) NOT NULL,
+    stock_resultante NUMERIC(12,3) NOT NULL,
+    referencia_origen VARCHAR(100),
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_empleado INTEGER NOT NULL REFERENCES empleado(id_empleado) ON DELETE RESTRICT
+);
+CREATE TABLE comanda (
+    id_comanda BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    codigo_comanda VARCHAR(20) NOT NULL UNIQUE,
+    id_estadia BIGINT NOT NULL REFERENCES estadia(id_estadia) ON DELETE RESTRICT,
+    area_destino area_destino_enum NOT NULL,
+    estado estado_comanda_enum NOT NULL DEFAULT 'PENDIENTE',
+    fecha_hora_pedido TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_hora_entrega TIMESTAMPTZ,
+    observaciones_entrega TEXT
+);
+CREATE TABLE detalle_comanda (
+    id_detalle_comanda BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_comanda BIGINT NOT NULL REFERENCES comanda(id_comanda) ON DELETE CASCADE,
+    id_item INTEGER NOT NULL REFERENCES item_catalogo(id_item) ON DELETE RESTRICT,
+    cantidad SMALLINT NOT NULL DEFAULT 1 CHECK (cantidad  0),
+    precio_unitario_aplicado NUMERIC(10,2) NOT NULL CHECK (precio_unitario_aplicado = 0),
+    subtotal NUMERIC(10,2) NOT NULL CHECK (subtotal = 0),
+    notas_item VARCHAR(150)
+);
+CREATE TABLE solicitud_servicio (
+    id_solicitud BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_estadia BIGINT NOT NULL REFERENCES estadia(id_estadia) ON DELETE CASCADE,
+    id_item_servicio INTEGER REFERENCES item_catalogo(id_item) ON DELETE RESTRICT,
+    descripcion_solicitud TEXT NOT NULL,
+    cantidad SMALLINT NOT NULL DEFAULT 1 CHECK (cantidad  0),
+    es_cobrable BOOLEAN NOT NULL DEFAULT FALSE,
+    monto_unidad NUMERIC(10,2) DEFAULT 0.00,
+    estado estado_solicitud_enum NOT NULL DEFAULT 'PENDIENTE',
+    id_empleado_asignado INTEGER REFERENCES empleado(id_empleado) ON DELETE SET NULL,
+    fecha_hora_solicitud TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_hora_atencion TIMESTAMPTZ
+);
+CREATE TABLE cargo_folio (
+    id_cargo BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_folio BIGINT NOT NULL REFERENCES folio(id_folio) ON DELETE CASCADE,
+    tipo_cargo tipo_cargo_enum NOT NULL DEFAULT 'CONSUMO',
+    id_comanda BIGINT UNIQUE REFERENCES comanda(id_comanda) ON DELETE SET NULL,
+    id_solicitud BIGINT REFERENCES solicitud_servicio(id_solicitud) ON DELETE SET NULL,
+    id_item INTEGER REFERENCES item_catalogo(id_item) ON DELETE RESTRICT,
+    concepto VARCHAR(150) NOT NULL,
+    monto NUMERIC(10,2) NOT NULL CHECK (monto = 0),
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_empleado_registra INTEGER REFERENCES empleado(id_empleado) ON DELETE RESTRICT
+);
+CREATE TABLE turno_caja (
+    id_turno BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_empleado INTEGER NOT NULL REFERENCES empleado(id_empleado) ON DELETE RESTRICT,
+    fecha_hora_apertura TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_hora_cierre TIMESTAMPTZ,
+    fondo_inicial_efectivo NUMERIC(10,2) NOT NULL DEFAULT 0.00 CHECK (fondo_inicial_efectivo = 0),
+    efectivo_sistema_esperado NUMERIC(10,2),
+    efectivo_real_declarado NUMERIC(10,2),
+    diferencia_cuadre NUMERIC(10,2),
+    estado estado_turno_enum NOT NULL DEFAULT 'ABIERTO',
+    observaciones_cierre TEXT
+);
+CREATE TABLE pago (
+    id_pago BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_folio BIGINT REFERENCES folio(id_folio) ON DELETE SET NULL,
+    id_reserva BIGINT REFERENCES reserva(id_reserva) ON DELETE SET NULL,
+    id_turno BIGINT REFERENCES turno_caja(id_turno) ON DELETE SET NULL,
+    monto NUMERIC(10,2) NOT NULL CHECK (monto  0),
+    canal_pago canal_pago_enum NOT NULL,
+    metodo_pago metodo_pago_enum NOT NULL,
+    estado_pago estado_pago_enum NOT NULL DEFAULT 'APROBADO',
+    concepto_pago VARCHAR(100) NOT NULL,
+    codigo_operacion_simulado VARCHAR(50),
+    tipo_comprobante tipo_comprobante_enum DEFAULT 'RECIBO_INTERNO',
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE tarea_limpieza (
+    id_tarea BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_habitacion INTEGER NOT NULL REFERENCES habitacion(id_habitacion) ON DELETE RESTRICT,
+    id_empleado_asignado INTEGER REFERENCES empleado(id_empleado) ON DELETE SET NULL,
+    origen origen_tarea_limpieza_enum NOT NULL,
+    estado estado_tarea_limpieza_enum NOT NULL DEFAULT 'PENDIENTE',
+    fecha_hora_creacion TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_hora_inicio TIMESTAMPTZ,
+    fecha_hora_fin TIMESTAMPTZ,
+    observaciones TEXT
+);
+CREATE TABLE incidencia_mantenimiento (
+    id_incidencia BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_habitacion INTEGER NOT NULL REFERENCES habitacion(id_habitacion) ON DELETE RESTRICT,
+    tipo_incidencia tipo_incidencia_enum NOT NULL,
+    descripcion TEXT NOT NULL,
+    estado estado_incidencia_enum NOT NULL DEFAULT 'PENDIENTE',
+    fecha_reporte TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id_empleado_reporta INTEGER NOT NULL REFERENCES empleado(id_empleado) ON DELETE RESTRICT,
+    id_empleado_responsable INTEGER REFERENCES empleado(id_empleado) ON DELETE SET NULL,
+    fecha_resolucion TIMESTAMPTZ,
+    observaciones TEXT
+);
+CREATE TABLE bitacora_turno (
+    id_bitacora BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_turno BIGINT NOT NULL REFERENCES turno_caja(id_turno) ON DELETE CASCADE,
+    prioridad VARCHAR(10) NOT NULL DEFAULT 'MEDIA',
+    categoria VARCHAR(50) NOT NULL,
+    mensaje TEXT NOT NULL,
+    resuelto BOOLEAN NOT NULL DEFAULT FALSE,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- 4. INDICES
+CREATE INDEX idx_reserva_fechas ON reserva(fecha_entrada, fecha_salida);
+CREATE INDEX idx_reserva_estado ON reserva(estado);
+CREATE INDEX idx_habitacion_estado ON habitacion(estado_operativo);
+CREATE INDEX idx_cargo_folio_folio ON cargo_folio(id_folio);
+CREATE INDEX idx_pago_folio ON pago(id_folio);
+CREATE INDEX idx_pago_reserva ON pago(id_reserva);
+CREATE INDEX idx_comanda_kds ON comanda(area_destino, estado);
+CREATE INDEX idx_tarea_limpieza_estado ON tarea_limpieza(estado, id_habitacion);
+CREATE INDEX idx_incidencia_estado ON incidencia_mantenimiento(estado, id_habitacion);
+CREATE INDEX idx_mov_inventario_insumo ON movimiento_inventario(id_insumo, fecha_hora);
+CREATE INDEX idx_usuario_username ON usuario(username);
+CREATE INDEX idx_usuario_email ON usuario(email);
+-- 5. SEMILLAS (ROLES DEFAULT)
+INSERT INTO rol (nombre) VALUES 
+('ADMINISTRADOR'),
+('RECEPCIONISTA'),
+('COCINA'),
+('BAR'),
+('LIMPIEZA');

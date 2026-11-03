@@ -49,6 +49,12 @@ app:
     api-key: ${DECOLECTA_API_KEY}
     base-url: https://api.decolecta.com
 
+  reservas:
+    # Liberacion automatica de reservas que no se usaron (hora de Lima).
+    liberacion-cron: "0 */15 * * * *"
+    # Pago minimo, en % del alojamiento, para confirmar una reserva. 0 = sin minimo.
+    adelanto-minimo-porcentaje: 0
+
 logging:
   level:
     root: WARN

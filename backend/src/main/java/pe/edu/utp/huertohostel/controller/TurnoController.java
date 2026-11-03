@@ -2,6 +2,7 @@ package pe.edu.utp.huertohostel.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.Turno;
 import pe.edu.utp.huertohostel.repository.EmpleadoRepository;
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/turnos")
-@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+@PreAuthorize(Roles.RECEPCION)
 public class TurnoController {
 
     private final TurnoRepository turnoRepository;

@@ -1,5 +1,10 @@
 import api from "./axiosConfig";
-import type { Cliente, EstadisticasClientes, NuevoClienteRequest } from "./types";
+import type {
+  AccesoPortal,
+  Cliente,
+  EstadisticasClientes,
+  NuevoClienteRequest,
+} from "./types";
 
 export const clientesApi = {
   listar: () => api.get<Cliente[]>("/api/v1/clientes").then((r) => r.data),
@@ -17,4 +22,25 @@ export const clientesApi = {
 
   estadisticas: () =>
     api.get<EstadisticasClientes>("/api/v1/clientes/estadisticas").then((r) => r.data),
+
+  // --- Acceso al Portal del Huesped ---
+
+  consultarAcceso: (idCliente: number) =>
+    api.get<AccesoPortal>(`/api/v1/clientes/${idCliente}/acceso`).then((r) => r.data),
+
+  /** Sin datos, el backend propone el usuario y devuelve una clave temporal una sola vez. */
+  crearAcceso: (idCliente: number, data?: { username?: string; password?: string }) =>
+    api
+      .post<AccesoPortal>(`/api/v1/clientes/${idCliente}/acceso`, data ?? {})
+      .then((r) => r.data),
+
+  cambiarEstadoAcceso: (idCliente: number, activo: boolean) =>
+    api
+      .patch<AccesoPortal>(`/api/v1/clientes/${idCliente}/acceso`, { activo })
+      .then((r) => r.data),
+
+  restablecerPassword: (idCliente: number, password?: string) =>
+    api
+      .post<AccesoPortal>(`/api/v1/clientes/${idCliente}/acceso/password`, { password })
+      .then((r) => r.data),
 };

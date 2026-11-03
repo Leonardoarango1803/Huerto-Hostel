@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Pencil, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
 import api from "../api/axiosConfig";
+import { mensajeDeError } from "../api/errores";
 import {
   Button, Badge, SearchBar, KpiCard, LoadingState, EmptyState,
   AlertBanner, ConfirmModal, FormModal, FormField, Input, Select,
@@ -114,8 +115,8 @@ export function ServiciosView() {
       setConfirmDelete(null);
       setSuccessMsg("Producto eliminado.");
       await cargar();
-    } catch {
-      setError("No se pudo eliminar el producto.");
+    } catch (e) {
+      setError(mensajeDeError(e, "No se pudo eliminar el producto."));
       setConfirmDelete(null);
     } finally {
       setConfirmLoading(false);

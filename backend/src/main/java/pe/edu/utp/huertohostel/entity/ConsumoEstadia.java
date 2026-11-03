@@ -17,8 +17,8 @@ public class ConsumoEstadia {
     @JoinColumn(name = "id_estadia")
     private Estadia estadia;
 
-    @OneToOne
-    @JoinColumn(name = "id_comanda", unique = true)
+    @ManyToOne
+    @JoinColumn(name = "id_comanda")
     private Comanda comanda;
 
     @ManyToOne

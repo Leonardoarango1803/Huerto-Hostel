@@ -20,7 +20,7 @@ export function LoginView() {
     setLoading(true);
     try {
       await login(username, password);
-      navigate("/dashboard");
+      navigate("/");
     } catch {
       setError("Credenciales incorrectas. Intente nuevamente.");
     } finally {

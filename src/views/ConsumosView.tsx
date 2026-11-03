@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Coffee, Plus, Search, AlertCircle, CheckCircle } from "lucide-react";
 import api from "../api/axiosConfig";
+import { useAuth } from "../context/AuthContext";
+import { puede } from "../auth/permisos";
 
 interface Estadia {
   idEstadia: number;
@@ -28,6 +30,8 @@ interface ConsumoEstadia {
 }
 
 export function ConsumosView() {
+  const { user } = useAuth();
+  const puedeRegistrar = puede(user?.role, "registrarConsumo");
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [consumos, setConsumos] = useState<ConsumoEstadia[]>([]);
@@ -42,7 +46,8 @@ export function ConsumosView() {
   useEffect(() => {
     Promise.all([
       api.get<Estadia[]>("/api/v1/estadias?estado=EN_CURSO"),
-      api.get<Producto[]>("/api/v1/productos"),
+      // El catalogo solo hace falta para el formulario; quien solo consulta no lo pide (no tiene acceso).
+      puedeRegistrar ? api.get<Producto[]>("/api/v1/productos") : Promise.resolve({ data: [] as Producto[] }),
     ])
       .then(([estadiasRes, productosRes]) => {
         setEstadias(estadiasRes.data);
@@ -195,6 +200,7 @@ export function ConsumosView() {
           ) : (
             <>
               {/* Formulario de nuevo consumo */}
+              {puedeRegistrar && (
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
@@ -268,6 +274,7 @@ export function ConsumosView() {
                   {guardando ? "Registrando..." : "Registrar consumo"}
                 </button>
               </div>
+              )}
 
               {/* Lista de consumos */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

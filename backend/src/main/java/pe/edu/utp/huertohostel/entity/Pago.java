@@ -44,7 +44,19 @@ public class Pago {
     @Column(name = "fecha_pago")
     private LocalDateTime fechaPago;
 
+    @ManyToOne
+    @JoinColumn(name = "id_turno_caja")
+    private TurnoCaja turnoCaja;
+
     public Pago() {}
+
+    public TurnoCaja getTurnoCaja() {
+        return turnoCaja;
+    }
+
+    public void setTurnoCaja(TurnoCaja turnoCaja) {
+        this.turnoCaja = turnoCaja;
+    }
 
     public Integer getIdPago() {
         return idPago;

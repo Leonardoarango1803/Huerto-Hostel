@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Download, Users, Home, Award, LogIn, Edit3, Loader2, AlertTriangle } from "lucide-react";
+import { Plus, Download, Users, Home, Award, LogIn, Edit3, Loader2, AlertTriangle, KeyRound } from "lucide-react";
+import { AccesoPortalModal } from "../components/AccesoPortalModal";
+import { useAuth } from "../context/AuthContext";
+import { puede } from "../auth/permisos";
 import { clientesApi } from "../api/clientes";
 import { reservasApi } from "../api/reservas";
 import { consultarDni, consultarRuc } from "../api/decolecta";
@@ -58,6 +61,9 @@ const EMPTY_FORM: NuevoClienteRequest = {
 
 export function HuespedesView() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const puedeEditar = puede(user?.role, "editarHuesped");
+  const puedeCheckin = puede(user?.role, "hacerCheckin");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [estadisticas, setEstadisticas] = useState<EstadisticasClientes | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +80,7 @@ export function HuespedesView() {
   const [form, setForm] = useState<NuevoClienteRequest>(EMPTY_FORM);
   const [dniLoading, setDniLoading] = useState(false);
   const [checkinWarning, setCheckinWarning] = useState<string | null>(null);
+  const [accesoCliente, setAccesoCliente] = useState<Cliente | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -249,9 +256,11 @@ export function HuespedesView() {
           >
             Exportar
           </Button>
-          <Button icon={<Plus size={13} />} onClick={abrirNuevo}>
-            Registrar Huésped
-          </Button>
+          {puedeEditar && (
+            <Button icon={<Plus size={13} />} onClick={abrirNuevo}>
+              Registrar Huésped
+            </Button>
+          )}
         </div>
       </div>
 
@@ -312,7 +321,7 @@ export function HuespedesView() {
           <EmptyState
             title="Sin huéspedes"
             description={searchTerm ? "No hay coincidencias con tu búsqueda." : "Aún no hay huéspedes registrados."}
-            action={<Button onClick={abrirNuevo} icon={<Plus size={13} />}>Registrar Huésped</Button>}
+            action={puedeEditar ? <Button onClick={abrirNuevo} icon={<Plus size={13} />}>Registrar Huésped</Button> : undefined}
           />
         ) : (
           <div className="divide-y divide-slate-100">
@@ -346,22 +355,37 @@ export function HuespedesView() {
 
                 {/* Acciones */}
                 <div className="flex gap-1.5 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<Edit3 size={12} />}
-                    onClick={() => abrirEdicion(c)}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<LogIn size={12} />}
-                    onClick={() => irACheckin(c.idCliente)}
-                  >
-                    Check-in
-                  </Button>
+                  {puedeEditar && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<Edit3 size={12} />}
+                        onClick={() => abrirEdicion(c)}
+                      >
+                        Editar
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<KeyRound size={12} />}
+                        title="Acceso al Portal del Huesped"
+                        onClick={() => setAccesoCliente(c)}
+                      >
+                        Portal
+                      </Button>
+                    </>
+                  )}
+                  {puedeCheckin && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon={<LogIn size={12} />}
+                      onClick={() => irACheckin(c.idCliente)}
+                    >
+                      Check-in
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -459,6 +483,8 @@ export function HuespedesView() {
           </FormField>
         </div>
       </FormModal>
+
+      <AccesoPortalModal cliente={accesoCliente} onClose={() => setAccesoCliente(null)} />
     </div>
   );
 }

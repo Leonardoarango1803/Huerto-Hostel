@@ -1,5 +1,5 @@
 package pe.edu.utp.huertohostel.entity;
 
 public enum AreaDestino {
-    COCINA, BAR
+    COCINA, BAR, VENTA_DIRECTA
 }

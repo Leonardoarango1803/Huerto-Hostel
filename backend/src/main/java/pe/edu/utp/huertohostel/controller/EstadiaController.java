@@ -3,6 +3,7 @@ package pe.edu.utp.huertohostel.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,7 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/estadias")
-@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+@PreAuthorize(Roles.RECEPCION)
 public class EstadiaController {
 
     private final EstadiaService estadiaService;
@@ -29,6 +30,7 @@ public class EstadiaController {
         this.estadiaService = estadiaService;
     }
 
+    @PreAuthorize(Roles.COBRO)
     @GetMapping
     public ResponseEntity<List<Estadia>> listarPorEstado(
             @org.springframework.web.bind.annotation.RequestParam(required = false) EstadoEstadia estado) {
@@ -38,11 +40,13 @@ public class EstadiaController {
         return ResponseEntity.ok(estadiaService.listarTodas());
     }
 
+    @PreAuthorize(Roles.CONSULTA_COBRO)
     @GetMapping("/{id}")
     public ResponseEntity<Estadia> obtenerPorId(@PathVariable Integer id) {
         return ResponseEntity.ok(estadiaService.obtenerPorId(id));
     }
 
+    @PreAuthorize(Roles.CONSULTA_COBRO)
     @GetMapping("/{id}/consumos")
     public ResponseEntity<List<ConsumoEstadia>> listarConsumos(@PathVariable Integer id) {
         return ResponseEntity.ok(estadiaService.listarConsumos(id));
@@ -56,18 +60,20 @@ public class EstadiaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
+    @PreAuthorize(Roles.COBRO)
     @GetMapping("/resumen-checkout")
     public ResponseEntity<Map<String, Object>> resumenCheckout() {
         return ResponseEntity.ok(estadiaService.resumenCheckout());
     }
 
+    @PreAuthorize(Roles.COBRO)
     @GetMapping("/{id}/saldo")
     public ResponseEntity<Map<String, Object>> getSaldo(@PathVariable Integer id) {
         return ResponseEntity.ok(estadiaService.obtenerSaldoDetallado(id));
     }
 
     @PostMapping("/{id}/checkout")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    @PreAuthorize(Roles.COBRO)
     public ResponseEntity<Estadia> realizarCheckout(
             @PathVariable Integer id,
             @RequestBody(required = false) Pago pago) {

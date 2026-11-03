@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import api from "../api/axiosConfig";
 
 interface AuthUser {
@@ -17,24 +17,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+/**
+ * Lee la sesion guardada de forma SINCRONA. Si se hiciera dentro de un efecto,
+ * ProtectedRoute veria isAuthenticated=false en el primer render y ya habria
+ * redirigido al login: al recargar la pagina se perderia la sesion.
+ */
+function leerSesionGuardada(): { user: AuthUser | null; token: string | null } {
+  try {
+    const token = localStorage.getItem("token");
+    const raw = localStorage.getItem("user");
+    if (!token || !raw) return { user: null, token: null };
+    return { user: JSON.parse(raw) as AuthUser, token };
+  } catch {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    return { user: null, token: null };
+  }
+}
 
-  useEffect(() => {
-    const savedToken = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    if (savedToken && savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setToken(savedToken);
-        setUser(parsed);
-      } catch {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      }
-    }
-  }, []);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(() => leerSesionGuardada().user);
+  const [token, setToken] = useState<string | null>(() => leerSesionGuardada().token);
 
   const login = async (username: string, password: string) => {
     const response = await api.post("/api/v1/auth/login", { username, password });

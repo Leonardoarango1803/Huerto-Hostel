@@ -13,4 +13,13 @@ public interface ConsumoEstadiaRepository extends JpaRepository<ConsumoEstadia, 
 
     @Query("SELECT COALESCE(SUM(c.totalConsumo), 0) FROM ConsumoEstadia c WHERE c.estadia.idEstadia = :idEstadia")
     BigDecimal sumTotalByEstadia(@Param("idEstadia") Integer idEstadia);
+
+    /** Consumo acumulado por categoria de producto (COCINA, BAR, DIRECTO). */
+    @Query("""
+            SELECT c.producto.categoria, COALESCE(SUM(c.totalConsumo), 0)
+            FROM ConsumoEstadia c
+            WHERE c.producto IS NOT NULL
+            GROUP BY c.producto.categoria
+            """)
+    List<Object[]> sumTotalPorCategoria();
 }

@@ -8,6 +8,7 @@ interface FormModalProps {
   subtitle?: string;
   submitLabel?: string;
   loading?: boolean;
+  submitDisabled?: boolean;
   onClose: () => void;
   onSubmit: () => void;
   children: ReactNode;
@@ -26,6 +27,7 @@ export function FormModal({
   subtitle,
   submitLabel = "Guardar",
   loading = false,
+  submitDisabled = false,
   onClose,
   onSubmit,
   children,
@@ -56,7 +58,7 @@ export function FormModal({
           <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button variant="primary" loading={loading} onClick={onSubmit}>
+          <Button variant="primary" loading={loading} disabled={submitDisabled} onClick={onSubmit}>
             {submitLabel}
           </Button>
         </div>

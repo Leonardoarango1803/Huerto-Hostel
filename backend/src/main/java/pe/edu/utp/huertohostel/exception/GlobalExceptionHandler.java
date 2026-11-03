@@ -51,6 +51,25 @@ public class GlobalExceptionHandler {
                 .body(buildResponse(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage()));
     }
 
+    /**
+     * Reglas de negocio violadas (saldo pendiente al cerrar, transicion de comanda
+     * no permitida, caja ya abierta...). Son conflictos de estado, no fallos del
+     * servidor: devolver 409 permite al frontend mostrar el motivo real.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(buildResponse(HttpStatus.CONFLICT, "Operacion no permitida", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(buildResponse(HttpStatus.BAD_REQUEST, "Solicitud invalida", ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         return ResponseEntity

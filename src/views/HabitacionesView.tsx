@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import api from "../api/axiosConfig";
+import { useAuth } from "../context/AuthContext";
+import { puede } from "../auth/permisos";
 
 interface TipoHabitacion {
   idTipoHabitacion: number;
@@ -61,6 +63,8 @@ const ESTADOS_CAMBIO: Record<string, { label: string; estado: string }[]> = {
 const EMPTY_FORM = { idTipoHabitacion: "", numero: "", piso: "1", descripcion: "" };
 
 export function HabitacionesView() {
+  const { user } = useAuth();
+  const puedeGestionar = puede(user?.role, "gestionarHabitaciones");
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>([]);
   const [tipos, setTipos] = useState<TipoHabitacion[]>([]);
   const [activeStatusFilter, setActiveStatusFilter] = useState("Todas");
@@ -147,12 +151,14 @@ export function HabitacionesView() {
           <h1 className="text-xl font-bold text-slate-900">Gestion de Habitaciones</h1>
           <p className="text-slate-500 text-[11px] mt-0.5">Control del inventario fisico, tarifas y estados operativos.</p>
         </div>
-        <button
-          onClick={() => { setShowModal(true); setFormError(null); setForm(EMPTY_FORM); }}
-          className="bg-emerald-800 hover:bg-emerald-900 text-white font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm text-xs"
-        >
-          <Plus size={15} /> Nueva Habitacion
-        </button>
+        {puedeGestionar && (
+          <button
+            onClick={() => { setShowModal(true); setFormError(null); setForm(EMPTY_FORM); }}
+            className="bg-emerald-800 hover:bg-emerald-900 text-white font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm text-xs"
+          >
+            <Plus size={15} /> Nueva Habitacion
+          </button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -226,7 +232,7 @@ export function HabitacionesView() {
         <div className={viewMode === "grid" ? "grid grid-cols-3 gap-4" : "space-y-2"}>
           {filtered.map((room) => {
             const cfg = statusConfig[room.estadoOperativo] ?? statusConfig.DISPONIBLE;
-            const acciones = ESTADOS_CAMBIO[room.estadoOperativo] ?? [];
+            const acciones = puedeGestionar ? (ESTADOS_CAMBIO[room.estadoOperativo] ?? []) : [];
             return (
               <div key={room.idHabitacion} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
                 <div>

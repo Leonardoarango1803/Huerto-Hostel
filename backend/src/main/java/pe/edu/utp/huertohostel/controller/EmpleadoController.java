@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.Empleado;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/empleados")
-@PreAuthorize("hasRole('ADMINISTRADOR')")
+@PreAuthorize(Roles.SOLO_ADMIN)
 public class EmpleadoController {
 
     private final EmpleadoRepository empleadoRepository;

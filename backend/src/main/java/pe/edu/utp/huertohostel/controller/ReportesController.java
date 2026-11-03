@@ -2,6 +2,7 @@ package pe.edu.utp.huertohostel.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/reportes")
-@PreAuthorize("hasRole('ADMINISTRADOR')")
+@PreAuthorize(Roles.SOLO_ADMIN)
 public class ReportesController {
 
     private final PagoRepository pagoRepository;

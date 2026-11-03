@@ -26,8 +26,7 @@ dist-ssr
 # Backend Maven build artifacts
 backend/target/
 
-# Environment files with secrets (nunca subir al repo)
-.env
+# Environment files con secrets (nunca subir al repo)
 backend/.env
 *.env.local
 

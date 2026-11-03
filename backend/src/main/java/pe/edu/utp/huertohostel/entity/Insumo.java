@@ -30,7 +30,42 @@ public class Insumo {
     @Column(name = "estado")
     private Boolean estado = true;
 
+    @ManyToOne
+    @JoinColumn(name = "id_proveedor_habitual")
+    private Proveedor proveedorHabitual;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "area")
+    private AreaInsumo area = AreaInsumo.GENERAL;
+
+    @Column(name = "costo_unitario", precision = 10, scale = 4)
+    private BigDecimal costoUnitario = BigDecimal.ZERO;
+
     public Insumo() {}
+
+    public AreaInsumo getArea() {
+        return area;
+    }
+
+    public void setArea(AreaInsumo area) {
+        this.area = area;
+    }
+
+    public BigDecimal getCostoUnitario() {
+        return costoUnitario;
+    }
+
+    public void setCostoUnitario(BigDecimal costoUnitario) {
+        this.costoUnitario = costoUnitario;
+    }
+
+    public Proveedor getProveedorHabitual() {
+        return proveedorHabitual;
+    }
+
+    public void setProveedorHabitual(Proveedor proveedorHabitual) {
+        this.proveedorHabitual = proveedorHabitual;
+    }
 
     public Integer getIdInsumo() {
         return idInsumo;

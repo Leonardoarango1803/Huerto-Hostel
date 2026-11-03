@@ -1,9 +1,11 @@
 package pe.edu.utp.huertohostel.controller;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.Producto;
@@ -23,13 +25,13 @@ public class ProductoController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    @PreAuthorize(Roles.COCINA_BAR)
     public ResponseEntity<List<Producto>> listarTodos() {
         return ResponseEntity.ok(productoRepository.findAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    @PreAuthorize(Roles.COCINA_BAR)
     public ResponseEntity<Producto> obtenerPorId(@PathVariable @NonNull Integer id) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + id));
@@ -37,14 +39,14 @@ public class ProductoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize(Roles.SOLO_ADMIN)
     public ResponseEntity<Producto> crear(@RequestBody Producto producto) {
         producto.setIdProducto(null);
         return ResponseEntity.status(HttpStatus.CREATED).body(productoRepository.save(producto));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize(Roles.SOLO_ADMIN)
     public ResponseEntity<Producto> actualizar(@PathVariable @NonNull Integer id, @RequestBody Producto datos) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + id));
@@ -56,7 +58,7 @@ public class ProductoController {
     }
 
     @PatchMapping("/{id}/estado")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize(Roles.SOLO_ADMIN)
     public ResponseEntity<Producto> cambiarEstado(@PathVariable @NonNull Integer id, @RequestBody Map<String, Boolean> body) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + id));
@@ -65,11 +67,16 @@ public class ProductoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize(Roles.SOLO_ADMIN)
     public ResponseEntity<Void> eliminar(@PathVariable @NonNull Integer id) {
         productoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Producto no encontrado con id: " + id));
-        productoRepository.deleteById(id);
+        try {
+            productoRepository.deleteById(id);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException(
+                    "No se puede eliminar: el producto tiene receta o ventas registradas. Desactivalo para que deje de ofrecerse.");
+        }
         return ResponseEntity.noContent().build();
     }
 }

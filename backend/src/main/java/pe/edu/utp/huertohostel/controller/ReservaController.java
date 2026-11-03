@@ -3,6 +3,7 @@ package pe.edu.utp.huertohostel.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import pe.edu.utp.huertohostel.entity.Estadia;
 import pe.edu.utp.huertohostel.entity.EstadoReserva;
 import pe.edu.utp.huertohostel.entity.Pago;
 import pe.edu.utp.huertohostel.entity.Reserva;
+import pe.edu.utp.huertohostel.service.LiberacionReservasService;
 import pe.edu.utp.huertohostel.service.PagoService;
 import pe.edu.utp.huertohostel.service.ReservaService;
 
@@ -24,22 +26,28 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/reservas")
-@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+@PreAuthorize(Roles.RECEPCION)
 public class ReservaController {
 
     private final ReservaService reservaService;
     private final PagoService pagoService;
+    private final LiberacionReservasService liberacionReservasService;
 
-    public ReservaController(ReservaService reservaService, PagoService pagoService) {
+    public ReservaController(ReservaService reservaService, PagoService pagoService,
+                             LiberacionReservasService liberacionReservasService) {
         this.reservaService = reservaService;
         this.pagoService = pagoService;
+        this.liberacionReservasService = liberacionReservasService;
     }
 
+    @PreAuthorize(Roles.CONSULTA_COBRO)
     @GetMapping
     public ResponseEntity<List<Reserva>> listarTodas() {
+        liberacionReservasService.liberarSiHaceFalta();
         return ResponseEntity.ok(reservaService.listarTodas());
     }
 
+    @PreAuthorize(Roles.CONSULTA_COBRO)
     @GetMapping("/{id}")
     public ResponseEntity<Reserva> obtenerPorId(@PathVariable Integer id) {
         return ResponseEntity.ok(reservaService.obtenerPorId(id));
@@ -52,12 +60,13 @@ public class ReservaController {
     }
 
     @PostMapping("/{id}/checkin")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    @PreAuthorize(Roles.RECEPCION)
     public ResponseEntity<Estadia> realizarCheckin(@PathVariable Integer id) {
         Estadia estadia = reservaService.realizarCheckin(id);
         return ResponseEntity.status(HttpStatus.CREATED).body(estadia);
     }
 
+    @PreAuthorize(Roles.COBRO)
     @PostMapping("/{id}/adelanto")
     public ResponseEntity<Pago> registrarAdelanto(
             @PathVariable Integer id,
@@ -73,6 +82,7 @@ public class ReservaController {
         return ResponseEntity.ok(reservaService.cambiarEstado(id, nuevoEstado));
     }
 
+    @PreAuthorize(Roles.COBRO)
     @GetMapping("/{id}/pagos")
     public ResponseEntity<List<Pago>> listarPagosPorReserva(@PathVariable Integer id) {
         return ResponseEntity.ok(pagoService.listarPorReserva(id));

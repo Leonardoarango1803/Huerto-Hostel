@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import pe.edu.utp.huertohostel.entity.Pago;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PagoRepository extends JpaRepository<Pago, Integer> {
@@ -20,4 +21,13 @@ public interface PagoRepository extends JpaRepository<Pago, Integer> {
             """)
     BigDecimal sumMontoByReservaOrEstadia(@Param("idEstadia") Integer idEstadia,
                                           @Param("idReserva") Integer idReserva);
+
+    List<Pago> findByTurnoCajaIdTurnoCajaOrderByFechaPagoAsc(Integer idTurnoCaja);
+
+    @Query("""
+            SELECT COALESCE(SUM(p.monto), 0) FROM Pago p
+            WHERE p.fechaPago >= :desde AND p.fechaPago < :hasta
+            """)
+    BigDecimal sumMontoEntre(@Param("desde") LocalDateTime desde,
+                             @Param("hasta") LocalDateTime hasta);
 }

@@ -5,6 +5,10 @@ import { NuevoIngresoModal } from "../components/NuevoIngresoModal";
 import { reservasApi } from "../api/reservas";
 import { habitacionesApi } from "../api/habitaciones";
 import { clientesApi } from "../api/clientes";
+import { useAuth } from "../context/AuthContext";
+import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
+import { puede } from "../auth/permisos";
+import { esCajaCerrada, mensajeDeError } from "../api/errores";
 import type { Reserva, Habitacion, Cliente, NuevaReservaRequest, PagoReserva } from "../api/types";
 import {
   Button,
@@ -58,7 +62,12 @@ const FILTER_OPTIONS = [
 ];
 
 export function ReservasView() {
-
+  const { user } = useAuth();
+  const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
+  const puedeCrear = puede(user?.role, "crearReserva");
+  const puedeCancelar = puede(user?.role, "cancelarReserva");
+  const puedeAdelanto = puede(user?.role, "registrarAdelanto");
+  const puedeCheckin = puede(user?.role, "hacerCheckin");
 
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,8 +171,8 @@ export function ReservasView() {
       setShowNuevaReserva(false);
       setSuccessMsg("Reserva creada correctamente.");
       await cargarReservas();
-    } catch {
-      setFormError("Error al crear la reserva. Verifica los datos e intenta nuevamente.");
+    } catch (err) {
+      setFormError(mensajeDeError(err, "Error al crear la reserva. Verifica los datos e intenta nuevamente."));
     } finally {
       setFormLoading(false);
     }
@@ -177,8 +186,8 @@ export function ReservasView() {
       setConfirmCancel(null);
       setSuccessMsg("Reserva cancelada.");
       await cargarReservas();
-    } catch {
-      setError("No se pudo cancelar la reserva.");
+    } catch (err) {
+      setError(mensajeDeError(err, "No se pudo cancelar la reserva."));
       setConfirmCancel(null);
     } finally {
       setConfirmLoading(false);
@@ -191,8 +200,8 @@ export function ReservasView() {
       setSuccessMsg("Check-in realizado correctamente.");
       await cargarReservas();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(msg ?? "No se pudo realizar el check-in.");
+      setError(mensajeDeError(err, "No se pudo realizar el check-in."));
+      if (esCajaCerrada(err)) refrescarCaja();
     }
   }
 
@@ -212,8 +221,9 @@ export function ReservasView() {
       setAdelantoMonto("");
       setSuccessMsg("Adelanto registrado. Reserva confirmada.");
       await cargarReservas();
-    } catch {
-      setAdelantoError("No se pudo registrar el adelanto.");
+    } catch (err) {
+      setAdelantoError(mensajeDeError(err, "No se pudo registrar el adelanto."));
+      if (esCajaCerrada(err)) refrescarCaja();
     } finally {
       setAdelantoLoading(false);
     }
@@ -296,9 +306,11 @@ export function ReservasView() {
           >
             Exportar CSV
           </Button>
-          <Button icon={<Plus size={13} />} onClick={abrirNuevaReserva}>
-            Nueva Reserva
-          </Button>
+          {puedeCrear && (
+            <Button icon={<Plus size={13} />} onClick={abrirNuevaReserva}>
+              Nueva Reserva
+            </Button>
+          )}
         </div>
       </div>
 
@@ -336,7 +348,7 @@ export function ReservasView() {
             <EmptyState
               title="Sin reservas"
               description={searchTerm || activeFilters.includes("TODAS") === false ? "Cambia los filtros para ver resultados." : "Aún no hay reservas registradas."}
-              action={<Button onClick={abrirNuevaReserva} icon={<Plus size={13} />}>Nueva Reserva</Button>}
+              action={puedeCrear ? <Button onClick={abrirNuevaReserva} icon={<Plus size={13} />}>Nueva Reserva</Button> : undefined}
             />
           ) : (
             <table className="w-full text-left text-xs border-collapse">
@@ -376,7 +388,7 @@ export function ReservasView() {
                       <Badge variant={estadoReservaToVariant(r.estadoReserva)} label={estadoLabel[r.estadoReserva] ?? r.estadoReserva} />
                     </td>
                     <td className="p-3 flex gap-1">
-                      {r.estadoReserva === "PENDIENTE_ADELANTO" && (
+                      {puedeCancelar && r.estadoReserva === "PENDIENTE_ADELANTO" && (
                         <Button
                           variant="danger"
                           size="sm"
@@ -499,6 +511,9 @@ export function ReservasView() {
 
                 {selectedReserva.estadoReserva === "PENDIENTE_ADELANTO" && (
                   <>
+                    <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                      Sin adelanto, esta reserva se libera sola el {formatFecha(selectedReserva.fechaCheckinPrevisto)}.
+                    </p>
                     {showAdelanto ? (
                       <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 space-y-2">
                         <p className="text-[10px] font-bold text-amber-700 uppercase">Registrar Adelanto</p>
@@ -525,7 +540,14 @@ export function ReservasView() {
                           />
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" onClick={registrarAdelanto} loading={adelantoLoading} className="flex-1 justify-center">
+                          <Button
+                            size="sm"
+                            onClick={registrarAdelanto}
+                            loading={adelantoLoading}
+                            disabled={cajaCerrada}
+                            title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
+                            className="flex-1 justify-center"
+                          >
                             Confirmar pago
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setShowAdelanto(false)} className="flex-1 justify-center">
@@ -533,21 +555,25 @@ export function ReservasView() {
                           </Button>
                         </div>
                       </div>
-                    ) : (
+                    ) : puedeAdelanto ? (
                       <Button
                         variant="primary"
                         icon={<CreditCard size={13} />}
                         className="w-full justify-center"
+                        disabled={cajaCerrada}
+                        title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                         onClick={() => { setShowAdelanto(true); setAdelantoError(null); }}
                       >
                         Registrar Adelanto
                       </Button>
-                    )}
-                    {!showAdelanto && (
+                    ) : null}
+                    {!showAdelanto && puedeCheckin && (
                       <Button
                         variant="success"
                         icon={<LogIn size={13} />}
                         className="w-full justify-center"
+                        disabled={cajaCerrada}
+                        title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                         onClick={() => hacerCheckin(selectedReserva.idReserva)}
                       >
                         Check-In
@@ -556,11 +582,13 @@ export function ReservasView() {
                   </>
                 )}
 
-                {selectedReserva.estadoReserva === "CONFIRMADA" && (
+                {selectedReserva.estadoReserva === "CONFIRMADA" && puedeCheckin && (
                   <Button
                     variant="success"
                     icon={<LogIn size={13} />}
                     className="w-full justify-center"
+                    disabled={cajaCerrada}
+                    title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
                     onClick={() => hacerCheckin(selectedReserva.idReserva)}
                   >
                     Check-In

@@ -10,8 +10,28 @@ import {
   Clock,
   AlertTriangle,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axiosConfig";
+
+interface PuntoSerie {
+  nombre: string;
+  valor: number;
+}
 
 interface DashboardData {
   totalHabitaciones: number;
@@ -21,7 +41,16 @@ interface DashboardData {
   mantenimiento: number;
   totalReservas: number;
   totalClientes: number;
+  inventario?: { insumosStockBajo: number; insumosAgotados: number; faltantesUltimos7Dias: number };
+  estadoHabitaciones?: PuntoSerie[];
+  ingresosPorArea?: PuntoSerie[];
+  ingresosUltimos7Dias?: PuntoSerie[];
 }
+
+/** Paleta alineada con los estados que ya usa el mapa de habitaciones. */
+const COLORES_ESTADO = ["#059669", "#1e293b", "#2563eb", "#d97706", "#dc2626"];
+const COLOR_AREA = "#1b4332";
+const COLOR_LINEA = "#059669";
 
 export function DashboardView() {
   const { user } = useAuth();
@@ -63,6 +92,20 @@ export function DashboardView() {
   const total = disponibles + ocupadas + pendienteLimpieza + mantenimiento;
   const ocupacion = total > 0 ? Math.round((ocupadas / total) * 100) : 0;
 
+  const inv = data?.inventario;
+  const alertaInventario = inv
+    ? [
+        inv.insumosAgotados > 0 && inv.insumosAgotados + " insumo(s) agotado(s)",
+        inv.insumosStockBajo > inv.insumosAgotados && (inv.insumosStockBajo - inv.insumosAgotados) + " por debajo del stock minimo",
+        inv.faltantesUltimos7Dias > 0 && inv.faltantesUltimos7Dias + " venta(s) de los ultimos 7 dias descontaron mas de lo registrado",
+      ].filter(Boolean).join(" · ")
+    : "";
+
+  // Las series solo llegan en el resumen de administrador.
+  const estadoHabitaciones = (data?.estadoHabitaciones ?? []).filter((p) => p.valor > 0);
+  const ingresosPorArea = data?.ingresosPorArea ?? [];
+  const ingresos7Dias = data?.ingresosUltimos7Dias ?? [];
+
   return (
     <div className="space-y-6 font-sans text-slate-800 text-xs">
       <div className="flex justify-between items-center">
@@ -77,6 +120,18 @@ export function DashboardView() {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Sistema en Linea
         </span>
       </div>
+
+      {alertaInventario && (
+        <div className="flex items-start gap-2 p-3 rounded-lg border bg-amber-50 border-amber-300 text-amber-800">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <span className="flex-1">
+            <strong>Inventario:</strong> {alertaInventario}
+          </span>
+          <button onClick={() => navigate("/inventario")} className="text-[10px] font-semibold underline">
+            Ver inventario
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
@@ -187,6 +242,82 @@ export function DashboardView() {
           </div>
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="grid grid-cols-3 gap-5">
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
+              Distribucion de habitaciones
+            </h2>
+            {estadoHabitaciones.length === 0 ? (
+              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={estadoHabitaciones}
+                    dataKey="valor"
+                    nameKey="nombre"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={70}
+                  >
+                    {estadoHabitaciones.map((_, i) => (
+                      <Cell key={i} fill={COLORES_ESTADO[i % COLORES_ESTADO.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
+              Ingresos por area (S/)
+            </h2>
+            {ingresosPorArea.length === 0 ? (
+              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={ingresosPorArea}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="nombre" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v) => `S/ ${Number(v).toFixed(2)}`} />
+                  <Bar dataKey="valor" fill={COLOR_AREA} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
+              Cobros ultimos 7 dias (S/)
+            </h2>
+            {ingresos7Dias.length === 0 ? (
+              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={ingresos7Dias}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="nombre" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v) => `S/ ${Number(v).toFixed(2)}`} />
+                  <Line
+                    type="monotone"
+                    dataKey="valor"
+                    stroke={COLOR_LINEA}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
