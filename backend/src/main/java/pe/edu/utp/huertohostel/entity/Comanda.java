@@ -36,7 +36,52 @@ public class Comanda {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
 
+    /** Cuando paso a cada estado: con esto los reportes miden cuanto tarda cocina o bar. */
+    @Column(name = "fecha_en_preparacion")
+    private LocalDateTime fechaEnPreparacion;
+
+    @Column(name = "fecha_preparada")
+    private LocalDateTime fechaPreparada;
+
+    @Column(name = "fecha_entregada")
+    private LocalDateTime fechaEntregada;
+
+    @Column(name = "fecha_cancelada")
+    private LocalDateTime fechaCancelada;
+
     public Comanda() {}
+
+    public LocalDateTime getFechaEnPreparacion() {
+        return fechaEnPreparacion;
+    }
+
+    public void setFechaEnPreparacion(LocalDateTime fechaEnPreparacion) {
+        this.fechaEnPreparacion = fechaEnPreparacion;
+    }
+
+    public LocalDateTime getFechaPreparada() {
+        return fechaPreparada;
+    }
+
+    public void setFechaPreparada(LocalDateTime fechaPreparada) {
+        this.fechaPreparada = fechaPreparada;
+    }
+
+    public LocalDateTime getFechaEntregada() {
+        return fechaEntregada;
+    }
+
+    public void setFechaEntregada(LocalDateTime fechaEntregada) {
+        this.fechaEntregada = fechaEntregada;
+    }
+
+    public LocalDateTime getFechaCancelada() {
+        return fechaCancelada;
+    }
+
+    public void setFechaCancelada(LocalDateTime fechaCancelada) {
+        this.fechaCancelada = fechaCancelada;
+    }
 
     public Integer getIdComanda() {
         return idComanda;

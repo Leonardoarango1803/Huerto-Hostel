@@ -15,6 +15,8 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final boolean enabled;
     private final String roleName;
+    private final boolean debeCambiarPassword;
+    private final long sello;
     private final List<GrantedAuthority> authorities;
 
     public CustomUserDetails(Usuario usuario, String roleName) {
@@ -23,11 +25,27 @@ public class CustomUserDetails implements UserDetails {
         this.password = usuario.getPasswordHash();
         this.enabled = Boolean.TRUE.equals(usuario.getEstado());
         this.roleName = roleName;
+        this.debeCambiarPassword = Boolean.TRUE.equals(usuario.getDebeCambiarPassword());
+        this.sello = selloDe(usuario);
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 
     public Integer getIdUsuario() {
         return idUsuario;
+    }
+
+    public boolean isDebeCambiarPassword() {
+        return debeCambiarPassword;
+    }
+
+    /** Momento de la ultima clave (0 si nunca se cambio). El token lo lleva: cambiarla invalida las sesiones anteriores. */
+    public long getSello() {
+        return sello;
+    }
+
+    public static long selloDe(Usuario usuario) {
+        return usuario.getPasswordActualizada() == null ? 0L
+                : usuario.getPasswordActualizada().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     public String getRoleName() {

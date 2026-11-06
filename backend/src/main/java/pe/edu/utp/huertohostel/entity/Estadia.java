@@ -1,6 +1,7 @@
 package pe.edu.utp.huertohostel.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -31,6 +32,16 @@ public class Estadia {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "estado_estadia", columnDefinition = "estado_estadia_enum")
     private EstadoEstadia estadoEstadia;
+
+    /** Salida autorizada por el administrador con saldo pendiente: quien la autorizo y lo que quedo debiendo. */
+    @Column(name = "salida_forzada", nullable = false)
+    private boolean salidaForzada = false;
+
+    @Column(name = "motivo_salida_forzada", length = 200)
+    private String motivoSalidaForzada;
+
+    @Column(name = "saldo_al_salir", precision = 10, scale = 2)
+    private BigDecimal saldoAlSalir;
 
     public Estadia() {}
 
@@ -80,5 +91,29 @@ public class Estadia {
 
     public void setEstadoEstadia(EstadoEstadia estadoEstadia) {
         this.estadoEstadia = estadoEstadia;
+    }
+
+    public boolean isSalidaForzada() {
+        return salidaForzada;
+    }
+
+    public void setSalidaForzada(boolean salidaForzada) {
+        this.salidaForzada = salidaForzada;
+    }
+
+    public String getMotivoSalidaForzada() {
+        return motivoSalidaForzada;
+    }
+
+    public void setMotivoSalidaForzada(String motivoSalidaForzada) {
+        this.motivoSalidaForzada = motivoSalidaForzada;
+    }
+
+    public BigDecimal getSaldoAlSalir() {
+        return saldoAlSalir;
+    }
+
+    public void setSaldoAlSalir(BigDecimal saldoAlSalir) {
+        this.saldoAlSalir = saldoAlSalir;
     }
 }

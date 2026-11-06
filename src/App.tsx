@@ -27,6 +27,7 @@ import { IncidenciasView } from "./views/IncidenciasView";
 import { CajaView } from "./views/CajaView";
 import { PortalView } from "./views/PortalView";
 import { SolicitudesView } from "./views/SolicitudesView";
+import { CambiarPasswordModal } from "./components/CambiarPasswordModal";
 
 /** Pantalla de cada modulo. Quien puede entrar a cada una lo decide auth/permisos.ts. */
 const VISTAS: Record<Modulo, ReactElement> = {
@@ -58,6 +59,11 @@ function InicioSegunRol() {
 }
 
 function AppLayout() {
+  const { user } = useAuth();
+  // Con una clave temporal (recien creada o restablecida) solo se puede elegir la propia: nada mas hasta hacerlo.
+  if (user?.debeCambiarPassword) {
+    return <CambiarPasswordModal obligatorio />;
+  }
   return (
     <CajaProvider>
       <div className="flex min-h-screen bg-[#f5f6f8] font-sans">

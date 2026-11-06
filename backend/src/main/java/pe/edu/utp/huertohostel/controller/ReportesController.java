@@ -1,137 +1,97 @@
 package pe.edu.utp.huertohostel.controller;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import pe.edu.utp.huertohostel.entity.EstadoOperativoHab;
-import pe.edu.utp.huertohostel.repository.HabitacionRepository;
-import pe.edu.utp.huertohostel.repository.PagoRepository;
-import pe.edu.utp.huertohostel.repository.ReservaRepository;
-import pe.edu.utp.huertohostel.entity.Pago;
-import pe.edu.utp.huertohostel.entity.Reserva;
+import pe.edu.utp.huertohostel.security.Roles;
+import pe.edu.utp.huertohostel.service.Periodo;
+import pe.edu.utp.huertohostel.service.ReportesService;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteCaja;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteConsumos;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteIngresos;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteOcupacion;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteOperacion;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteReservas;
+import pe.edu.utp.huertohostel.service.ReportesService.ReporteResumen;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * Reportes gerenciales (RF34, RF35). Todos reciben el mismo rango {@code desde}/{@code hasta} (por defecto los
+ * ultimos 30 dias) y {@code refrescar=true} para saltarse la memoria y recalcular.
+ */
 @RestController
 @RequestMapping("/api/v1/reportes")
 @PreAuthorize(Roles.SOLO_ADMIN)
 public class ReportesController {
 
-    private final PagoRepository pagoRepository;
-    private final HabitacionRepository habitacionRepository;
-    private final ReservaRepository reservaRepository;
+    private final ReportesService reportes;
 
-    public ReportesController(PagoRepository pagoRepository,
-                               HabitacionRepository habitacionRepository,
-                               ReservaRepository reservaRepository) {
-        this.pagoRepository = pagoRepository;
-        this.habitacionRepository = habitacionRepository;
-        this.reservaRepository = reservaRepository;
+    public ReportesController(ReportesService reportes) {
+        this.reportes = reportes;
+    }
+
+    private Periodo periodo(LocalDate desde, LocalDate hasta) {
+        return reportes.periodo(desde, hasta);
     }
 
     @GetMapping("/resumen")
-    public ResponseEntity<Map<String, Object>> resumen(
-            @RequestParam(defaultValue = "6") int meses,
-            @RequestParam(required = false) String desde,
-            @RequestParam(required = false) String hasta) {
+    public ResponseEntity<ReporteResumen> resumen(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.resumen(periodo(desde, hasta), refrescar));
+    }
 
-        Map<String, Object> resultado = new LinkedHashMap<>();
-        List<Pago> todosPagos = pagoRepository.findAll();
-        LocalDate hoy = LocalDate.now();
+    @GetMapping("/ingresos")
+    public ResponseEntity<ReporteIngresos> ingresos(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.ingresos(periodo(desde, hasta), refrescar));
+    }
 
-        // Determine mode: date range or months
-        boolean usarRango = desde != null && !desde.isBlank() && hasta != null && !hasta.isBlank();
-        LocalDate fechaDesde = null, fechaHasta = null;
-        if (usarRango) {
-            try {
-                fechaDesde = LocalDate.parse(desde);
-                fechaHasta = LocalDate.parse(hasta);
-                if (fechaDesde.isAfter(fechaHasta)) usarRango = false;
-            } catch (Exception e) {
-                usarRango = false;
-            }
-        }
+    @GetMapping("/ocupacion")
+    public ResponseEntity<ReporteOcupacion> ocupacion(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.ocupacion(periodo(desde, hasta), refrescar));
+    }
 
-        List<Pago> pagosFiltrados;
-        List<Map<String, Object>> ingresosPorPeriodo = new ArrayList<>();
+    @GetMapping("/reservas")
+    public ResponseEntity<ReporteReservas> reservas(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.reservas(periodo(desde, hasta), refrescar));
+    }
 
-        if (usarRango) {
-            final LocalDate rangoDesde = fechaDesde;
-            final LocalDate rangoHasta = fechaHasta;
+    @GetMapping("/consumos")
+    public ResponseEntity<ReporteConsumos> consumos(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.consumos(periodo(desde, hasta), refrescar));
+    }
 
-            pagosFiltrados = todosPagos.stream()
-                    .filter(p -> p.getFechaPago() != null)
-                    .filter(p -> {
-                        LocalDate fecha = p.getFechaPago().toLocalDate();
-                        return !fecha.isBefore(rangoDesde) && !fecha.isAfter(rangoHasta);
-                    })
-                    .toList();
+    @GetMapping("/caja")
+    public ResponseEntity<ReporteCaja> caja(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.caja(periodo(desde, hasta), refrescar));
+    }
 
-            // Daily breakdown
-            for (LocalDate fecha = rangoDesde; !fecha.isAfter(rangoHasta); fecha = fecha.plusDays(1)) {
-                final LocalDate f = fecha;
-                BigDecimal total = pagosFiltrados.stream()
-                        .filter(p -> p.getFechaPago().toLocalDate().equals(f))
-                        .map(Pago::getMonto)
-                        .filter(Objects::nonNull)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                Map<String, Object> dia = new LinkedHashMap<>();
-                dia.put("mes", fecha.toString()); // YYYY-MM-DD for daily
-                dia.put("ingresos", total);
-                ingresosPorPeriodo.add(dia);
-            }
-        } else {
-            pagosFiltrados = todosPagos;
-
-            // Monthly breakdown
-            for (int i = meses - 1; i >= 0; i--) {
-                YearMonth ym = YearMonth.from(hoy).minusMonths(i);
-                BigDecimal total = todosPagos.stream()
-                        .filter(p -> p.getFechaPago() != null && YearMonth.from(p.getFechaPago()).equals(ym))
-                        .map(Pago::getMonto)
-                        .filter(Objects::nonNull)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                Map<String, Object> mes = new LinkedHashMap<>();
-                mes.put("mes", ym.toString()); // YYYY-MM for monthly
-                mes.put("ingresos", total);
-                ingresosPorPeriodo.add(mes);
-            }
-        }
-
-        resultado.put("ingresosPorMes", ingresosPorPeriodo);
-
-        // Occupation (always current snapshot)
-        long totalHabitaciones = habitacionRepository.count();
-        long ocupadas = habitacionRepository.countByEstadoOperativo(EstadoOperativoHab.OCUPADA);
-        long reservadas = habitacionRepository.countByEstadoOperativo(EstadoOperativoHab.RESERVADO);
-        long disponibles = habitacionRepository.countByEstadoOperativo(EstadoOperativoHab.DISPONIBLE);
-        resultado.put("totalHabitaciones", totalHabitaciones);
-        resultado.put("habitacionesOcupadas", ocupadas);
-        resultado.put("habitacionesReservadas", reservadas);
-        resultado.put("habitacionesDisponibles", disponibles);
-        resultado.put("tasaOcupacion", totalHabitaciones > 0 ? Math.round((double) ocupadas / totalHabitaciones * 100) : 0);
-
-        // Income total: filtered when using date range, historical total otherwise
-        BigDecimal ingresoTotal = pagosFiltrados.stream()
-                .map(Pago::getMonto)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        resultado.put("ingresoTotal", ingresoTotal);
-
-        // Reservas por estado (current snapshot)
-        List<Reserva> todasReservas = reservaRepository.findAll();
-        Map<String, Long> reservasPorEstado = todasReservas.stream()
-                .collect(Collectors.groupingBy(r -> r.getEstadoReserva().name(), Collectors.counting()));
-        resultado.put("reservasPorEstado", reservasPorEstado);
-
-        return ResponseEntity.ok(resultado);
+    @GetMapping("/operacion")
+    public ResponseEntity<ReporteOperacion> operacion(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(defaultValue = "false") boolean refrescar) {
+        return ResponseEntity.ok(reportes.operacion(periodo(desde, hasta), refrescar));
     }
 }

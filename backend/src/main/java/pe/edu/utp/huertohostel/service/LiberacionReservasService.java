@@ -55,6 +55,7 @@ public class LiberacionReservasService {
     private final HabitacionRepository habitacionRepository;
     private final EstadiaRepository estadiaRepository;
     private final Clock clock;
+    private final BloqueoPorIncidencia bloqueoPorIncidencia;
     private final TransactionTemplate transaccion;
     private final AtomicReference<Instant> ultimaCorrida = new AtomicReference<>(Instant.EPOCH);
 
@@ -62,7 +63,9 @@ public class LiberacionReservasService {
                                      HabitacionRepository habitacionRepository,
                                      EstadiaRepository estadiaRepository,
                                      PlatformTransactionManager transactionManager,
-                                     Clock clock) {
+                                     Clock clock,
+                                     BloqueoPorIncidencia bloqueoPorIncidencia) {
+        this.bloqueoPorIncidencia = bloqueoPorIncidencia;
         this.reservaRepository = reservaRepository;
         this.habitacionRepository = habitacionRepository;
         this.estadiaRepository = estadiaRepository;
@@ -180,7 +183,7 @@ public class LiberacionReservasService {
                 .findByHabitacionIdHabitacionAndEstadoReservaIn(habitacion.getIdHabitacion(), ACTIVAS)
                 .isEmpty();
         if (!quedanActivas) {
-            habitacion.setEstadoOperativo(EstadoOperativoHab.DISPONIBLE);
+            habitacion.setEstadoOperativo(bloqueoPorIncidencia.estadoAlLiberar(habitacion, EstadoOperativoHab.DISPONIBLE));
             habitacionRepository.save(habitacion);
         }
     }

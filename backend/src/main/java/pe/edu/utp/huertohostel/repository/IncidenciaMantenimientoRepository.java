@@ -13,6 +13,16 @@ public interface IncidenciaMantenimientoRepository
 
     List<IncidenciaMantenimiento> findAllByOrderByFechaReporteDesc();
 
+    List<IncidenciaMantenimiento> findByEstadoInOrderByFechaReporteAsc(List<EstadoIncidencia> estados);
+
     boolean existsByHabitacionIdHabitacionAndEstadoIn(
             Integer idHabitacion, List<EstadoIncidencia> estados);
+
+    /** Hay una incidencia abierta que impide usar la habitacion. */
+    boolean existsByHabitacionIdHabitacionAndBloqueaHabitacionTrueAndEstadoIn(
+            Integer idHabitacion, List<EstadoIncidencia> estados);
+
+    /** Otras incidencias abiertas que tambien bloquean la habitacion (para no liberarla mientras queden). */
+    long countByHabitacionIdHabitacionAndBloqueaHabitacionTrueAndEstadoInAndIdIncidenciaNot(
+            Integer idHabitacion, List<EstadoIncidencia> estados, Integer idIncidencia);
 }

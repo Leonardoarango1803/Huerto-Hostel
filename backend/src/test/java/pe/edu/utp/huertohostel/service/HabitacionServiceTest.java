@@ -27,9 +27,15 @@ class HabitacionServiceTest {
     HabitacionRepository habitacionRepository;
     @Mock
     TipoHabitacionRepository tipoHabitacionRepository;
+    @Mock
+    LimpiezaService limpiezaService;
+
+    /** Sin incidencias abiertas: el mock del repositorio responde false. */
+    private final BloqueoPorIncidencia bloqueo = new BloqueoPorIncidencia(
+            org.mockito.Mockito.mock(pe.edu.utp.huertohostel.repository.IncidenciaMantenimientoRepository.class));
 
     private HabitacionService servicio() {
-        return new HabitacionService(habitacionRepository, tipoHabitacionRepository);
+        return new HabitacionService(habitacionRepository, tipoHabitacionRepository, limpiezaService, bloqueo);
     }
 
     @Test
@@ -61,5 +67,18 @@ class HabitacionServiceTest {
     void unEstadoProhibidoNoGuardaNada() {
         assertThrows(IllegalStateException.class, () -> servicio().cambiarEstado(5, EstadoOperativoHab.OCUPADA));
         verify(habitacionRepository, never()).save(any());
+    }
+
+    @Test
+    void cambiarElEstadoDesdeHabitacionesMantieneAlineadaLaBandejaDeLimpieza() {
+        Habitacion habitacion = new Habitacion();
+        habitacion.setIdHabitacion(5);
+        habitacion.setEstadoOperativo(EstadoOperativoHab.DISPONIBLE);
+        when(habitacionRepository.findById(5)).thenReturn(Optional.of(habitacion));
+        when(habitacionRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        servicio().cambiarEstado(5, EstadoOperativoHab.PENDIENTE_LIMPIEZA);
+
+        verify(limpiezaService).sincronizarConEstado(any(), org.mockito.ArgumentMatchers.eq(EstadoOperativoHab.PENDIENTE_LIMPIEZA), any());
     }
 }

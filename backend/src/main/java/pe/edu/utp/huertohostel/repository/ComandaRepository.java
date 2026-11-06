@@ -22,6 +22,9 @@ public interface ComandaRepository extends JpaRepository<Comanda, Integer> {
 
     List<Comanda> findByEstadiaIdEstadia(Integer idEstadia);
 
+    /** Comandas de la estadia que siguen su curso (sin entregar ni cancelar): se cargan al folio recien al entregarse. */
+    long countByEstadiaIdEstadiaAndEstadoComandaIn(Integer idEstadia, java.util.Collection<EstadoComanda> estados);
+
     List<Comanda> findByAreaDestinoOrderByFechaRegistroAsc(AreaDestino areaDestino);
 
     List<Comanda> findByAreaDestinoAndEstadoComandaOrderByFechaRegistroAsc(

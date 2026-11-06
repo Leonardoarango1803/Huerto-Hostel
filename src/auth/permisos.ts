@@ -71,12 +71,21 @@ export const MODULOS_POR_ROL: Record<Rol, Modulo[]> = {
     "comandas", "limpieza", "incidencias", "caja", "solicitudes", "turnos",
   ],
   // Dinero y consulta: cobra y arquea, consulta lo necesario para cobrar. No crea reservas ni hace check-in.
-  CAJERO: ["caja", "pagos", "checkout", "reservas", "huespedes", "habitaciones", "consumos"],
-  COCINA: ["comandas", "inventario"],
-  BAR: ["comandas", "inventario"],
+  CAJERO: ["dashboard", "caja", "pagos", "checkout", "reservas", "huespedes", "habitaciones", "consumos", "turnos"],
+  COCINA: ["dashboard", "comandas", "inventario", "turnos"],
+  BAR: ["dashboard", "comandas", "inventario", "turnos"],
   // Housekeeping ve solo los insumos de limpieza (el backend le recorta la lista).
-  HOUSEKEEPING: ["limpieza", "incidencias", "solicitudes", "inventario"],
+  HOUSEKEEPING: ["dashboard", "limpieza", "incidencias", "solicitudes", "inventario", "turnos"],
   CLIENTE: ["portal"],
+};
+
+/** Nombre de cada modulo para pantallas que lo muestran (por ejemplo la matriz de roles). */
+export const ETIQUETA_MODULO: Record<Modulo, string> = {
+  dashboard: "Panel", reservas: "Reservas", huespedes: "Huespedes", habitaciones: "Habitaciones", checkin: "Check-in",
+  consumos: "Consumos y servicios", pagos: "Pagos", checkout: "Check-out", comandas: "Comandas", limpieza: "Limpieza",
+  incidencias: "Incidencias", solicitudes: "Solicitudes", caja: "Caja", servicios: "Productos y servicios",
+  inventario: "Inventario", usuarios: "Usuarios", turnos: "Turnos", reportes: "Reportes",
+  configuracion: "Configuracion", portal: "Portal del huesped",
 };
 
 export type Accion =
@@ -115,14 +124,17 @@ export const ACCIONES: Record<Accion, Rol[]> = {
   gestionarInventario: ["ADMINISTRADOR"],
 };
 
-/** Pantalla de aterrizaje de cada rol: el dashboard es solo de gestion. */
+/**
+ * Pantalla de aterrizaje de cada rol. Todo el personal aterriza en su propio panel (el servidor arma uno por rol);
+ * el cajero sigue entrando directo a la caja, que es su herramienta del dia, y ve su panel desde el menu.
+ */
 export const INICIO_POR_ROL: Record<Rol, Modulo> = {
   ADMINISTRADOR: "dashboard",
   RECEPCIONISTA: "dashboard",
   CAJERO: "caja",
-  COCINA: "comandas",
-  BAR: "comandas",
-  HOUSEKEEPING: "limpieza",
+  COCINA: "dashboard",
+  BAR: "dashboard",
+  HOUSEKEEPING: "dashboard",
   CLIENTE: "portal",
 };
 

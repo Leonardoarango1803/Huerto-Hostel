@@ -185,6 +185,27 @@ class ComandaServiceTest {
     }
 
     @Test
+    void cadaCambioDeEstadoQuedaConSuHoraParaMedirTiemposDePreparacion() {
+        Comanda comanda = comandaCon(EstadoComanda.PENDIENTE, producto(5, "Sandwich", CategoriaProducto.COCINA, true));
+
+        servicio.cambiarEstado(9, EstadoComanda.EN_PREPARACION);
+        servicio.cambiarEstado(9, EstadoComanda.PREPARADA);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(comanda.getFechaEnPreparacion());
+        org.junit.jupiter.api.Assertions.assertNotNull(comanda.getFechaPreparada());
+        org.junit.jupiter.api.Assertions.assertNull(comanda.getFechaEntregada());
+        org.junit.jupiter.api.Assertions.assertNull(comanda.getFechaCancelada());
+    }
+
+    @Test
+    void entregarYCancelarTambienGuardanSuHora() {
+        Comanda entregada = comandaCon(EstadoComanda.PREPARADA, producto(5, "Sandwich", CategoriaProducto.COCINA, true));
+        entregada.setEstadia(new Estadia());
+        servicio.cambiarEstado(9, EstadoComanda.ENTREGADA);
+        org.junit.jupiter.api.Assertions.assertNotNull(entregada.getFechaEntregada());
+    }
+
+    @Test
     void cancelarUnaComandaPendienteNoTocaElInventario() {
         comandaCon(EstadoComanda.PENDIENTE, producto(5, "Sandwich", CategoriaProducto.COCINA, true));
 

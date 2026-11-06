@@ -38,6 +38,17 @@ public class Usuario {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
+    /** true tras crear la cuenta o restablecer la clave: la persona debe elegir la suya en su primer ingreso. */
+    @Column(name = "debe_cambiar_password")
+    private Boolean debeCambiarPassword = false;
+
+    /** Cuando se cambio la clave por ultima vez. Va dentro del token: al cambiarla, las sesiones anteriores dejan de valer. */
+    @Column(name = "password_actualizada")
+    private LocalDateTime passwordActualizada;
+
+    @Column(name = "ultimo_acceso")
+    private LocalDateTime ultimoAcceso;
+
     public Usuario() {}
 
     public Integer getIdUsuario() {
@@ -102,5 +113,29 @@ public class Usuario {
 
     public void setFechaCreacion(LocalDateTime fechaCreacion) {
         this.fechaCreacion = fechaCreacion;
+    }
+
+    public Boolean getDebeCambiarPassword() {
+        return debeCambiarPassword;
+    }
+
+    public void setDebeCambiarPassword(Boolean debeCambiarPassword) {
+        this.debeCambiarPassword = debeCambiarPassword;
+    }
+
+    public LocalDateTime getPasswordActualizada() {
+        return passwordActualizada;
+    }
+
+    public void setPasswordActualizada(LocalDateTime passwordActualizada) {
+        this.passwordActualizada = passwordActualizada;
+    }
+
+    public LocalDateTime getUltimoAcceso() {
+        return ultimoAcceso;
+    }
+
+    public void setUltimoAcceso(LocalDateTime ultimoAcceso) {
+        this.ultimoAcceso = ultimoAcceso;
     }
 }

@@ -229,9 +229,13 @@ class LiberacionReservasServiceTest {
 
     // ------------------------------------------------------------------ apoyo
 
+    /** Sin incidencias abiertas: el mock del repositorio responde false. */
+    private final BloqueoPorIncidencia bloqueo = new BloqueoPorIncidencia(
+            org.mockito.Mockito.mock(pe.edu.utp.huertohostel.repository.IncidenciaMantenimientoRepository.class));
+
     private LiberacionReservasService servicio(Clock reloj) {
         return new LiberacionReservasService(reservaRepository, habitacionRepository, estadiaRepository,
-                transactionManager, reloj);
+                transactionManager, reloj, bloqueo);
     }
 
     private static Clock reloj(String instante, ZoneId zona) {

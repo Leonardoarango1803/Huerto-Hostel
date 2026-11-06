@@ -48,6 +48,31 @@ public class TurnoCaja {
     @Column(name = "fecha_cierre")
     private LocalDateTime fechaCierre;
 
+    /** Veces que el conteo declarado no cuadro al verificar antes de cerrar. */
+    @Column(name = "reconteos_cierre")
+    private Short reconteosCierre = 0;
+
+    /** true si, tras fallar el conteo, se le mostro al cajero lo que esperaba el sistema. */
+    @Column(name = "esperado_revelado")
+    private Boolean esperadoRevelado = false;
+
+    @Column(name = "motivo_diferencia")
+    private String motivoDiferencia;
+
+    /** Billetes y monedas contados al cerrar, como texto JSON {"100":2,"0.5":3}. */
+    @Column(name = "desglose_cierre")
+    private String desgloseCierre;
+
+    /** Lo que el turno anterior declaro al cerrar: contra eso se compara el fondo con el que se recibe la caja. */
+    @Column(name = "efectivo_apertura_esperado", precision = 10, scale = 2)
+    private BigDecimal efectivoAperturaEsperado;
+
+    @Column(name = "diferencia_apertura", precision = 10, scale = 2)
+    private BigDecimal diferenciaApertura;
+
+    @Column(name = "motivo_diferencia_apertura")
+    private String motivoDiferenciaApertura;
+
     public TurnoCaja() {}
 
     public Integer getIdTurnoCaja() {
@@ -136,5 +161,61 @@ public class TurnoCaja {
 
     public void setFechaCierre(LocalDateTime fechaCierre) {
         this.fechaCierre = fechaCierre;
+    }
+
+    public Short getReconteosCierre() {
+        return reconteosCierre;
+    }
+
+    public void setReconteosCierre(Short reconteosCierre) {
+        this.reconteosCierre = reconteosCierre;
+    }
+
+    public Boolean getEsperadoRevelado() {
+        return esperadoRevelado;
+    }
+
+    public void setEsperadoRevelado(Boolean esperadoRevelado) {
+        this.esperadoRevelado = esperadoRevelado;
+    }
+
+    public String getMotivoDiferencia() {
+        return motivoDiferencia;
+    }
+
+    public void setMotivoDiferencia(String motivoDiferencia) {
+        this.motivoDiferencia = motivoDiferencia;
+    }
+
+    public String getDesgloseCierre() {
+        return desgloseCierre;
+    }
+
+    public void setDesgloseCierre(String desgloseCierre) {
+        this.desgloseCierre = desgloseCierre;
+    }
+
+    public BigDecimal getEfectivoAperturaEsperado() {
+        return efectivoAperturaEsperado;
+    }
+
+    public void setEfectivoAperturaEsperado(BigDecimal efectivoAperturaEsperado) {
+        this.efectivoAperturaEsperado = efectivoAperturaEsperado;
+    }
+
+    public BigDecimal getDiferenciaApertura() {
+        return diferenciaApertura;
+    }
+
+    public void setDiferenciaApertura(BigDecimal diferenciaApertura) {
+        this.diferenciaApertura = diferenciaApertura;
+    }
+
+    public String getMotivoDiferenciaApertura() {
+        return motivoDiferenciaApertura;
+    }
+
+    public void setMotivoDiferenciaApertura(String motivoDiferenciaApertura) {
+        this.motivoDiferenciaApertura = motivoDiferenciaApertura;
     }
 }

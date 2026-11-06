@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -113,6 +114,40 @@ class InventarioServiceTest {
         assertEquals(TipoMovInventario.SALIDA_CONSUMO, mov.getTipoMovimiento());
         assertEquals(0, new BigDecimal("300").compareTo(mov.getCantidad()));
         assertEquals(0, BigDecimal.ZERO.compareTo(mov.getCantidadFaltante()));
+    }
+
+    @Test
+    void descontarPorRecetaAvisaDeLosInsumosQueNoAlcanzaron() {
+        guardarDevuelveLoRecibido();
+        Insumo harina = insumo(1, "100", AreaInsumo.COCINA);
+        harina.setNombre("Harina");
+        recetaDe(7, harina, "150");
+
+        List<String> avisos = servicio.descontarPorReceta(producto(7), (short) 1, "CONSUMO-3", null);
+
+        assertEquals(1, avisos.size());
+        assertTrue(avisos.get(0).contains("Harina") && avisos.get(0).contains("50"), avisos.get(0));
+        assertTrue(servicio.descontarPorReceta(producto(7), (short) 0, "CONSUMO-4", null).isEmpty());
+    }
+
+    @Test
+    void anularUnConsumoDevuelveAlAlmacenSoloLoQueDeVerdadHabiaSalido() {
+        guardarDevuelveLoRecibido();
+        Insumo harina = insumo(1, "0", AreaInsumo.COCINA);
+        MovimientoInventario salida = new MovimientoInventario();
+        salida.setInsumo(harina);
+        salida.setTipoMovimiento(TipoMovInventario.SALIDA_CONSUMO);
+        salida.setCantidad(new BigDecimal("150"));
+        salida.setCantidadFaltante(new BigDecimal("50")); // de 150 pedidos solo habia 100
+        when(movimientoRepository.findByReferenciaOrigenAndTipoMovimiento("CONSUMO-3", TipoMovInventario.SALIDA_CONSUMO))
+                .thenReturn(List.of(salida));
+
+        servicio.revertirConsumo("CONSUMO-3", "ANULA-CONSUMO-3", null);
+
+        assertEquals(0, new BigDecimal("100").compareTo(harina.getStockActual()));
+        MovimientoInventario mov = ultimoMovimiento();
+        assertEquals(TipoMovInventario.DEVOLUCION_CONSUMO, mov.getTipoMovimiento());
+        assertEquals("ANULA-CONSUMO-3", mov.getReferenciaOrigen());
     }
 
     @Test

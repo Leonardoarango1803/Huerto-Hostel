@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.BitacoraTurno;
+import pe.edu.utp.huertohostel.entity.MovimientoCaja;
 import pe.edu.utp.huertohostel.entity.TurnoCaja;
 import pe.edu.utp.huertohostel.service.CajaService;
 
@@ -39,12 +40,19 @@ public class CajaController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    /** Lo que ve quien va a abrir: con cuanto efectivo quedo la caja y que diferencias siguen sin resolverse. */
+    @GetMapping("/apertura-info")
+    public ResponseEntity<Map<String, Object>> aperturaInfo() {
+        return ResponseEntity.ok(cajaService.infoApertura());
+    }
+
     @PostMapping("/abrir")
     public ResponseEntity<TurnoCaja> abrir(@RequestBody Map<String, String> body) {
         BigDecimal fondo = body.get("fondoInicialEfectivo") != null
                 ? new BigDecimal(body.get("fondoInicialEfectivo"))
                 : BigDecimal.ZERO;
-        return ResponseEntity.status(HttpStatus.CREATED).body(cajaService.abrir(fondo));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(cajaService.abrir(fondo, body.get("motivoDiferenciaApertura")));
     }
 
     @GetMapping("/turnos/{id}")
@@ -58,20 +66,56 @@ public class CajaController {
         return ResponseEntity.ok(cajaService.listarHistorial());
     }
 
+    /** Comprueba el conteo sin cerrar el turno: cuadra, o recomienda recontar (y al segundo intento muestra lo esperado). */
+    @PostMapping("/turnos/{id}/verificar-cierre")
+    public ResponseEntity<Map<String, Object>> verificarCierre(@PathVariable @NonNull Integer id,
+                                                               @RequestBody Map<String, String> body) {
+        BigDecimal declarado = body.get("efectivoRealDeclarado") != null
+                ? new BigDecimal(body.get("efectivoRealDeclarado"))
+                : null;
+        return ResponseEntity.ok(cajaService.verificarCierre(id, declarado));
+    }
+
     @PostMapping("/turnos/{id}/cerrar")
     public ResponseEntity<TurnoCaja> cerrar(@PathVariable @NonNull Integer id,
                                             @RequestBody Map<String, String> body) {
         BigDecimal declarado = body.get("efectivoRealDeclarado") != null
                 ? new BigDecimal(body.get("efectivoRealDeclarado"))
                 : null;
-        return ResponseEntity.ok(
-                cajaService.cerrar(id, declarado, body.get("observacionesCierre")));
+        return ResponseEntity.ok(cajaService.cerrar(id, declarado, body.get("observacionesCierre"),
+                body.get("motivoDiferencia"), body.get("desgloseCierre")));
+    }
+
+    /** Cierre de un turno olvidado abierto (mas horas que el limite): solo el administrador, con conteo y motivo. */
+    @PostMapping("/turnos/{id}/cierre-forzado")
+    @PreAuthorize(Roles.SOLO_ADMIN)
+    public ResponseEntity<TurnoCaja> cierreForzado(@PathVariable @NonNull Integer id,
+                                                   @RequestBody Map<String, String> body) {
+        BigDecimal declarado = body.get("efectivoRealDeclarado") != null
+                ? new BigDecimal(body.get("efectivoRealDeclarado"))
+                : null;
+        return ResponseEntity.ok(cajaService.cerrarForzado(id, declarado, body.get("motivo")));
+    }
+
+    /** Arqueo parcial: cuenta el efectivo a mitad de turno sin cerrar. Quien cuenta solo ve si cuadra, falta o sobra. */
+    @PostMapping("/arqueos")
+    public ResponseEntity<Map<String, Object>> arqueoParcial(@RequestBody Map<String, String> body) {
+        BigDecimal contado = body.get("efectivoContado") != null ? new BigDecimal(body.get("efectivoContado")) : null;
+        return ResponseEntity.status(HttpStatus.CREATED).body(cajaService.arqueoParcial(contado));
     }
 
     @PostMapping("/turnos/{id}/auditar")
     @PreAuthorize(Roles.SOLO_ADMIN)
     public ResponseEntity<TurnoCaja> auditar(@PathVariable @NonNull Integer id) {
         return ResponseEntity.ok(cajaService.auditar(id));
+    }
+
+    /** Retiro a custodia o gasto menor en efectivo del turno abierto. */
+    @PostMapping("/movimientos")
+    public ResponseEntity<MovimientoCaja> registrarMovimiento(@RequestBody Map<String, String> body) {
+        BigDecimal monto = body.get("monto") != null ? new BigDecimal(body.get("monto")) : null;
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(cajaService.registrarMovimiento(body.get("tipo"), monto, body.get("motivo")));
     }
 
     // ---------- Bitacora ----------
@@ -91,9 +135,10 @@ public class CajaController {
 
     @PatchMapping("/bitacora/{idBitacora}")
     public ResponseEntity<BitacoraTurno> marcarResuelto(@PathVariable @NonNull Integer idBitacora,
-                                                        @RequestBody Map<String, Boolean> body) {
-        return ResponseEntity.ok(
-                cajaService.marcarResuelto(idBitacora, Boolean.TRUE.equals(body.get("resuelto"))));
+                                                        @RequestBody Map<String, Object> body) {
+        Object comentario = body.get("comentario");
+        return ResponseEntity.ok(cajaService.marcarResuelto(idBitacora,
+                Boolean.TRUE.equals(body.get("resuelto")), comentario != null ? comentario.toString() : null));
     }
 
     @GetMapping("/bitacora/pendientes")

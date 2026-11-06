@@ -1,11 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { FileText, Check, DoorOpen, BedDouble, Sun, AlertCircle } from "lucide-react";
+import { FileText, Check, DoorOpen, BedDouble, Sun, AlertCircle, ReceiptText, Clock } from "lucide-react";
 import { estadiasApi } from "../api/estadias";
-import { reservasApi } from "../api/reservas";
+import { comprobanteApi, type ComprobanteEstadia } from "../api/comprobante";
 import { useAuth } from "../context/AuthContext";
-import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
-import { esCajaCerrada, mensajeDeError } from "../api/errores";
-import type { Estadia, SaldoResponse, ResumenCheckout, PagoReserva } from "../api/types";
+import { useCaja } from "../context/CajaContext";
+import { useIncidenciasPorHabitacion } from "../hooks/useIncidenciasPorHabitacion";
+import { exportarCsv } from "../utils/csv";
+import { fechaDMA, hoyISO } from "../utils/fechas";
+import type { Estadia, SaldoResponse, ResumenCheckout } from "../api/types";
+import { ComprobanteModal } from "./checkout/ComprobanteModal";
+import { HistorialComprobantes } from "./checkout/HistorialComprobantes";
+import { SalidaModal } from "./checkout/SalidaModal";
 import {
   Button,
   Badge,
@@ -14,28 +19,39 @@ import {
   LoadingState,
   EmptyState,
   AlertBanner,
-  ConfirmModal,
-  FormModal,
-  FormField,
-  Input,
-  Select,
   estadoEstadiaToVariant,
 } from "../components/ui";
 
-interface CheckoutForm {
-  metodoPago: string;
-  monto: string;
+/** Lo que de verdad paso con la habitacion al salir el huesped (con una incidencia abierta que la bloquea, no va a limpieza). */
+function destinoDeLaHabitacion(estadia?: Estadia): string {
+  return estadia?.habitacion?.estadoOperativo === "MANTENIMIENTO"
+    ? "La habitación quedó en mantenimiento porque tiene una incidencia abierta que la bloquea."
+    : "Habitación enviada a limpieza.";
 }
 
-function formatFecha(fecha?: string) {
-  if (!fecha) return "—";
-  return new Date(fecha).toLocaleDateString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const formatFecha = (fecha?: string) => fechaDMA(fecha);
+
+const soles = (n: number | string) => `S/ ${Math.abs(Number(n)).toFixed(2)}`;
+const DIA_MS = 86400000;
+
+/** Dias entre dos fechas AAAA-MM-DD (positivo si `hoy` es posterior a `prevista`). */
+function diasEntre(prevista: string | undefined, hoy: string): number {
+  if (!prevista) return 0;
+  return Math.round((Date.parse(hoy) - Date.parse(prevista.slice(0, 10))) / DIA_MS);
+}
+
+/** Estado del dia de salida de una estadia: vence hoy, ya paso o aun le quedan dias. */
+function EstadoDeSalida({ dias }: { dias: number }) {
+  if (dias > 0) return <Badge variant="red" label={`Vencida hace ${dias} día${dias === 1 ? "" : "s"}`} />;
+  if (dias === 0) return <Badge variant="amber" label="Sale hoy" />;
+  return <span className="text-[10px] text-slate-400">Faltan {-dias} día{dias === -1 ? "" : "s"}</span>;
 }
 
 export function CheckoutView() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMINISTRADOR";
   const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
+  const incidencias = useIncidenciasPorHabitacion();
   const [estadias, setEstadias] = useState<Estadia[]>([]);
   const [resumen, setResumen] = useState<ResumenCheckout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,111 +59,53 @@ export function CheckoutView() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Dia de hoy (AAAA-MM-DD) fijado al abrir la pantalla: referencia para "vence hoy" y "vencida".
+  const [hoy] = useState(() => hoyISO());
 
-  const [saldoDetalle, setSaldoDetalle] = useState<SaldoResponse | null>(null);
-  const [saldoLoading, setSaldoLoading] = useState(false);
-  const [_pagosAdelanto, setPagosAdelanto] = useState<PagoReserva[]>([]);
+  // Folio de la estadia seleccionada (saldo y detalle). Se descarta solo si cambia la seleccion: no hace falta limpiarlo.
+  const [folio, setFolio] = useState<{ id: number; saldo: SaldoResponse | null; detalle: ComprobanteEstadia | null } | null>(null);
 
-  const [showLiquidacion, setShowLiquidacion] = useState(false);
-  const [liquidacionLoading, setLiquidacionLoading] = useState(false);
-  const [liquidacionError, setLiquidacionError] = useState<string | null>(null);
-  const [checkoutForm, setCheckoutForm] = useState<CheckoutForm>({ metodoPago: "EFECTIVO", monto: "" });
+  const [showSalida, setShowSalida] = useState(false);
+  /** Estadia cuyo comprobante se esta viendo (pre-cuenta, o el de la salida recien hecha). */
+  const [comprobanteDe, setComprobanteDe] = useState<number | null>(null);
+  const [vista, setVista] = useState<"curso" | "finalizadas">("curso");
 
-  const [confirmExpresa, setConfirmExpresa] = useState<number | null>(null);
-  const [expresaLoading, setExpresaLoading] = useState(false);
-
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  async function cargarDatos() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [ests] = await Promise.all([
-        estadiasApi.listar("EN_CURSO"),
-        estadiasApi.resumenCheckout().then(setResumen).catch(() => null),
-      ]);
-      setEstadias(ests);
-      if (ests.length > 0) setSelectedId(ests[0].idEstadia);
-    } catch {
-      setError("No se pudieron cargar las estadías activas. Verifica la conexión.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // La primera carga arranca con "cargando"; las siguientes (tras una salida) refrescan sin parpadeo.
+  const [version, setVersion] = useState(0);
+  const recargar = () => setVersion((v) => v + 1);
 
   useEffect(() => {
-    if (selectedId) cargarSaldo(selectedId);
+    let vigente = true;
+    Promise.all([
+      estadiasApi.listar("EN_CURSO"),
+      estadiasApi.resumenCheckout().then(setResumen).catch(() => null),
+    ])
+      .then(([ests]) => {
+        if (!vigente) return;
+        setEstadias(ests);
+        setError(null);
+        setSelectedId((actual) => (actual && ests.some((e) => e.idEstadia === actual) ? actual : ests[0]?.idEstadia ?? null));
+      })
+      .catch(() => vigente && setError("No se pudieron cargar las estadías activas. Verifica la conexión."))
+      .finally(() => vigente && setLoading(false));
+    return () => { vigente = false; };
+  }, [version]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    let vigente = true;
+    // El detalle de consumos y pagos sale del mismo documento que el comprobante.
+    Promise.all([
+      estadiasApi.saldo(selectedId).catch(() => null),
+      comprobanteApi.de(selectedId).catch(() => null),
+    ]).then(([saldo, detalle]) => vigente && setFolio({ id: selectedId, saldo, detalle }));
+    return () => { vigente = false; };
   }, [selectedId]);
 
-  useEffect(() => {
-    const estadia = estadias.find((e) => e.idEstadia === selectedId);
-    const idReserva = estadia?.reserva.idReserva;
-    if (!idReserva) { setPagosAdelanto([]); return; }
-    reservasApi.listarPagos(idReserva)
-      .then((p) => setPagosAdelanto(Array.isArray(p) ? p : []))
-      .catch(() => setPagosAdelanto([]));
-  }, [selectedId, estadias]);
-
-  async function cargarSaldo(id: number) {
-    setSaldoLoading(true);
-    setSaldoDetalle(null);
-    try {
-      const saldo = await estadiasApi.saldo(id);
-      setSaldoDetalle(saldo);
-    } catch {
-      /* saldo no disponible */
-    } finally {
-      setSaldoLoading(false);
-    }
-  }
-
-  async function procesarCheckoutExpresa() {
-    if (!confirmExpresa) return;
-    setExpresaLoading(true);
-    try {
-      await estadiasApi.checkout(confirmExpresa);
-      setConfirmExpresa(null);
-      setSuccessMsg("Check-out realizado correctamente. Habitación enviada a limpieza.");
-      setSelectedId(null);
-      setSaldoDetalle(null);
-      await cargarDatos();
-    } catch (err) {
-      setError(mensajeDeError(err, "Error al procesar el check-out."));
-      if (esCajaCerrada(err)) refrescarCaja();
-      setConfirmExpresa(null);
-    } finally {
-      setExpresaLoading(false);
-    }
-  }
-
-  async function procesarLiquidacion() {
-    if (!selectedId) return;
-    const monto = parseFloat(checkoutForm.monto);
-    if (isNaN(monto) || monto < 0) {
-      setLiquidacionError("Ingresa un monto válido.");
-      return;
-    }
-    setLiquidacionLoading(true);
-    setLiquidacionError(null);
-    try {
-      const pagoBody = monto > 0
-        ? { metodoPago: checkoutForm.metodoPago, monto, concepto: "LIQUIDACION_CHECKOUT" }
-        : undefined;
-      await estadiasApi.checkout(selectedId, pagoBody);
-      setShowLiquidacion(false);
-      setSuccessMsg("Liquidación y check-out completados. Habitación enviada a limpieza.");
-      setSelectedId(null);
-      setSaldoDetalle(null);
-      await cargarDatos();
-    } catch (err) {
-      setLiquidacionError(mensajeDeError(err, "Error al procesar la liquidación. Verifica el saldo e intenta nuevamente."));
-      if (esCajaCerrada(err)) refrescarCaja();
-    } finally {
-      setLiquidacionLoading(false);
-    }
-  }
+  const folioActual = folio && folio.id === selectedId ? folio : null;
+  const saldoDetalle = folioActual?.saldo ?? null;
+  const detalle = folioActual?.detalle ?? null;
+  const saldoLoading = selectedId !== null && !folioActual;
 
   const filtradas = useMemo(() => {
     if (!searchTerm) return estadias;
@@ -164,6 +122,38 @@ export function CheckoutView() {
 
   const selectedEstadia = estadias.find((e) => e.idEstadia === selectedId);
 
+  /** Salidas del dia y vencidas, con su saldo, para llevar a papel o a Excel. */
+  const exportarSalidas = () => {
+    const filas = [...estadias]
+      .sort((a, b) => String(a.reserva.fechaCheckoutPrevisto).localeCompare(String(b.reserva.fechaCheckoutPrevisto)))
+      .map((e) => {
+        const dias = diasEntre(e.reserva.fechaCheckoutPrevisto, hoy);
+        const saldo = resumen?.saldos?.[String(e.idEstadia)];
+        return [
+          e.habitacion.numero,
+          `${e.reserva.cliente.nombres} ${e.reserva.cliente.apellidos}`,
+          `${e.reserva.cliente.tipoDocumento} ${e.reserva.cliente.numeroDocumento}`,
+          formatFecha(e.fechaCheckinReal),
+          formatFecha(e.reserva.fechaCheckoutPrevisto),
+          e.reserva.numNoches,
+          dias > 0 ? `Vencida hace ${dias} día(s)` : dias === 0 ? "Sale hoy" : `Faltan ${-dias} día(s)`,
+          saldo === undefined ? "" : saldo.toFixed(2),
+        ];
+      });
+    exportarCsv(`salidas-${hoy}`,
+      ["Habitación", "Huésped", "Documento", "Ingreso", "Salida prevista", "Noches", "Situación", "Saldo (S/)"], filas);
+  };
+
+  const salidaHecha = (idEstadia: number, final: Estadia) => {
+    setShowSalida(false);
+    setSuccessMsg(`Check-out realizado correctamente. ${destinoDeLaHabitacion(final)} Se emitió el comprobante.`);
+    setSelectedId(null);
+    setComprobanteDe(idEstadia);
+    recargar();
+  };
+
+  const saldoDeLista = (e: Estadia): number | undefined => resumen?.saldos?.[String(e.idEstadia)];
+
   return (
     <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
       {/* Header */}
@@ -178,7 +168,8 @@ export function CheckoutView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" icon={<FileText size={13} />}>
+          <Button variant="secondary" icon={<FileText size={13} />} onClick={exportarSalidas} disabled={estadias.length === 0}
+            title="Descarga las estadías en curso con su día de salida y su saldo (CSV para Excel)">
             Reporte de Salidas
           </Button>
         </div>
@@ -186,6 +177,14 @@ export function CheckoutView() {
 
       {successMsg && <AlertBanner type="success" message={successMsg} />}
       {error && <AlertBanner type="error" message={error} />}
+      {resumen && resumen.vencidas > 0 && (
+        <AlertBanner type="warning" dismissible={false}
+          message={`${resumen.vencidas} ${resumen.vencidas === 1 ? "estadía ya pasó" : "estadías ya pasaron"} su día de salida. Al procesarlas puedes cobrar las noches de más.`} />
+      )}
+      {resumen && resumen.salidasConDeuda > 0 && (
+        <AlertBanner type="info" dismissible={false}
+          message={`${resumen.salidasConDeuda} ${resumen.salidasConDeuda === 1 ? "salida autorizada" : "salidas autorizadas"} con saldo pendiente: quedaron debiendo ${soles(resumen.deudaSalidasForzadas)} en total.`} />
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-4 gap-3">
@@ -198,14 +197,14 @@ export function CheckoutView() {
         />
         <KpiCard
           title="Pendiente de Cobro"
-          value={resumen ? `S/ ${Number(resumen.pendienteCobro).toFixed(2)}` : "—"}
+          value={resumen ? soles(resumen.pendienteCobro) : "—"}
           subtitle="folios con saldo"
           icon={<AlertCircle size={16} />}
           color="amber"
         />
         <KpiCard
           title="Liquidado Hoy"
-          value={resumen ? `S/ ${Number(resumen.liquidadoHoy).toFixed(2)}` : "—"}
+          value={resumen ? soles(resumen.liquidadoHoy) : "—"}
           subtitle="check-outs completados"
           icon={<Check size={16} />}
           color="green"
@@ -232,8 +231,19 @@ export function CheckoutView() {
             />
           </div>
 
+          <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Estadías">
+            {([["curso", "En curso"], ["finalizadas", "Finalizadas (comprobantes)"]] as const).map(([id, texto]) => (
+              <button key={id} role="tab" aria-selected={vista === id} onClick={() => setVista(id)}
+                className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px ${vista === id ? "border-[#1b4332] text-[#1b4332]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+                {texto}
+              </button>
+            ))}
+          </div>
+
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            {loading ? (
+            {vista === "finalizadas" ? (
+              <HistorialComprobantes busqueda={searchTerm} onVer={setComprobanteDe} />
+            ) : loading ? (
               <LoadingState />
             ) : filtradas.length === 0 ? (
               <EmptyState
@@ -244,8 +254,9 @@ export function CheckoutView() {
             ) : (
               <div className="divide-y divide-slate-100">
                 {filtradas.map((e) => {
-                  const saldo = Number(e.reserva.montoAlojamientoTotal);
+                  const saldo = saldoDeLista(e);
                   const isSelected = selectedId === e.idEstadia;
+                  const dias = diasEntre(e.reserva.fechaCheckoutPrevisto, hoy);
                   return (
                     <div
                       key={e.idEstadia}
@@ -254,11 +265,12 @@ export function CheckoutView() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-slate-900">
                               {e.reserva.cliente.nombres} {e.reserva.cliente.apellidos}
                             </span>
                             <Badge variant={estadoEstadiaToVariant(e.estadoEstadia)} label="En curso" />
+                            <EstadoDeSalida dias={dias} />
                           </div>
                           <div className="text-[10px] text-slate-500 flex gap-3 mt-0.5 flex-wrap">
                             <span>Hab. {e.habitacion.numero} — {e.habitacion.tipoHabitacion.nombre}</span>
@@ -268,8 +280,16 @@ export function CheckoutView() {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="font-bold text-slate-900">S/ {saldo.toFixed(2)}</p>
-                          <p className="text-[10px] text-slate-400">{e.reserva.numNoches} noches</p>
+                          {saldo === undefined ? (
+                            <p className="font-bold text-slate-400">—</p>
+                          ) : saldo > 0 ? (
+                            <p className="font-bold text-red-700">Debe {soles(saldo)}</p>
+                          ) : saldo < 0 ? (
+                            <p className="font-bold text-blue-700">A favor {soles(saldo)}</p>
+                          ) : (
+                            <p className="font-bold text-emerald-700">Cuenta saldada</p>
+                          )}
+                          <p className="text-[10px] text-slate-400">{e.reserva.numNoches} noches · alojamiento {soles(e.reserva.montoAlojamientoTotal)}</p>
                         </div>
                       </div>
                     </div>
@@ -304,9 +324,27 @@ export function CheckoutView() {
                   </div>
                   <div className="flex gap-2">
                     <span className="text-slate-400 w-24">Noches</span>
-                    <span>{selectedEstadia.reserva.numNoches}</span>
+                    <span>
+                      {selectedEstadia.reserva.numNoches}
+                      {saldoDetalle && saldoDetalle.nochesReales !== saldoDetalle.noches && (
+                        <span className="text-amber-700"> · lleva {saldoDetalle.nochesReales}</span>
+                      )}
+                    </span>
                   </div>
                 </div>
+
+                {saldoDetalle && saldoDetalle.nochesReales < saldoDetalle.noches && (
+                  <div className="flex items-start gap-2 text-[11px] bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2">
+                    <Clock size={13} className="mt-0.5 flex-shrink-0" />
+                    <span>Salida anticipada: usó {saldoDetalle.nochesReales} de {saldoDetalle.noches} noches. Al procesar la salida puedes cobrar solo las usadas.</span>
+                  </div>
+                )}
+                {saldoDetalle && saldoDetalle.nochesReales > saldoDetalle.noches && (
+                  <div className="flex items-start gap-2 text-[11px] bg-red-50 border border-red-200 text-red-900 rounded-lg px-3 py-2">
+                    <Clock size={13} className="mt-0.5 flex-shrink-0" />
+                    <span>Se quedó de más: lleva {saldoDetalle.nochesReales} noches y se reservaron {saldoDetalle.noches}. Al procesar la salida puedes cobrar las noches extra.</span>
+                  </div>
+                )}
 
                 {saldoLoading ? (
                   <div className="h-24 bg-slate-100 animate-pulse rounded-lg" />
@@ -327,12 +365,12 @@ export function CheckoutView() {
                         <span>S/ {(Number(saldoDetalle.totalAlojamiento) + Number(saldoDetalle.totalConsumos)).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-emerald-700">
-                        <span>Adelanto de Pagos</span>
+                        <span>Pagado</span>
                         <span className="font-semibold">− S/ {Number(saldoDetalle.totalPagos).toFixed(2)}</span>
                       </div>
                     </div>
-                    <div className={`flex justify-between font-bold text-sm border-t pt-2 ${saldoDetalle.saldoPendiente <= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                      <span>{saldoDetalle.saldoPendiente <= 0 ? "Saldo pagado" : "Saldo pendiente"}</span>
+                    <div className={`flex justify-between font-bold text-sm border-t pt-2 ${saldoDetalle.saldoPendiente < 0 ? "text-blue-700" : saldoDetalle.saldoPendiente === 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      <span>{saldoDetalle.saldoPendiente < 0 ? "Saldo a favor del huésped" : saldoDetalle.saldoPendiente === 0 ? "Cuenta saldada" : "Saldo pendiente"}</span>
                       <span>S/ {Math.abs(Number(saldoDetalle.saldoPendiente)).toFixed(2)}</span>
                     </div>
                   </div>
@@ -341,44 +379,68 @@ export function CheckoutView() {
                     Saldo no disponible
                   </div>
                 )}
+
+                {saldoDetalle && (saldoDetalle.comandasActivas > 0 || saldoDetalle.solicitudesCobrablesPendientes > 0) && (
+                  <div className="text-[11px] bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2 space-y-0.5">
+                    {saldoDetalle.comandasActivas > 0 && (
+                      <p>• {saldoDetalle.comandasActivas} comanda{saldoDetalle.comandasActivas === 1 ? "" : "s"} sin entregar (aún no están en el folio).</p>
+                    )}
+                    {saldoDetalle.solicitudesCobrablesPendientes > 0 && (
+                      <p>• {saldoDetalle.solicitudesCobrablesPendientes} solicitud{saldoDetalle.solicitudesCobrablesPendientes === 1 ? "" : "es"} cobrable{saldoDetalle.solicitudesCobrablesPendientes === 1 ? "" : "s"} sin atender.</p>
+                    )}
+                  </div>
+                )}
+
+                {detalle && (detalle.consumos.length > 0 || detalle.pagos.length > 0) && (
+                  <div className="text-[11px] space-y-2" aria-label="Detalle del folio">
+                    {detalle.consumos.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Consumos ({detalle.consumos.length})</p>
+                        <ul className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                          {detalle.consumos.map((c, i) => (
+                            <li key={i} className="flex justify-between py-0.5 gap-2">
+                              <span className="truncate">{c.cantidad} × {c.descripcion}</span>
+                              <span className="font-semibold">{soles(c.total)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {detalle.pagos.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Pagos ({detalle.pagos.length})</p>
+                        <ul className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                          {detalle.pagos.map((p, i) => (
+                            <li key={i} className="flex justify-between py-0.5 gap-2">
+                              <span className="truncate">{formatFecha(p.fecha ?? undefined)} · {(p.metodo ?? "").replace(/_/g, " ").toLowerCase()}</span>
+                              <span className="font-semibold text-emerald-700">{soles(p.monto)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
-                {saldoDetalle && saldoDetalle.saldoPendiente <= 0 ? (
-                  <Button
-                    variant="success"
-                    icon={<Check size={13} />}
-                    className="w-full justify-center"
-                    onClick={() => setConfirmExpresa(selectedEstadia.idEstadia)}
-                  >
-                    Salida Expresa (Saldo Pagado)
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    icon={<DoorOpen size={13} />}
-                    className="w-full justify-center"
-                    disabled={cajaCerrada}
-                    title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
-                    onClick={() => {
-                      setCheckoutForm({ metodoPago: "EFECTIVO", monto: saldoDetalle ? String(saldoDetalle.saldoPendiente.toFixed(2)) : "" });
-                      setLiquidacionError(null);
-                      setShowLiquidacion(true);
-                    }}
-                  >
-                    Procesar Liquidación y Salida
-                  </Button>
-                )}
-
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-center text-slate-500"
-                    onClick={() => setConfirmExpresa(selectedEstadia.idEstadia)}
-                  >
-                    Forzar Check-out sin pago
-                  </Button>
-                )}
+                <Button
+                  variant="secondary"
+                  icon={<ReceiptText size={13} />}
+                  className="w-full justify-center"
+                  onClick={() => setComprobanteDe(selectedEstadia.idEstadia)}
+                >
+                  Pre-cuenta / imprimir estado de cuenta
+                </Button>
+                <Button
+                  variant={saldoDetalle && saldoDetalle.saldoPendiente === 0 ? "success" : "primary"}
+                  icon={<DoorOpen size={13} />}
+                  className="w-full justify-center"
+                  disabled={!saldoDetalle}
+                  onClick={() => setShowSalida(true)}
+                >
+                  Procesar salida
+                </Button>
               </div>
             </>
           ) : (
@@ -389,83 +451,20 @@ export function CheckoutView() {
         </div>
       </div>
 
-      {/* Modal Liquidación */}
-      <FormModal
-        open={showLiquidacion}
-        title="Liquidación y Check-out"
-        subtitle={`${selectedEstadia?.reserva.cliente.nombres ?? ""} — Hab. ${selectedEstadia?.habitacion.numero ?? ""}`}
-        submitLabel="Confirmar Pago y Check-out"
-        loading={liquidacionLoading}
-        submitDisabled={cajaCerrada}
-        onClose={() => setShowLiquidacion(false)}
-        onSubmit={procesarLiquidacion}
-        size="sm"
-      >
-        {cajaCerrada && (
-          <AlertBanner type="warning" message="La caja esta cerrada: abre el turno para cobrar el saldo." dismissible={false} />
-        )}
-        {liquidacionError && <AlertBanner type="error" message={liquidacionError} dismissible={false} />}
-        {saldoDetalle && (
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs mb-1">
-            <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resumen de Folio</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-slate-600">
-                <span>Alojamiento</span>
-                <span className="font-semibold">S/ {Number(saldoDetalle.totalAlojamiento).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Consumo Total</span>
-                <span className="font-semibold">S/ {Number(saldoDetalle.totalConsumos).toFixed(2)}</span>
-              </div>
-              <div className="border-t border-slate-200 pt-1.5 flex justify-between font-semibold text-slate-700">
-                <span>Total</span>
-                <span>S/ {(Number(saldoDetalle.totalAlojamiento) + Number(saldoDetalle.totalConsumos)).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-emerald-700">
-                <span>Adelanto de Pagos</span>
-                <span className="font-semibold">− S/ {Number(saldoDetalle.totalPagos).toFixed(2)}</span>
-              </div>
-            </div>
-            <div className="flex justify-between font-bold text-sm border-t pt-2 text-red-700">
-              <span>Saldo pendiente a cobrar</span>
-              <span>S/ {Number(saldoDetalle.saldoPendiente).toFixed(2)}</span>
-            </div>
-          </div>
-        )}
-        <FormField label="Método de pago" required>
-          <Select
-            value={checkoutForm.metodoPago}
-            onChange={(e) => setCheckoutForm({ ...checkoutForm, metodoPago: e.target.value })}
-          >
-            <option value="EFECTIVO">Efectivo</option>
-            <option value="TARJETA_POS">Tarjeta POS</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
-            <option value="PASARELA_ONLINE">Pasarela Online</option>
-          </Select>
-        </FormField>
-        <FormField label="Monto a cobrar (S/)" required>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={checkoutForm.monto}
-            onChange={(e) => setCheckoutForm({ ...checkoutForm, monto: e.target.value })}
-            placeholder="0.00"
-          />
-        </FormField>
-      </FormModal>
+      {showSalida && selectedEstadia && saldoDetalle && (
+        <SalidaModal
+          estadia={selectedEstadia}
+          folio={saldoDetalle}
+          habitacionBloqueada={incidencias.get(selectedEstadia.habitacion.idHabitacion)?.bloquea === true}
+          cajaCerrada={cajaCerrada}
+          esAdmin={isAdmin}
+          onCerrar={() => setShowSalida(false)}
+          onHecho={salidaHecha}
+          onCajaCerrada={refrescarCaja}
+        />
+      )}
 
-      {/* Confirm Salida Expresa */}
-      <ConfirmModal
-        open={!!confirmExpresa}
-        title="Confirmar Check-out"
-        message="¿Confirmas la salida? La habitación pasará a estado 'Pendiente Limpieza'."
-        confirmLabel="Confirmar Salida"
-        variant="primary"
-        loading={expresaLoading}
-        onConfirm={procesarCheckoutExpresa}
-        onCancel={() => setConfirmExpresa(null)}
-      />
+      {comprobanteDe !== null && <ComprobanteModal idEstadia={comprobanteDe} onCerrar={() => setComprobanteDe(null)} />}
     </div>
   );
 }

@@ -13,6 +13,9 @@ import {
 import api from "../api/axiosConfig";
 import { useAuth } from "../context/AuthContext";
 import { puede } from "../auth/permisos";
+import { mensajeDeError } from "../api/errores";
+import { AvisoIncidencia } from "../components/AvisoIncidencia";
+import { useIncidenciasPorHabitacion } from "../hooks/useIncidenciasPorHabitacion";
 
 interface TipoHabitacion {
   idTipoHabitacion: number;
@@ -71,6 +74,8 @@ export function HabitacionesView() {
   const [activeTypeFilter, setActiveTypeFilter]   = useState("Todos");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
+  const incidencias = useIncidenciasPorHabitacion();
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -87,20 +92,21 @@ export function HabitacionesView() {
   }, []);
 
   const cambiarEstado = (id: number, estado: string) => {
+    setErrorEstado(null);
     if (estado === "DISPONIBLE" && habitaciones.find(h => h.idHabitacion === id)?.estadoOperativo === "RESERVADO") {
       api.post(`/api/v1/reservas/por-habitacion/${id}/cancelar`)
         .then(() => api.get<Habitacion>(`/api/v1/habitaciones/${id}`))
         .then((res) => {
           setHabitaciones((prev) => prev.map((h) => h.idHabitacion === id ? res.data : h));
         })
-        .catch(() => {});
+        .catch((e) => setErrorEstado(mensajeDeError(e, "No se pudo cambiar el estado de la habitación.")));
       return;
     }
     api.patch(`/api/v1/habitaciones/${id}/estado`, { estado })
       .then((res) => {
         setHabitaciones((prev) => prev.map((h) => h.idHabitacion === id ? res.data : h));
       })
-      .catch(() => {});
+      .catch((e) => setErrorEstado(mensajeDeError(e, "No se pudo cambiar el estado de la habitación.")));
   };
 
   const crearHabitacion = async () => {
@@ -160,6 +166,13 @@ export function HabitacionesView() {
           </button>
         )}
       </div>
+
+      {errorEstado && (
+        <div role="alert" className="flex items-start gap-2 p-3 rounded-lg border bg-red-50 border-red-300 text-red-800 text-xs">
+          <span className="flex-1">{errorEstado}</span>
+          <button onClick={() => setErrorEstado(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
+        </div>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-5 gap-2.5">
@@ -274,6 +287,7 @@ export function HabitacionesView() {
                         <Sparkles size={12} /> Limpieza en proceso
                       </div>
                     )}
+                    <AvisoIncidencia inc={incidencias.get(room.idHabitacion)} />
                   </div>
                 </div>
                 {acciones.length > 0 && (

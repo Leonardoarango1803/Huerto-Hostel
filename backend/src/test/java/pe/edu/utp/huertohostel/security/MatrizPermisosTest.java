@@ -59,6 +59,8 @@ class MatrizPermisosTest {
     private static final Set<String> HAB_LISTA = r("ADMINISTRADOR", "RECEPCIONISTA", "CAJERO", "HOUSEKEEPING", "CLIENTE");
     private static final Set<String> HAB_DETALLE = r("ADMINISTRADOR", "RECEPCIONISTA", "CAJERO", "CLIENTE");
     private static final Set<String> PASARELA = r("ADMINISTRADOR", "RECEPCIONISTA", "CAJERO", "CLIENTE");
+    private static final Set<String> PANEL = r("ADMINISTRADOR", "RECEPCIONISTA", "CAJERO", "COCINA", "BAR", "HOUSEKEEPING");
+    private static final Set<String> PERSONAL = PANEL;
     private static final Set<String> SOLO_CLIENTE = r("CLIENTE");
     private static final Set<String> PUBLICO = r(TODOS);
 
@@ -68,23 +70,31 @@ class MatrizPermisosTest {
 
         // Publicos (permitAll en SecurityConfig)
         m.put("POST /api/v1/auth/login", PUBLICO);
+        // Cualquier sesion abierta (la clave temporal solo permite esta ruta); el filtro JWT exige estar autenticado
+        m.put("POST /api/v1/auth/cambiar-password", PUBLICO);
         m.put("GET /api/v1/ping", PUBLICO);
 
         // Catalogos de apoyo
         m.put("GET /api/v1/areas", RECEPCION);
         m.put("GET /api/v1/roles", RECEPCION);
         m.put("GET /api/v1/turnos", RECEPCION);
-        m.put("GET /api/v1/turnos/con-empleados", RECEPCION);
+        // Turnos: recepcion consulta, el administrador edita; todo el personal ve su propio turno
+        m.put("GET /api/v1/turnos/resumen", RECEPCION);
+        m.put("GET /api/v1/turnos/mi-turno", PERSONAL);
+        m.put("GET /api/v1/turnos/en-servicio", LIMPIEZA);
+        m.put("PUT /api/v1/turnos/{id}", SOLO_ADMIN);
 
         // Caja unica: recepcion, cajero y admin operan sobre el mismo turno; auditar es solo del admin
         for (String ruta : List.of("GET /api/v1/caja/estado", "GET /api/v1/caja/turno-actual",
                 "POST /api/v1/caja/abrir", "GET /api/v1/caja/turnos/{id}", "GET /api/v1/caja/turnos",
                 "POST /api/v1/caja/turnos/{id}/cerrar", "GET /api/v1/caja/turnos/{id}/bitacora",
                 "POST /api/v1/caja/turnos/{id}/bitacora", "PATCH /api/v1/caja/bitacora/{idBitacora}",
-                "GET /api/v1/caja/bitacora/pendientes")) {
+                "GET /api/v1/caja/bitacora/pendientes", "GET /api/v1/caja/apertura-info",
+                "POST /api/v1/caja/turnos/{id}/verificar-cierre", "POST /api/v1/caja/movimientos", "POST /api/v1/caja/arqueos")) {
             m.put(ruta, COBRO);
         }
         m.put("POST /api/v1/caja/turnos/{id}/auditar", SOLO_ADMIN);
+        m.put("POST /api/v1/caja/turnos/{id}/cierre-forzado", SOLO_ADMIN);
 
         // Huespedes: el cajero consulta, no crea ni edita ni da acceso al portal
         m.put("GET /api/v1/clientes", COBRO);
@@ -115,8 +125,12 @@ class MatrizPermisosTest {
         m.put("GET /api/v1/estadias/{id}", COBRO);
         m.put("GET /api/v1/estadias/{id}/consumos", COBRO);
         m.put("POST /api/v1/estadias/{id}/consumos", RECEPCION);
+        m.put("GET /api/v1/estadias/{id}/consumos/anulados", COBRO);
+        m.put("POST /api/v1/estadias/{id}/consumos/{idConsumo}/anular", RECEPCION);
+        m.put("GET /api/v1/estadias/consumos/frecuentes", RECEPCION);
         m.put("GET /api/v1/estadias/resumen-checkout", COBRO);
         m.put("GET /api/v1/estadias/{id}/saldo", COBRO);
+        m.put("GET /api/v1/estadias/{id}/comprobante", COBRO);
         m.put("POST /api/v1/estadias/{id}/checkout", COBRO);
 
         // Habitaciones y sus tipos
@@ -166,7 +180,8 @@ class MatrizPermisosTest {
         // Housekeeping, incidencias y solicitudes del huesped
         for (String ruta : List.of("GET /api/v1/tareas-limpieza", "POST /api/v1/tareas-limpieza",
                 "PATCH /api/v1/tareas-limpieza/{id}/estado", "GET /api/v1/incidencias",
-                "GET /api/v1/incidencias/{id}", "POST /api/v1/incidencias",
+                "GET /api/v1/incidencias/{id}", "POST /api/v1/incidencias", "GET /api/v1/incidencias/por-habitacion",
+                "PATCH /api/v1/incidencias/{id}/bloqueo",
                 "PATCH /api/v1/incidencias/{id}/estado", "GET /api/v1/solicitudes",
                 "PATCH /api/v1/solicitudes/{id}/estado")) {
             m.put(ruta, LIMPIEZA);
@@ -180,10 +195,14 @@ class MatrizPermisosTest {
         }
 
         // Gestion
-        m.put("GET /api/v1/dashboard/resumen", SOLO_ADMIN);
-        m.put("GET /api/v1/reportes/resumen", SOLO_ADMIN);
+        m.put("GET /api/v1/dashboard/panel", PANEL);
+        for (String ruta : List.of("resumen", "ingresos", "ocupacion", "reservas", "consumos", "caja", "operacion")) {
+            m.put("GET /api/v1/reportes/" + ruta, SOLO_ADMIN);
+        }
         for (String ruta : List.of("GET /api/v1/empleados", "GET /api/v1/empleados/{id}", "POST /api/v1/empleados",
-                "PUT /api/v1/empleados/{id}", "PATCH /api/v1/empleados/{id}/estado")) {
+                "PUT /api/v1/empleados/{id}", "PATCH /api/v1/empleados/{id}/estado", "PATCH /api/v1/empleados/{id}/turno",
+                "POST /api/v1/empleados/{id}/acceso", "POST /api/v1/empleados/{id}/acceso/restablecer",
+                "GET /api/v1/empleados/auditoria")) {
             m.put(ruta, SOLO_ADMIN);
         }
         return m;

@@ -1,6 +1,7 @@
 package pe.edu.utp.huertohostel.entity;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,6 +31,20 @@ public class BitacoraTurno {
 
     @Column(name = "fecha_hora")
     private LocalDateTime fechaHora;
+
+    /** Monto de la diferencia (negativo = faltante) en las notas de DESCUADRE y APERTURA. */
+    @Column(name = "monto", precision = 10, scale = 2)
+    private BigDecimal monto;
+
+    @ManyToOne
+    @JoinColumn(name = "id_empleado_resolvio")
+    private Empleado empleadoResolvio;
+
+    @Column(name = "fecha_resolucion")
+    private LocalDateTime fechaResolucion;
+
+    @Column(name = "comentario_resolucion")
+    private String comentarioResolucion;
 
     public BitacoraTurno() {}
 
@@ -87,5 +102,37 @@ public class BitacoraTurno {
 
     public void setFechaHora(LocalDateTime fechaHora) {
         this.fechaHora = fechaHora;
+    }
+
+    public BigDecimal getMonto() {
+        return monto;
+    }
+
+    public void setMonto(BigDecimal monto) {
+        this.monto = monto;
+    }
+
+    public Empleado getEmpleadoResolvio() {
+        return empleadoResolvio;
+    }
+
+    public void setEmpleadoResolvio(Empleado empleadoResolvio) {
+        this.empleadoResolvio = empleadoResolvio;
+    }
+
+    public LocalDateTime getFechaResolucion() {
+        return fechaResolucion;
+    }
+
+    public void setFechaResolucion(LocalDateTime fechaResolucion) {
+        this.fechaResolucion = fechaResolucion;
+    }
+
+    public String getComentarioResolucion() {
+        return comentarioResolucion;
+    }
+
+    public void setComentarioResolucion(String comentarioResolucion) {
+        this.comentarioResolucion = comentarioResolucion;
     }
 }

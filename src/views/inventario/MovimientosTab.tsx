@@ -21,6 +21,7 @@ const VARIANTE: Record<TipoMovInventario, "emerald" | "blue" | "amber" | "slate"
   SALIDA_CONSUMO: "blue",
   AJUSTE_MERMA: "amber",
   AJUSTE_INGRESO: "slate",
+  DEVOLUCION_CONSUMO: "emerald",
 };
 
 export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, onCambio }: Props) {

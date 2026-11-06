@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { X, CheckCircle, UserPlus, AlertCircle, LogIn } from "lucide-react";
 import { clientesApi } from "../api/clientes";
 import { habitacionesApi } from "../api/habitaciones";
+import { AvisoIncidencia } from "./AvisoIncidencia";
+import { useIncidenciasPorHabitacion } from "../hooks/useIncidenciasPorHabitacion";
 import { reservasApi } from "../api/reservas";
 import { consultarDni } from "../api/decolecta";
 import { useCaja } from "../context/CajaContext";
@@ -31,6 +33,7 @@ function getTomorrow() {
 
 export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
   const { cajaCerrada } = useCaja();
+  const incidencias = useIncidenciasPorHabitacion();
   const [paso, setPaso] = useState<1 | 2>(1);
 
   // Paso 1
@@ -329,10 +332,11 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
                   <option value="">— Seleccionar habitación —</option>
                   {habitaciones.map((h) => (
                     <option key={h.idHabitacion} value={h.idHabitacion}>
-                      Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche)
+                      Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche){incidencias.has(h.idHabitacion) ? " ⚠ incidencia" : ""}
                     </option>
                   ))}
                 </Select>
+                <AvisoIncidencia inc={incidencias.get(idHabitacion)} className="mt-1.5" />
               </FormField>
 
               <div className="grid grid-cols-2 gap-3">

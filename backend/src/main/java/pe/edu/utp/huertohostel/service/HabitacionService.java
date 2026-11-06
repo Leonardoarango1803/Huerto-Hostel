@@ -19,11 +19,17 @@ public class HabitacionService {
 
     private final HabitacionRepository habitacionRepository;
     private final TipoHabitacionRepository tipoHabitacionRepository;
+    private final LimpiezaService limpiezaService;
+    private final BloqueoPorIncidencia bloqueoPorIncidencia;
 
     public HabitacionService(HabitacionRepository habitacionRepository,
-                             TipoHabitacionRepository tipoHabitacionRepository) {
+                             TipoHabitacionRepository tipoHabitacionRepository,
+                             LimpiezaService limpiezaService,
+                             BloqueoPorIncidencia bloqueoPorIncidencia) {
         this.habitacionRepository = habitacionRepository;
         this.tipoHabitacionRepository = tipoHabitacionRepository;
+        this.limpiezaService = limpiezaService;
+        this.bloqueoPorIncidencia = bloqueoPorIncidencia;
     }
 
     public List<Habitacion> listarTodas() {
@@ -65,8 +71,15 @@ public class HabitacionService {
             throw new IllegalStateException("Ese estado lo gobiernan la reserva y el check-in; no se cambia a mano.");
         }
         Habitacion habitacion = obtenerPorId(id);
+        if (nuevoEstado == EstadoOperativoHab.DISPONIBLE && bloqueoPorIncidencia.hayBloqueo(id)) {
+            throw new IllegalStateException("La habitacion tiene una incidencia abierta que la bloquea: resuelvela o liberala "
+                    + "desde Incidencias antes de ponerla disponible.");
+        }
         habitacion.setEstadoOperativo(nuevoEstado);
-        return habitacionRepository.save(habitacion);
+        Habitacion guardada = habitacionRepository.save(habitacion);
+        // Limpieza lleva su propia bandeja de tareas: se mantiene alineada con lo que se hizo desde esta pantalla.
+        limpiezaService.sincronizarConEstado(guardada, nuevoEstado, "Cambio de estado hecho desde Habitaciones");
+        return guardada;
     }
 
     public long contarPorEstado(EstadoOperativoHab estado) {

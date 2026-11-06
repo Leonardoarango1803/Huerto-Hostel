@@ -63,6 +63,13 @@ public final class Roles {
     /** Detalle de una habitacion. */
     public static final String HABITACION_DETALLE = "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO', 'CLIENTE')";
 
+    /** Panel de inicio: cada rol de personal ve el suyo (el servidor decide que datos le tocan). */
+    public static final String PANEL =
+            "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO', 'COCINA', 'BAR', 'HOUSEKEEPING')";
+
+    /** Todo el personal del hotel (no huespedes): cada uno consulta su propio turno. */
+    public static final String PERSONAL = PANEL;
+
     /** Pasarela de pago simulada: el personal cobra y el huesped paga lo suyo desde el portal. */
     public static final String PASARELA = "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'CAJERO', 'CLIENTE')";
 

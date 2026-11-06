@@ -6,7 +6,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.edu.utp.huertohostel.entity.ConceptoPago;
 import pe.edu.utp.huertohostel.entity.MetodoPago;
+import pe.edu.utp.huertohostel.entity.Estadia;
 import pe.edu.utp.huertohostel.entity.Pago;
+import pe.edu.utp.huertohostel.entity.Reserva;
 import pe.edu.utp.huertohostel.repository.EstadiaRepository;
 import pe.edu.utp.huertohostel.repository.PagoRepository;
 import pe.edu.utp.huertohostel.repository.ReservaRepository;
@@ -42,7 +44,7 @@ public class PagoService {
     }
 
     public List<Pago> listarPorReserva(Integer idReserva) {
-        return pagoRepository.findByReservaIdReserva(idReserva);
+        return pagoRepository.findDeReservaOSuEstadia(idReserva);
     }
 
     public List<Pago> listarPorEstadia(Integer idEstadia) {
@@ -55,9 +57,36 @@ public class PagoService {
             throw new IllegalStateException("El monto del pago debe ser mayor a cero.");
         }
         pago.setIdPago(null); // un POST nunca puede pisar un pago existente
+        vincularConSuReserva(pago);
         pago.setFechaPago(LocalDateTime.now());
         asignarTurnoYResponsable(pago);
         return pagoRepository.save(pago);
+    }
+
+    /**
+     * Todo pago queda ligado a su reserva aunque solo llegue la estadia (la pasarela de recepcion manda solo la
+     * estadia), y si llegan las dos tienen que ser de la misma estadia. Asi el historial, los reportes y el saldo
+     * hablan del mismo pago.
+     */
+    private void vincularConSuReserva(Pago pago) {
+        Estadia estadia = pago.getEstadia();
+        if (estadia != null && estadia.getReserva() == null && estadia.getIdEstadia() != null) {
+            // el formulario manda solo { idEstadia }: se completa con la estadia real
+            estadia = estadiaRepository.findById(estadia.getIdEstadia())
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Estadia no encontrada con id: " + pago.getEstadia().getIdEstadia()));
+            pago.setEstadia(estadia);
+        }
+        if (estadia == null || estadia.getReserva() == null) {
+            return;
+        }
+        Reserva duena = estadia.getReserva();
+        if (pago.getReserva() == null) {
+            pago.setReserva(duena);
+        } else if (pago.getReserva().getIdReserva() != null
+                && !pago.getReserva().getIdReserva().equals(duena.getIdReserva())) {
+            throw new IllegalStateException("La reserva del pago no corresponde a la estadia indicada.");
+        }
     }
 
     /**

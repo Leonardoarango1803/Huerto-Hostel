@@ -5,12 +5,16 @@ interface AuthUser {
   username: string;
   role: string;
   userId: number;
+  /** true mientras la persona use una clave temporal: solo puede cambiarla. */
+  debeCambiarPassword?: boolean;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
+  /** Cambia la clave propia; la sesion se renueva (la anterior deja de valer). */
+  cambiarPassword: (passwordActual: string, passwordNueva: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -39,14 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => leerSesionGuardada().user);
   const [token, setToken] = useState<string | null>(() => leerSesionGuardada().token);
 
+  const guardarSesion = (datos: { token: string; username: string; role: string; userId: number; debeCambiarPassword?: boolean }) => {
+    const authUser: AuthUser = {
+      username: datos.username,
+      role: datos.role,
+      userId: datos.userId,
+      debeCambiarPassword: datos.debeCambiarPassword === true,
+    };
+    localStorage.setItem("token", datos.token);
+    localStorage.setItem("user", JSON.stringify(authUser));
+    setToken(datos.token);
+    setUser(authUser);
+  };
+
   const login = async (username: string, password: string) => {
     const response = await api.post("/api/v1/auth/login", { username, password });
-    const { token: jwt, username: uname, role, userId } = response.data;
-    const authUser: AuthUser = { username: uname, role, userId };
-    localStorage.setItem("token", jwt);
-    localStorage.setItem("user", JSON.stringify(authUser));
-    setToken(jwt);
-    setUser(authUser);
+    guardarSesion(response.data);
+  };
+
+  const cambiarPassword = async (passwordActual: string, passwordNueva: string) => {
+    const response = await api.post("/api/v1/auth/cambiar-password", { passwordActual, passwordNueva });
+    guardarSesion(response.data);
   };
 
   const logout = () => {
@@ -57,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, cambiarPassword, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

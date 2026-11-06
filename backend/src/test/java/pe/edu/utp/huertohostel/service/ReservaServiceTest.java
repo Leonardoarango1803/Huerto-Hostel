@@ -52,9 +52,13 @@ class ReservaServiceTest {
     @Mock
     LiberacionReservasService liberacionReservasService;
 
+    /** Sin incidencias abiertas: el mock del repositorio responde false. */
+    private final BloqueoPorIncidencia bloqueo = new BloqueoPorIncidencia(
+            org.mockito.Mockito.mock(pe.edu.utp.huertohostel.repository.IncidenciaMantenimientoRepository.class));
+
     private ReservaService servicio(int adelantoMinimoPorcentaje) {
         return new ReservaService(reservaRepository, habitacionRepository, estadiaRepository, clienteRepository,
-                pagoService, cajaService, liberacionReservasService, adelantoMinimoPorcentaje);
+                pagoService, cajaService, liberacionReservasService, bloqueo, adelantoMinimoPorcentaje);
     }
 
     private ReservaService servicio() {

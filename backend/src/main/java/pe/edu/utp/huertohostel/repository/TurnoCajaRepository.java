@@ -15,4 +15,7 @@ public interface TurnoCajaRepository extends JpaRepository<TurnoCaja, Integer> {
     List<TurnoCaja> findByEstadoOrderByFechaAperturaDesc(EstadoTurno estado);
 
     List<TurnoCaja> findAllByOrderByFechaAperturaDesc();
+
+    /** El ultimo turno ya cerrado: de el recibe la caja quien abre. */
+    Optional<TurnoCaja> findFirstByEstadoNotOrderByFechaCierreDesc(EstadoTurno estado);
 }

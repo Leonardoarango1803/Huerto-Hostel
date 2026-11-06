@@ -46,6 +46,17 @@ public class IncidenciaMantenimiento {
     @Column(name = "fecha_resolucion")
     private LocalDateTime fechaResolucion;
 
+    /** true si la averia impide usar la habitacion: mientras este abierta, la habitacion no se vende. */
+    @Column(name = "bloquea_habitacion")
+    private Boolean bloqueaHabitacion = false;
+
+    /** Cuando se empezo a atender: de aqui sale el tiempo de respuesta. */
+    @Column(name = "fecha_inicio_reparacion")
+    private LocalDateTime fechaInicioReparacion;
+
+    @Column(name = "veces_reabierta")
+    private Short vecesReabierta = 0;
+
     public IncidenciaMantenimiento() {}
 
     public Integer getIdIncidencia() {
@@ -126,5 +137,29 @@ public class IncidenciaMantenimiento {
 
     public void setFechaResolucion(LocalDateTime fechaResolucion) {
         this.fechaResolucion = fechaResolucion;
+    }
+
+    public Boolean getBloqueaHabitacion() {
+        return bloqueaHabitacion;
+    }
+
+    public void setBloqueaHabitacion(Boolean bloqueaHabitacion) {
+        this.bloqueaHabitacion = bloqueaHabitacion;
+    }
+
+    public LocalDateTime getFechaInicioReparacion() {
+        return fechaInicioReparacion;
+    }
+
+    public void setFechaInicioReparacion(LocalDateTime fechaInicioReparacion) {
+        this.fechaInicioReparacion = fechaInicioReparacion;
+    }
+
+    public Short getVecesReabierta() {
+        return vecesReabierta;
+    }
+
+    public void setVecesReabierta(Short vecesReabierta) {
+        this.vecesReabierta = vecesReabierta;
     }
 }

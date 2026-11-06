@@ -43,6 +43,7 @@ public class ReservaService {
     private final PagoService pagoService;
     private final CajaService cajaService;
     private final LiberacionReservasService liberacionReservasService;
+    private final BloqueoPorIncidencia bloqueoPorIncidencia;
     private final int adelantoMinimoPorcentaje;
 
     public ReservaService(ReservaRepository reservaRepository,
@@ -52,7 +53,9 @@ public class ReservaService {
                           PagoService pagoService,
                           CajaService cajaService,
                           LiberacionReservasService liberacionReservasService,
+                          BloqueoPorIncidencia bloqueoPorIncidencia,
                           @Value("${app.reservas.adelanto-minimo-porcentaje:0}") int adelantoMinimoPorcentaje) {
+        this.bloqueoPorIncidencia = bloqueoPorIncidencia;
         this.reservaRepository = reservaRepository;
         this.habitacionRepository = habitacionRepository;
         this.estadiaRepository = estadiaRepository;
@@ -225,7 +228,7 @@ public class ReservaService {
         }
         habitacionRepository.findById(idHabitacion).ifPresent(h -> {
             if (h.getEstadoOperativo() == EstadoOperativoHab.RESERVADO) {
-                h.setEstadoOperativo(EstadoOperativoHab.DISPONIBLE);
+                h.setEstadoOperativo(bloqueoPorIncidencia.estadoAlLiberar(h, EstadoOperativoHab.DISPONIBLE));
                 habitacionRepository.save(h);
             }
         });

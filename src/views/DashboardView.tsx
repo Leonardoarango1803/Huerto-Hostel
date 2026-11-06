@@ -1,322 +1,298 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  BedDouble,
-  Users,
-  LogIn,
-  LogOut,
-  TrendingUp,
-  DollarSign,
-  Clock,
-  AlertTriangle,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+import { AlertTriangle, CheckCircle2, Info, RefreshCw, ShieldAlert } from "lucide-react";
+import { panelApi, type Aviso, type Grafico, type Kpi, type Lista, type Panel } from "../api/reportes";
+import { mensajeDeError } from "../api/errores";
 import { useAuth } from "../context/AuthContext";
-import api from "../api/axiosConfig";
+import { haceCuanto } from "../utils/fechas";
+import { Bloque, GraficoBarrasHorizontales, GraficoSerie, GraficoTorta, Seccion, Tabla, TarjetaEsqueleto, Variacion } from "./reportes/comun";
+import { COLOR_ESTADO_HAB, decimal, entero, etiqueta, minutos, porcentaje, soles } from "./reportes/formatos";
 
-interface PuntoSerie {
-  nombre: string;
-  valor: number;
+/** Cada cuanto se vuelve a pedir el panel. El servidor lo guarda 20 s, asi que varios usuarios comparten la consulta. */
+const REFRESCO_MS = 30_000;
+
+const BORDE: Record<Kpi["tono"], string> = {
+  verde: "border-l-emerald-500", ambar: "border-l-amber-500", rojo: "border-l-red-500", azul: "border-l-blue-500", gris: "border-l-slate-300",
+};
+const COLOR_TEXTO: Record<Kpi["tono"], string> = {
+  verde: "text-emerald-700", ambar: "text-amber-700", rojo: "text-red-700", azul: "text-blue-700", gris: "text-slate-900",
+};
+
+function valorDe(k: Kpi): string {
+  switch (k.formato) {
+    case "soles": return soles(k.valor);
+    case "porcentaje": return porcentaje(k.valor);
+    case "minutos": return minutos(k.valor);
+    case "texto": return k.texto ?? "—";
+    default: return entero(k.valor);
+  }
 }
 
-interface DashboardData {
-  totalHabitaciones: number;
-  disponibles: number;
-  ocupadas: number;
-  pendienteLimpieza: number;
-  mantenimiento: number;
-  totalReservas: number;
-  totalClientes: number;
-  inventario?: { insumosStockBajo: number; insumosAgotados: number; faltantesUltimos7Dias: number };
-  estadoHabitaciones?: PuntoSerie[];
-  ingresosPorArea?: PuntoSerie[];
-  ingresosUltimos7Dias?: PuntoSerie[];
+function formatoDe(g: Grafico) {
+  return g.formato === "soles" ? soles : g.formato === "porcentaje" ? porcentaje : entero;
 }
 
-/** Paleta alineada con los estados que ya usa el mapa de habitaciones. */
-const COLORES_ESTADO = ["#059669", "#1e293b", "#2563eb", "#d97706", "#dc2626"];
-const COLOR_AREA = "#1b4332";
-const COLOR_LINEA = "#059669";
+function TarjetaKpi({ kpi, ir }: { kpi: Kpi; ir: (ruta: string) => void }) {
+  const contenido = (
+    <>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.titulo}</p>
+      <p className={`text-2xl font-bold mt-1 leading-tight ${COLOR_TEXTO[kpi.tono]}`}>{valorDe(kpi)}</p>
+      {kpi.variacionPct !== null && <div className="mt-1"><Variacion pct={kpi.variacionPct} contra="ayer" /></div>}
+      {kpi.detalle && <p className="text-[10px] text-slate-400 mt-1">{kpi.detalle}</p>}
+    </>
+  );
+  const clase = `bg-white p-4 rounded-xl border border-slate-200/80 border-l-4 ${BORDE[kpi.tono]} shadow-sm text-left`;
+  return kpi.ruta ? (
+    <button onClick={() => ir(kpi.ruta as string)} className={`${clase} hover:shadow-md transition-shadow`}>{contenido}</button>
+  ) : (
+    <div className={clase}>{contenido}</div>
+  );
+}
+
+const AVISO_ESTILO: Record<Aviso["tipo"], { caja: string; icono: typeof Info }> = {
+  alerta: { caja: "bg-red-50 border-red-200 text-red-900", icono: ShieldAlert },
+  aviso: { caja: "bg-amber-50 border-amber-200 text-amber-900", icono: AlertTriangle },
+  ok: { caja: "bg-emerald-50 border-emerald-200 text-emerald-900", icono: CheckCircle2 },
+};
+
+function FilaAviso({ aviso, ir }: { aviso: Aviso; ir: (ruta: string) => void }) {
+  const { caja, icono: Icono } = AVISO_ESTILO[aviso.tipo];
+  return (
+    <div className={`flex items-start gap-2 p-2.5 rounded-lg border text-[11px] ${caja}`}>
+      <Icono size={14} className="mt-0.5 shrink-0" />
+      <div className="flex-1">
+        <p className="font-semibold">{aviso.titulo}</p>
+        {aviso.detalle && <p className="text-[10px] opacity-80 mt-0.5">{aviso.detalle}</p>}
+      </div>
+      {aviso.ruta && (
+        <button onClick={() => ir(aviso.ruta as string)} className="text-[10px] font-semibold underline shrink-0">Ir</button>
+      )}
+    </div>
+  );
+}
+
+function GraficoDelPanel({ g }: { g: Grafico }) {
+  const formato = formatoDe(g);
+  return (
+    <Seccion titulo={g.titulo}>
+      {g.tipo === "torta" ? (
+        <GraficoTorta datos={g.puntos.map((p) => ({ nombre: etiqueta(p.nombre), valor: p.valor }))} formato={formato} />
+      ) : g.tipo === "lineas" ? (
+        <GraficoSerie esFecha={false} datos={g.puntos.map((p) => ({ x: p.nombre, valor: p.valor }))}
+          series={[{ clave: "valor", nombre: g.titulo, color: "#3b82f6", tipo: "linea" }]}
+          formato={formato} formatoEje={g.formato === "porcentaje" ? (v) => `${decimal(v, 0)}%` : formato} />
+      ) : g.puntos.length > 0 && g.puntos.every((p) => p.nombre.length > 8) ? (
+        <GraficoBarrasHorizontales datos={g.puntos.map((p) => ({ nombre: etiqueta(p.nombre), valor: p.valor }))} formato={formato} />
+      ) : (
+        <GraficoSerie esFecha={false} datos={g.puntos.map((p) => ({ x: etiqueta(p.nombre), valor: p.valor }))}
+          series={[{ clave: "valor", nombre: g.titulo, color: "#1b4332" }]} formato={formato} />
+      )}
+    </Seccion>
+  );
+}
+
+function ListaDelPanel({ lista, ir }: { lista: Lista; ir: (ruta: string) => void }) {
+  return (
+    <Seccion titulo={lista.titulo}
+      accion={lista.ruta ? <button onClick={() => ir(lista.ruta as string)} className="text-[10px] text-emerald-700 font-semibold hover:underline">Ver todo</button> : undefined}>
+      <Tabla columnas={lista.columnas} filas={lista.filas} vacio={lista.vacio} />
+    </Seccion>
+  );
+}
+
+/**
+ * Forma de cada panel antes de que llegue el dato: titulos reales de cada tarjeta, grafico y lista, y solo el contenido
+ * cargando. Es solo presentacion (si el servidor cambia un titulo, el panel real lo reemplaza al llegar).
+ */
+const ESQUELETOS: Record<string, { titulo: string; subtitulo: string; kpis: string[]; habitaciones: boolean; graficos: string[]; listas: string[] }> = {
+  ADMINISTRADOR: {
+    titulo: "Panel gerencial", subtitulo: "Resumen en vivo de la operacion del hostel.",
+    kpis: ["Ocupacion hoy", "Cobrado hoy", "Por cobrar", "Llegadas pendientes", "Salidas por procesar", "Caja"], habitaciones: true,
+    graficos: ["Ocupacion de los ultimos 14 dias (%)", "Cobrado en los ultimos 14 dias (S/)", "Facturado por area este mes (S/)", "Cobrado hoy por metodo (S/)"],
+    listas: ["Llegadas de hoy", "Salidas por procesar", "Reservas sin adelanto", "Ultimos cierres de caja", "Mas vendidos hoy", "De turno ahora"],
+  },
+  RECEPCIONISTA: {
+    titulo: "Panel de recepcion", subtitulo: "Llegadas, salidas y lo que necesita atencion ahora.",
+    kpis: ["Ocupacion hoy", "Habitaciones libres", "Llegadas pendientes", "Salidas por procesar", "Caja"], habitaciones: true,
+    graficos: ["Ocupacion de los ultimos 7 dias (%)"], listas: ["Llegadas de hoy", "Salidas por procesar", "Reservas sin adelanto", "De turno ahora"],
+  },
+  CAJERO: {
+    titulo: "Panel de caja", subtitulo: "Cobros del dia y estado del turno.",
+    kpis: ["Caja", "Efectivo esperado", "Cobrado hoy", "Por cobrar"], habitaciones: true,
+    graficos: ["Cobrado hoy por metodo (S/)"], listas: ["Salidas por procesar", "Ultimos cierres de caja"],
+  },
+  COCINA: {
+    titulo: "Panel de cocina", subtitulo: "Comandas por atender y stock de tu area.",
+    kpis: ["Comandas activas", "Pendientes", "En preparacion", "Demoradas", "Entregadas hoy", "Tiempo de preparacion"], habitaciones: false,
+    graficos: ["Comandas activas por estado"], listas: ["Comandas por atender", "Insumos por reponer", "Mas vendidos hoy"],
+  },
+  BAR: {
+    titulo: "Panel de bar", subtitulo: "Comandas por atender y stock de tu area.",
+    kpis: ["Comandas activas", "Pendientes", "En preparacion", "Demoradas", "Entregadas hoy", "Tiempo de preparacion"], habitaciones: false,
+    graficos: ["Comandas activas por estado"], listas: ["Comandas por atender", "Insumos por reponer", "Mas vendidos hoy"],
+  },
+  HOUSEKEEPING: {
+    titulo: "Panel de limpieza", subtitulo: "Habitaciones por preparar y pedidos pendientes.",
+    kpis: ["Por limpiar", "Tareas pendientes", "En proceso", "Completadas hoy", "Incidencias abiertas", "Solicitudes pendientes"], habitaciones: true,
+    graficos: ["Tareas abiertas por estado"],
+    listas: ["Tareas de limpieza abiertas", "Incidencias abiertas", "Solicitudes del huesped", "Insumos de limpieza por reponer"],
+  },
+};
+
+function columnasDeKpis(n: number): string {
+  return n <= 4 ? "grid-cols-4" : n === 5 ? "grid-cols-5" : "grid-cols-6";
+}
+
+function columnasDeGraficos(n: number): string {
+  return n === 1 ? "grid-cols-1" : n === 2 ? "grid-cols-2" : "grid-cols-2 xl:grid-cols-4";
+}
+
+function PanelEsqueleto({ e }: { e: (typeof ESQUELETOS)[string] }) {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-label="Cargando panel">
+      <div className={`grid gap-4 ${columnasDeKpis(e.kpis.length)}`}>
+        {e.kpis.map((t) => <TarjetaEsqueleto key={t} titulo={t} />)}
+      </div>
+      <Seccion titulo="Que necesita atencion ahora">
+        <div className="grid grid-cols-2 gap-2">
+          <Bloque className="h-12" /><Bloque className="h-12" />
+        </div>
+      </Seccion>
+      {e.habitaciones && (
+        <Seccion titulo="Estado de las habitaciones">
+          <Bloque className="h-3 rounded-full w-full mb-3" />
+          <div className="flex gap-6"><Bloque className="h-3 w-24" /><Bloque className="h-3 w-24" /><Bloque className="h-3 w-24" /></div>
+        </Seccion>
+      )}
+      <div className={`grid gap-4 ${columnasDeGraficos(e.graficos.length)}`}>
+        {e.graficos.map((t) => <Seccion key={t} titulo={t}><Bloque className="w-full" alto={190} /></Seccion>)}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        {e.listas.map((t) => (
+          <Seccion key={t} titulo={t}>
+            <div className="space-y-2.5"><Bloque className="h-3 w-full" /><Bloque className="h-3 w-5/6" /><Bloque className="h-3 w-2/3" /></div>
+          </Seccion>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function DashboardView() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const isAdmin = user?.role === "ADMINISTRADOR";
+  // Si ya se vio el panel de este rol se pinta al instante con lo ultimo recibido y se actualiza por detras.
+  const [panel, setPanel] = useState<Panel | null>(() => panelApi.enMemoria(user?.role));
+  const [error, setError] = useState<string | null>(null);
+  const [actualizando, setActualizando] = useState(false);
+  const [ahora, setAhora] = useState(() => Date.now());
 
+  const traer = useCallback((refrescar: boolean) => {
+    return panelApi
+      .obtener(refrescar)
+      .then((p) => {
+        setPanel(p);
+        setError(null);
+      })
+      .catch((e) => setError(mensajeDeError(e, "No se pudo cargar el panel.")));
+  }, []);
+
+  // Carga inicial y refresco automatico (se pausa con la pestana oculta para no gastar conexiones de balde).
   useEffect(() => {
-    if (isAdmin) {
-      api.get<DashboardData>("/api/v1/dashboard/resumen")
-        .then((res) => setData(res.data))
-        .catch(() => {});
-    } else {
-      Promise.all([
-        api.get("/api/v1/habitaciones/resumen"),
-        api.get("/api/v1/reservas").catch(() => ({ data: [] })),
-      ]).then(([habRes, resRes]) => {
-        const reservas = Array.isArray(resRes.data) ? resRes.data : [];
-        const activas = reservas.filter(
-          (r: { estadoReserva: string }) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva)
-        ).length;
-        setData({
-          totalHabitaciones: 0,
-          disponibles: habRes.data.disponibles ?? 0,
-          ocupadas: habRes.data.ocupadas ?? 0,
-          pendienteLimpieza: habRes.data.pendienteLimpieza ?? 0,
-          mantenimiento: habRes.data.mantenimiento ?? 0,
-          totalReservas: activas,
-          totalClientes: 0,
-        });
-      }).catch(() => {});
-    }
-  }, [isAdmin]);
+    let vigente = true;
+    traer(false);
+    const refresco = window.setInterval(() => {
+      if (vigente && !document.hidden) traer(false);
+    }, REFRESCO_MS);
+    const reloj = window.setInterval(() => setAhora(Date.now()), 10_000);
+    const alVolver = () => {
+      if (!document.hidden) traer(false);
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      vigente = false;
+      window.clearInterval(refresco);
+      window.clearInterval(reloj);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [traer]);
 
-  const disponibles = data?.disponibles ?? 0;
-  const ocupadas = data?.ocupadas ?? 0;
-  const pendienteLimpieza = data?.pendienteLimpieza ?? 0;
-  const mantenimiento = data?.mantenimiento ?? 0;
-  const total = disponibles + ocupadas + pendienteLimpieza + mantenimiento;
-  const ocupacion = total > 0 ? Math.round((ocupadas / total) * 100) : 0;
+  const actualizar = () => {
+    setActualizando(true);
+    traer(true).finally(() => setActualizando(false));
+  };
 
-  const inv = data?.inventario;
-  const alertaInventario = inv
-    ? [
-        inv.insumosAgotados > 0 && inv.insumosAgotados + " insumo(s) agotado(s)",
-        inv.insumosStockBajo > inv.insumosAgotados && (inv.insumosStockBajo - inv.insumosAgotados) + " por debajo del stock minimo",
-        inv.faltantesUltimos7Dias > 0 && inv.faltantesUltimos7Dias + " venta(s) de los ultimos 7 dias descontaron mas de lo registrado",
-      ].filter(Boolean).join(" · ")
-    : "";
-
-  // Las series solo llegan en el resumen de administrador.
-  const estadoHabitaciones = (data?.estadoHabitaciones ?? []).filter((p) => p.valor > 0);
-  const ingresosPorArea = data?.ingresosPorArea ?? [];
-  const ingresos7Dias = data?.ingresosUltimos7Dias ?? [];
+  const ir = (ruta: string) => navigate(ruta);
+  const totalHab = panel?.habitaciones.reduce((s, h) => s + h.cantidad, 0) ?? 0;
+  const columnasKpi = columnasDeKpis(panel?.kpis.length ?? 6);
+  const esqueleto = ESQUELETOS[user?.role ?? ""] ?? ESQUELETOS.ADMINISTRADOR;
 
   return (
-    <div className="space-y-6 font-sans text-slate-800 text-xs">
-      <div className="flex justify-between items-center">
+    <div className="space-y-5 font-sans text-slate-800 text-xs">
+      <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Dashboard General</h1>
+          <h1 className="text-xl font-bold text-slate-900">{panel?.titulo ?? esqueleto.titulo}</h1>
           <p className="text-slate-500 text-[11px] mt-0.5">
-            Bienvenido, {user?.username} ({isAdmin ? "Administrador" : "Recepcionista"}).
-            Resumen en tiempo real de la propiedad.
+            Hola, {user?.username}. {panel?.subtitulo ?? esqueleto.subtitulo}
           </p>
         </div>
-        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Sistema en Linea
-        </span>
-      </div>
-
-      {alertaInventario && (
-        <div className="flex items-start gap-2 p-3 rounded-lg border bg-amber-50 border-amber-300 text-amber-800">
-          <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-          <span className="flex-1">
-            <strong>Inventario:</strong> {alertaInventario}
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-slate-400 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {panel ? `En vivo · actualizado ${haceCuanto(panel.generadoEn, ahora)}` : "Cargando datos..."}
           </span>
-          <button onClick={() => navigate("/inventario")} className="text-[10px] font-semibold underline">
-            Ver inventario
+          <button onClick={actualizar} disabled={actualizando}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50 disabled:opacity-60">
+            <RefreshCw size={12} className={actualizando ? "animate-spin" : ""} /> Actualizar
           </button>
         </div>
-      )}
-
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ocupacion Actual</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{ocupacion}%</p>
-            <p className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-1">
-              <TrendingUp size={12} /> {ocupadas} de {total} habitaciones
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-            <BedDouble size={20} />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reservas</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{data?.totalReservas ?? 0}</p>
-            <button onClick={() => navigate("/checkin")} className="text-[10px] text-emerald-700 hover:underline font-semibold mt-1 block">
-              Ver lista de ingresos
-            </button>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center">
-            <LogIn size={20} />
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Check-out</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{ocupadas}</p>
-            <button onClick={() => navigate("/checkout")} className="text-[10px] text-emerald-700 hover:underline font-semibold mt-1 block">
-              Procesar salidas
-            </button>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-            <LogOut size={20} />
-          </div>
-        </div>
-
-        {isAdmin ? (
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Clientes</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{data?.totalClientes ?? 0}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Registrados en el sistema</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center">
-              <DollarSign size={20} />
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex justify-between items-start">
-            <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Disponibles</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{disponibles}</p>
-              <p className="text-[10px] text-slate-400 mt-1">Habitaciones libres</p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
-              <Users size={20} />
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
-        <div className="col-span-2 bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-            <h2 className="font-bold text-slate-800 text-xs">Estado de Habitaciones</h2>
-            <button onClick={() => navigate("/habitaciones")} className="text-emerald-700 hover:underline text-[10px] font-semibold">
-              Ir al mapa de cuartos
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Disponibles</p>
-              <p className="text-xl font-bold text-emerald-700 mt-1">{disponibles}</p>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Ocupadas</p>
-              <p className="text-xl font-bold text-slate-800 mt-1">{ocupadas}</p>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">En Limpieza</p>
-              <p className="text-xl font-bold text-amber-600 mt-1">{pendienteLimpieza}</p>
-            </div>
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase font-semibold">Mantenimiento</p>
-              <p className="text-xl font-bold text-red-600 mt-1">{mantenimiento}</p>
-            </div>
-          </div>
-        </div>
+      {error && <div className="p-3 rounded-lg border bg-red-50 border-red-300 text-red-800">{error}</div>}
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm space-y-3">
-          <h2 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-            <AlertTriangle size={14} className="text-amber-500" /> Avisos Pendientes
-          </h2>
-          <div className="space-y-2 text-[11px]">
-            <div className="p-2 bg-amber-50 border border-amber-200/60 rounded-lg text-amber-900">
-              <p className="font-semibold flex items-center gap-1">
-                <Clock size={12} /> Sistema conectado
-              </p>
-              <p className="text-[10px] text-amber-700 mt-0.5">
-                Los avisos se actualizan en tiempo real.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="grid grid-cols-3 gap-5">
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
-              Distribucion de habitaciones
-            </h2>
-            {estadoHabitaciones.length === 0 ? (
-              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={estadoHabitaciones}
-                    dataKey="valor"
-                    nameKey="nombre"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                  >
-                    {estadoHabitaciones.map((_, i) => (
-                      <Cell key={i} fill={COLORES_ESTADO[i % COLORES_ESTADO.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
+      {!panel ? (
+        !error && <PanelEsqueleto e={esqueleto} />
+      ) : (
+        <>
+          <div className={`grid gap-4 ${columnasKpi}`}>
+            {panel.kpis.map((k) => <TarjetaKpi key={k.id} kpi={k} ir={ir} />)}
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
-              Ingresos por area (S/)
-            </h2>
-            {ingresosPorArea.length === 0 ? (
-              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={ingresosPorArea}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="nombre" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v) => `S/ ${Number(v).toFixed(2)}`} />
-                  <Bar dataKey="valor" fill={COLOR_AREA} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          <Seccion titulo="Que necesita atencion ahora">
+            <div className="grid grid-cols-2 gap-2">
+              {panel.avisos.map((a, i) => <FilaAviso key={i} aviso={a} ir={ir} />)}
+            </div>
+          </Seccion>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
-            <h2 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2 mb-3">
-              Cobros ultimos 7 dias (S/)
-            </h2>
-            {ingresos7Dias.length === 0 ? (
-              <p className="text-center text-slate-400 text-[11px] py-10">Sin datos.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={ingresos7Dias}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="nombre" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v) => `S/ ${Number(v).toFixed(2)}`} />
-                  <Line
-                    type="monotone"
-                    dataKey="valor"
-                    stroke={COLOR_LINEA}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+          {totalHab > 0 && (
+            <Seccion titulo="Estado de las habitaciones" accion={<button onClick={() => ir("/habitaciones")} className="text-[10px] text-emerald-700 font-semibold hover:underline">Ir al mapa</button>}>
+              <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex mb-3">
+                {panel.habitaciones.map((h) => (
+                  <div key={h.clave} title={`${etiqueta(h.clave)}: ${h.cantidad}`} style={{ width: `${(h.cantidad * 100) / totalHab}%`, background: COLOR_ESTADO_HAB[h.clave] ?? "#64748b" }} />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {panel.habitaciones.map((h) => (
+                  <div key={h.clave} className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_ESTADO_HAB[h.clave] ?? "#64748b" }} />
+                    <span className="text-slate-500">{etiqueta(h.clave)}</span>
+                    <strong className="text-slate-900">{h.cantidad}</strong>
+                  </div>
+                ))}
+              </div>
+            </Seccion>
+          )}
+
+          {panel.graficos.length > 0 && (
+            <div className={`grid gap-4 ${columnasDeGraficos(panel.graficos.length)}`}>
+              {panel.graficos.map((g) => <GraficoDelPanel key={g.id} g={g} />)}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            {panel.listas.map((l) => <ListaDelPanel key={l.id} lista={l} ir={ir} />)}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

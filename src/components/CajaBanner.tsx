@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, LockKeyhole } from "lucide-react";
+import { Wallet, LockKeyhole, AlertTriangle } from "lucide-react";
 import { useCaja } from "../context/CajaContext";
 
 function formatoApertura(fecha?: string) {
@@ -36,6 +36,26 @@ export function CajaBanner() {
             className="rounded-md bg-[#1b4332] px-3 py-1 font-semibold text-white hover:bg-[#143427]"
           >
             Abrir caja
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (estado.excedeLimite) {
+    return (
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-xs text-red-900" role="alert">
+        <span className="flex items-center gap-2">
+          <AlertTriangle size={14} />
+          <span>
+            <strong>La caja lleva {estado.horasAbierta} h abierta</strong>
+            {estado.abiertaPor ? ` (la abrio ${estado.abiertaPor})` : ""}: parece que se olvido cerrar. Cuenta el efectivo y cierrala; si no esta
+            quien la abrio, el administrador puede forzar el cierre.
+          </span>
+        </span>
+        {pathname !== "/caja" && (
+          <button onClick={() => navigate("/caja")} className="rounded-md bg-red-700 px-3 py-1 font-semibold text-white hover:bg-red-800">
+            Ir a Caja
           </button>
         )}
       </div>

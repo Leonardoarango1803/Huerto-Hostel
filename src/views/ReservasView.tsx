@@ -4,11 +4,14 @@ import { Download, Plus, LogIn, CreditCard, Trash2 } from "lucide-react";
 import { NuevoIngresoModal } from "../components/NuevoIngresoModal";
 import { reservasApi } from "../api/reservas";
 import { habitacionesApi } from "../api/habitaciones";
+import { AvisoIncidencia } from "../components/AvisoIncidencia";
+import { useIncidenciasPorHabitacion } from "../hooks/useIncidenciasPorHabitacion";
 import { clientesApi } from "../api/clientes";
 import { useAuth } from "../context/AuthContext";
 import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
 import { puede } from "../auth/permisos";
 import { esCajaCerrada, mensajeDeError } from "../api/errores";
+import { fechaDMA } from "../utils/fechas";
 import type { Reserva, Habitacion, Cliente, NuevaReservaRequest, PagoReserva } from "../api/types";
 import {
   Button,
@@ -41,11 +44,7 @@ const canalLabel: Record<string, string> = {
 };
 
 function formatFecha(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-PE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return fechaDMA(fecha);
 }
 
 function formatCodigo(id: number) {
@@ -66,6 +65,7 @@ export function ReservasView() {
   const { cajaCerrada, refrescar: refrescarCaja } = useCaja();
   const puedeCrear = puede(user?.role, "crearReserva");
   const puedeCancelar = puede(user?.role, "cancelarReserva");
+  const incidencias = useIncidenciasPorHabitacion();
   const puedeAdelanto = puede(user?.role, "registrarAdelanto");
   const puedeCheckin = puede(user?.role, "hacerCheckin");
 
@@ -639,10 +639,11 @@ export function ReservasView() {
             <option value="">— Seleccionar habitación —</option>
             {habitaciones.map((h) => (
               <option key={h.idHabitacion} value={h.idHabitacion}>
-                Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche)
+                Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche){incidencias.has(h.idHabitacion) ? " ⚠ incidencia" : ""}
               </option>
             ))}
           </Select>
+          <AvisoIncidencia inc={incidencias.get(form.idHabitacion)} className="mt-1.5" />
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">

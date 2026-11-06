@@ -45,6 +45,21 @@ app:
   cors:
     allowed-origins: ${FRONTEND_URL:http://localhost:5173}
 
+  # Datos que salen en el comprobante de la estadia (los vacios no se imprimen)
+  hotel:
+    nombre: ${HOTEL_NOMBRE:El Huerto Hostel}
+    ruc: ${HOTEL_RUC:}
+    direccion: ${HOTEL_DIRECCION:}
+    telefono: ${HOTEL_TELEFONO:}
+    correo: ${HOTEL_CORREO:}
+    mensaje-pie: ${HOTEL_MENSAJE_PIE:Gracias por su visita}
+
+  caja:
+    # Efectivo en caja a partir del cual se avisa que conviene retirar a custodia
+    tope-efectivo: ${TOPE_EFECTIVO_CAJA:1000}
+    # Horas de un turno abierto a partir de las cuales se avisa que se olvido cerrar (y el administrador puede forzar el cierre)
+    horas-maximas-abierta: ${HORAS_MAXIMAS_CAJA_ABIERTA:16}
+
   decolecta:
     api-key: ${DECOLECTA_API_KEY}
     base-url: https://api.decolecta.com

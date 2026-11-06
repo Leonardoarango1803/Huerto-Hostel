@@ -37,6 +37,14 @@ public class ConsumoEstadia {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
 
+    /** De donde viene el cargo: COMANDA, DIRECTO (recepcion) o SOLICITUD (pedido del huesped). */
+    @Column(name = "origen")
+    private String origen = "DIRECTO";
+
+    @ManyToOne
+    @JoinColumn(name = "id_empleado_registra")
+    private Empleado empleadoRegistra;
+
     public ConsumoEstadia() {}
 
     public Integer getIdConsumo() {
@@ -101,5 +109,21 @@ public class ConsumoEstadia {
 
     public void setFechaRegistro(LocalDateTime fechaRegistro) {
         this.fechaRegistro = fechaRegistro;
+    }
+
+    public String getOrigen() {
+        return origen;
+    }
+
+    public void setOrigen(String origen) {
+        this.origen = origen;
+    }
+
+    public Empleado getEmpleadoRegistra() {
+        return empleadoRegistra;
+    }
+
+    public void setEmpleadoRegistra(Empleado empleadoRegistra) {
+        this.empleadoRegistra = empleadoRegistra;
     }
 }

@@ -26,17 +26,27 @@ public class LimpiezaService {
     private final TareaLimpiezaRepository tareaRepository;
     private final HabitacionRepository habitacionRepository;
     private final UsuarioActualService usuarioActualService;
+    private final BloqueoPorIncidencia bloqueoPorIncidencia;
 
     public LimpiezaService(TareaLimpiezaRepository tareaRepository,
                            HabitacionRepository habitacionRepository,
-                           UsuarioActualService usuarioActualService) {
+                           UsuarioActualService usuarioActualService,
+                           BloqueoPorIncidencia bloqueoPorIncidencia) {
         this.tareaRepository = tareaRepository;
         this.habitacionRepository = habitacionRepository;
         this.usuarioActualService = usuarioActualService;
+        this.bloqueoPorIncidencia = bloqueoPorIncidencia;
     }
 
-    /** Sin filtro devuelve las tareas abiertas (pendientes y en proceso). */
+    /**
+     * Sin filtro devuelve las tareas abiertas (pendientes y en proceso). Antes de mostrarlas se revisa que ninguna habitacion
+     * este "en limpieza" sin su tarea (por ejemplo si se cambio el estado a mano): asi Limpieza y Habitaciones no se contradicen.
+     */
+    @Transactional
     public List<TareaLimpieza> listar(EstadoTareaLimpieza estado) {
+        if (estado == null) {
+            repararHabitacionesSinTarea();
+        }
         return estado != null
                 ? tareaRepository.findByEstadoOrderByFechaCreacionAsc(estado)
                 : tareaRepository.findByEstadoInOrderByFechaCreacionAsc(ABIERTAS);
@@ -81,6 +91,53 @@ public class LimpiezaService {
         return tareaRepository.save(tarea);
     }
 
+    /** Crea la tarea que falta de las habitaciones PENDIENTE_LIMPIEZA o EN_LIMPIEZA que nadie tiene en su bandeja. */
+    private void repararHabitacionesSinTarea() {
+        for (EstadoOperativoHab estado : List.of(EstadoOperativoHab.PENDIENTE_LIMPIEZA, EstadoOperativoHab.EN_LIMPIEZA)) {
+            for (Habitacion h : habitacionRepository.findByEstadoOperativo(estado)) {
+                boolean tiene = tareaRepository.existsByHabitacionIdHabitacionAndEstadoIn(h.getIdHabitacion(), ABIERTAS);
+                if (!tiene) {
+                    TareaLimpieza t = crearPara(h, OrigenTareaLimpieza.PROGRAMADO, "Creada al detectar la habitacion en limpieza sin tarea");
+                    if (estado == EstadoOperativoHab.EN_LIMPIEZA) {
+                        t.setEstado(EstadoTareaLimpieza.EN_PROCESO); // ya la estaban limpiando; no se asigna a quien abre la pantalla
+                        t.setFechaInicio(LocalDateTime.now());
+                        tareaRepository.save(t);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Mantiene la tarea alineada cuando el estado de la habitacion se cambia desde Habitaciones (sin pasar por Limpieza):
+     * PENDIENTE_LIMPIEZA crea la tarea, EN_LIMPIEZA la pone en proceso y DISPONIBLE cierra las que sigan abiertas.
+     */
+    @Transactional
+    public void sincronizarConEstado(Habitacion habitacion, EstadoOperativoHab nuevo, String detalle) {
+        if (nuevo == EstadoOperativoHab.PENDIENTE_LIMPIEZA) {
+            crearPara(habitacion, OrigenTareaLimpieza.PROGRAMADO, detalle);
+        } else if (nuevo == EstadoOperativoHab.EN_LIMPIEZA) {
+            TareaLimpieza tarea = crearPara(habitacion, OrigenTareaLimpieza.PROGRAMADO, detalle);
+            if (tarea.getEstado() == EstadoTareaLimpieza.PENDIENTE) {
+                tarea.setEstado(EstadoTareaLimpieza.EN_PROCESO);
+                tarea.setFechaInicio(LocalDateTime.now());
+                tarea.setEmpleadoAsignado(usuarioActualService.empleadoOpcional());
+                tareaRepository.save(tarea);
+            }
+        } else if (nuevo == EstadoOperativoHab.DISPONIBLE && habitacion.getIdHabitacion() != null) {
+            for (TareaLimpieza t : tareaRepository.findByHabitacionIdHabitacionOrderByFechaCreacionDesc(habitacion.getIdHabitacion())) {
+                if (ABIERTAS.contains(t.getEstado())) {
+                    t.setEstado(EstadoTareaLimpieza.COMPLETADA);
+                    t.setFechaFin(LocalDateTime.now());
+                    if (t.getEmpleadoAsignado() == null) {
+                        t.setEmpleadoAsignado(usuarioActualService.empleadoOpcional());
+                    }
+                    tareaRepository.save(t);
+                }
+            }
+        }
+    }
+
     /**
      * Avanza la tarea y sincroniza el estado operativo de la habitacion:
      * EN_PROCESO -> EN_LIMPIEZA, COMPLETADA -> DISPONIBLE.
@@ -111,7 +168,8 @@ public class LimpiezaService {
                 tarea.setEmpleadoAsignado(usuarioActualService.obtenerEmpleado());
             }
             if (habitacion != null) {
-                habitacion.setEstadoOperativo(EstadoOperativoHab.DISPONIBLE);
+                // Si una incidencia abierta la bloquea, limpiarla no la devuelve al uso: sigue en MANTENIMIENTO.
+                habitacion.setEstadoOperativo(bloqueoPorIncidencia.estadoAlLiberar(habitacion, EstadoOperativoHab.DISPONIBLE));
                 habitacionRepository.save(habitacion);
             }
         }

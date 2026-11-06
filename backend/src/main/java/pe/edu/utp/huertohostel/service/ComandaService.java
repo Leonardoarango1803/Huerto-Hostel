@@ -185,6 +185,14 @@ public class ComandaService {
         validarTransicion(actual, nuevoEstado);
 
         comanda.setEstadoComanda(nuevoEstado);
+        LocalDateTime ahora = LocalDateTime.now();
+        switch (nuevoEstado) {
+            case EN_PREPARACION -> comanda.setFechaEnPreparacion(ahora);
+            case PREPARADA -> comanda.setFechaPreparada(ahora);
+            case ENTREGADA -> comanda.setFechaEntregada(ahora);
+            case CANCELADA -> comanda.setFechaCancelada(ahora);
+            default -> { }
+        }
         comandaRepository.save(comanda);
 
         List<DetalleComanda> detalles = detalleComandaRepository.findByComandaIdComanda(idComanda);
@@ -266,6 +274,8 @@ public class ComandaService {
             consumo.setPrecioUnitario(detalle.getPrecioUnitario());
             consumo.setTotalConsumo(detalle.getSubtotal());
             consumo.setFechaRegistro(LocalDateTime.now());
+            consumo.setOrigen("COMANDA");
+            consumo.setEmpleadoRegistra(empleado);
             consumoEstadiaRepository.save(consumo);
 
             inventarioService.descontarPorReceta(

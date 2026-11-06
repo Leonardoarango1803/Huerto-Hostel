@@ -14,6 +14,16 @@ public interface ConsumoEstadiaRepository extends JpaRepository<ConsumoEstadia, 
     @Query("SELECT COALESCE(SUM(c.totalConsumo), 0) FROM ConsumoEstadia c WHERE c.estadia.idEstadia = :idEstadia")
     BigDecimal sumTotalByEstadia(@Param("idEstadia") Integer idEstadia);
 
+    /** Productos activos mas vendidos desde una fecha (idProducto, unidades): para los accesos rapidos. */
+    @Query("""
+            SELECT c.producto.idProducto, SUM(c.cantidad)
+            FROM ConsumoEstadia c
+            WHERE c.fechaRegistro >= :desde AND c.producto.estado = true
+            GROUP BY c.producto.idProducto
+            ORDER BY SUM(c.cantidad) DESC, c.producto.idProducto
+            """)
+    List<Object[]> frecuentes(@Param("desde") java.time.LocalDateTime desde, org.springframework.data.domain.Pageable limite);
+
     /** Consumo acumulado por categoria de producto (COCINA, BAR, DIRECTO). */
     @Query("""
             SELECT c.producto.categoria, COALESCE(SUM(c.totalConsumo), 0)

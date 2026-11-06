@@ -36,22 +36,44 @@ public class IncidenciaController {
         return ResponseEntity.ok(incidenciaService.obtenerPorId(id));
     }
 
+    /** Incidencias abiertas agrupadas por habitacion (para avisar en Habitaciones y Reservas). */
+    @GetMapping("/por-habitacion")
+    public ResponseEntity<List<Map<String, Object>>> porHabitacion() {
+        return ResponseEntity.ok(incidenciaService.resumenPorHabitacion());
+    }
+
+    /**
+     * Reporta una averia. {@code bloquearHabitacion=true} la pone en MANTENIMIENTO (no se vende); si es menor se deja
+     * disponible. La respuesta trae un mensaje con lo que paso con la habitacion.
+     */
     @PostMapping
-    public ResponseEntity<IncidenciaMantenimiento> reportar(@RequestBody Map<String, String> body) {
+    public ResponseEntity<IncidenciaService.ResultadoIncidencia> reportar(@RequestBody Map<String, String> body) {
         Integer idHabitacion = Integer.valueOf(body.get("idHabitacion"));
         TipoIncidencia tipo = body.get("tipoIncidencia") != null
                 ? TipoIncidencia.valueOf(body.get("tipoIncidencia"))
                 : TipoIncidencia.OTRO;
-        IncidenciaMantenimiento creada =
-                incidenciaService.reportar(idHabitacion, tipo, body.get("descripcion"));
-        return ResponseEntity.status(HttpStatus.CREATED).body(creada);
+        boolean bloquear = "true".equalsIgnoreCase(body.get("bloquearHabitacion"));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(incidenciaService.reportar(idHabitacion, tipo, body.get("descripcion"), bloquear));
     }
 
+    /** Cambia la decision de bloquear una incidencia abierta: la habitacion pasa a MANTENIMIENTO o se libera. */
+    @PatchMapping("/{id}/bloqueo")
+    public ResponseEntity<IncidenciaService.ResultadoIncidencia> cambiarBloqueo(@PathVariable @NonNull Integer id,
+                                                                                @RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(incidenciaService.cambiarBloqueo(id, "true".equalsIgnoreCase(body.get("bloquear"))));
+    }
+
+    /**
+     * Cambia el estado: EN_REPARACION, RESUELTO (con {@code destino} DISPONIBLE o LIMPIEZA), DUPLICADA o NO_PROCEDE
+     * (con el motivo en {@code observaciones}), o PENDIENTE para reabrir una cerrada. La respuesta trae la incidencia, el
+     * estado final de la habitacion y un mensaje.
+     */
     @PatchMapping("/{id}/estado")
-    public ResponseEntity<IncidenciaMantenimiento> cambiarEstado(@PathVariable @NonNull Integer id,
-                                                                 @RequestBody Map<String, String> body) {
+    public ResponseEntity<IncidenciaService.ResultadoIncidencia> cambiarEstado(@PathVariable @NonNull Integer id,
+                                                                               @RequestBody Map<String, String> body) {
         EstadoIncidencia nuevo = EstadoIncidencia.valueOf(body.get("estado"));
         return ResponseEntity.ok(
-                incidenciaService.cambiarEstado(id, nuevo, body.get("observaciones")));
+                incidenciaService.cambiarEstado(id, nuevo, body.get("observaciones"), body.get("destino")));
     }
 }

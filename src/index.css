@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Al imprimir o guardar como PDF un reporte: solo el contenido, sin menu, avisos ni controles. */
+@media print {
+  aside,
+  .no-imprimir {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: #fff !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}
+
+/* Acta de un turno de caja: al imprimirla solo sale el acta (se renderiza aparte, fuera de la app). */
+@media print {
+  body.imprimiendo-acta #root {
+    display: none !important;
+  }
+}
+
+/* Comprobante de la estadia: en pantalla vive dentro del dialogo; al imprimir sale solo el comprobante (ticket de 80 mm o A4). */
+#comprobante-impresion {
+  display: none;
+}
+
+@media print {
+  body.imprimiendo-comprobante #root {
+    display: none !important;
+  }
+
+  body.imprimiendo-comprobante #comprobante-impresion {
+    display: block !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body.imprimiendo-comprobante {
+    background: #fff !important;
+  }
+}

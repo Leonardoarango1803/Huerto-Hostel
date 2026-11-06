@@ -366,9 +366,26 @@ public class InventarioService {
      * Un producto sin receta no genera movimientos.
      */
     @Transactional
-    public void descontarPorReceta(Producto producto, Short cantidadVendida,
-                                   String referencia, Empleado empleado) {
-        movimientoPorReceta(producto, cantidadVendida, TipoMovInventario.SALIDA_CONSUMO, referencia, empleado);
+    public List<String> descontarPorReceta(Producto producto, Short cantidadVendida,
+                                           String referencia, Empleado empleado) {
+        return movimientoPorReceta(producto, cantidadVendida, TipoMovInventario.SALIDA_CONSUMO, referencia, empleado);
+    }
+
+    /**
+     * Devuelve al almacen lo que descontaron los movimientos de un consumo (referencia "CONSUMO-n") cuando ese consumo se
+     * anula. Solo vuelve lo que de verdad habia salido (cantidad menos faltante); los movimientos originales se conservan.
+     */
+    @Transactional
+    public void revertirConsumo(String referenciaOriginal, String referenciaNueva, Empleado empleado) {
+        for (MovimientoInventario m : movimientoRepository
+                .findByReferenciaOrigenAndTipoMovimiento(referenciaOriginal, TipoMovInventario.SALIDA_CONSUMO)) {
+            BigDecimal faltante = m.getCantidadFaltante() != null ? m.getCantidadFaltante() : BigDecimal.ZERO;
+            BigDecimal devolver = m.getCantidad().subtract(faltante);
+            if (devolver.signum() > 0) {
+                aplicar(m.getInsumo(), TipoMovInventario.DEVOLUCION_CONSUMO, devolver, devolver,
+                        referenciaNueva, empleado, null, null);
+            }
+        }
     }
 
     /**
@@ -380,11 +397,13 @@ public class InventarioService {
         movimientoPorReceta(producto, cantidad, TipoMovInventario.AJUSTE_MERMA, referencia, empleado);
     }
 
-    private void movimientoPorReceta(Producto producto, Short cantidadVendida, TipoMovInventario tipo,
-                                     String referencia, Empleado empleado) {
+    /** Devuelve un aviso por cada insumo que no alcanzo (la operacion igual se registra: la venta no se frena). */
+    private List<String> movimientoPorReceta(Producto producto, Short cantidadVendida, TipoMovInventario tipo,
+                                             String referencia, Empleado empleado) {
+        List<String> avisos = new ArrayList<>();
         if (producto == null || producto.getIdProducto() == null
                 || cantidadVendida == null || cantidadVendida <= 0) {
-            return;
+            return avisos;
         }
         List<RecetaDetalle> receta = recetaDetalleRepository
                 .findByProductoIdProducto(producto.getIdProducto());
@@ -395,9 +414,14 @@ public class InventarioService {
             }
             BigDecimal requerido = linea.getCantidad()
                     .multiply(BigDecimal.valueOf(cantidadVendida));
-            aplicar(linea.getInsumo(), tipo,
+            MovimientoInventario mov = aplicar(linea.getInsumo(), tipo,
                     requerido, requerido.negate(), referencia, empleado, null, null);
+            if (mov.getCantidadFaltante() != null && mov.getCantidadFaltante().signum() > 0) {
+                avisos.add("Stock insuficiente de " + linea.getInsumo().getNombre() + ": faltaron "
+                        + mov.getCantidadFaltante().stripTrailingZeros().toPlainString() + " " + linea.getInsumo().getUnidadMedida());
+            }
         }
+        return avisos;
     }
 
     /**
@@ -475,12 +499,14 @@ public class InventarioService {
                 valorizacion = valorizacion.add(stockDe(i).multiply(costoDe(i)));
             }
             Map<TipoMovInventario, BigDecimal> c = cantidades.getOrDefault(i.getIdInsumo(), Map.of());
-            BigDecimal consumido = c.getOrDefault(TipoMovInventario.SALIDA_CONSUMO, BigDecimal.ZERO);
+            // El consumo es neto: lo que salio menos lo que volvio por consumos anulados.
+            BigDecimal consumido = c.getOrDefault(TipoMovInventario.SALIDA_CONSUMO, BigDecimal.ZERO)
+                    .subtract(c.getOrDefault(TipoMovInventario.DEVOLUCION_CONSUMO, BigDecimal.ZERO));
             BigDecimal merma = c.getOrDefault(TipoMovInventario.AJUSTE_MERMA, BigDecimal.ZERO);
             BigDecimal entradas = c.getOrDefault(TipoMovInventario.ENTRADA, BigDecimal.ZERO);
             BigDecimal sobrante = c.getOrDefault(TipoMovInventario.AJUSTE_INGRESO, BigDecimal.ZERO);
             BigDecimal faltante = faltantes.getOrDefault(i.getIdInsumo(), BigDecimal.ZERO);
-            if (consumido.signum() == 0 && merma.signum() == 0 && entradas.signum() == 0
+            if (consumido.signum() == 0 && c.getOrDefault(TipoMovInventario.DEVOLUCION_CONSUMO, BigDecimal.ZERO).signum() == 0 && merma.signum() == 0 && entradas.signum() == 0
                     && sobrante.signum() == 0 && faltante.signum() == 0) {
                 continue;
             }

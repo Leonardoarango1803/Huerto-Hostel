@@ -25,6 +25,11 @@ public class JwtService {
     }
 
     public String generateToken(String username, String role, Integer userId) {
+        return generateToken(username, role, userId, 0L);
+    }
+
+    /** El sello es el momento de la ultima clave: si cambia, los tokens anteriores dejan de valer. */
+    public String generateToken(String username, String role, Integer userId, long sello) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expirationMs);
 
@@ -32,6 +37,7 @@ public class JwtService {
                 .subject(username)
                 .claim("rol", role)
                 .claim("id_usuario", userId)
+                .claim("pwd", sello)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key)
@@ -48,6 +54,12 @@ public class JwtService {
 
     public Integer extractUserId(String token) {
         return extractAllClaims(token).get("id_usuario", Integer.class);
+    }
+
+    /** Tokens anteriores a este cambio no traen el sello: equivale a 0. */
+    public long extractSello(String token) {
+        Long v = extractAllClaims(token).get("pwd", Long.class);
+        return v == null ? 0L : v;
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {

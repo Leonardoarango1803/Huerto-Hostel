@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
   Settings,
   Plus,
   Power,
+  KeyRound,
   ChefHat,
   Package,
   Sparkles,
@@ -27,10 +28,11 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { MODULOS_POR_ROL, RUTA, puede, type Modulo, type Rol } from "../../auth/permisos";
 import logoHotel from "../../assets/logo-hotel.png";
+import { CambiarPasswordModal } from "../CambiarPasswordModal";
 
 /** Como se ve cada modulo en el menu. Que modulos ve cada rol lo decide auth/permisos.ts. */
 const ITEMS: Record<Modulo, { label: string; icon: React.ElementType }> = {
-  dashboard: { label: "Dashboard", icon: LayoutDashboard },
+  dashboard: { label: "Panel", icon: LayoutDashboard },
   reservas: { label: "Reservas", icon: Calendar },
   huespedes: { label: "Huespedes", icon: Users },
   habitaciones: { label: "Habitaciones", icon: BedDouble },
@@ -66,6 +68,7 @@ export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [cambiandoClave, setCambiandoClave] = useState(false);
 
   const rol = user?.role as Rol | undefined;
   const perfil = rol ? PERFILES[rol] : undefined;
@@ -125,7 +128,7 @@ export const Sidebar: React.FC = () => {
                     size={16}
                     className={isActive ? "text-white" : "text-slate-400"}
                   />
-                  <span>{item.label}</span>
+                  <span>{modulo === "turnos" && rol !== "ADMINISTRADOR" ? "Mi turno" : item.label}</span>
                 </div>
               </button>
             );
@@ -145,6 +148,14 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
           <button
+            title="Cambiar mi contraseña"
+            aria-label="Cambiar mi contraseña"
+            onClick={() => setCambiandoClave(true)}
+            className="text-slate-400 hover:text-slate-200 p-1 ml-auto"
+          >
+            <KeyRound size={14} />
+          </button>
+          <button
             title="Cerrar sesion"
             onClick={handleLogout}
             className="text-red-400 hover:text-red-300 p-1"
@@ -153,6 +164,7 @@ export const Sidebar: React.FC = () => {
           </button>
         </div>
       </div>
+      {cambiandoClave && <CambiarPasswordModal onCerrar={() => setCambiandoClave(false)} />}
     </aside>
   );
 };

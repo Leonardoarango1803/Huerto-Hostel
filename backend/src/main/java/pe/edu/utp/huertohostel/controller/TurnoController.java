@@ -1,16 +1,17 @@
 package pe.edu.utp.huertohostel.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
-import pe.edu.utp.huertohostel.security.Roles;
 import org.springframework.web.bind.annotation.*;
+import pe.edu.utp.huertohostel.dto.TurnoRequest;
 import pe.edu.utp.huertohostel.entity.Turno;
-import pe.edu.utp.huertohostel.repository.EmpleadoRepository;
 import pe.edu.utp.huertohostel.repository.TurnoRepository;
+import pe.edu.utp.huertohostel.security.Roles;
+import pe.edu.utp.huertohostel.service.TurnoService;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/turnos")
@@ -18,11 +19,11 @@ import java.util.stream.Collectors;
 public class TurnoController {
 
     private final TurnoRepository turnoRepository;
-    private final EmpleadoRepository empleadoRepository;
+    private final TurnoService turnoService;
 
-    public TurnoController(TurnoRepository turnoRepository, EmpleadoRepository empleadoRepository) {
+    public TurnoController(TurnoRepository turnoRepository, TurnoService turnoService) {
         this.turnoRepository = turnoRepository;
-        this.empleadoRepository = empleadoRepository;
+        this.turnoService = turnoService;
     }
 
     @GetMapping
@@ -30,28 +31,30 @@ public class TurnoController {
         return ResponseEntity.ok(turnoRepository.findAll());
     }
 
-    @GetMapping("/con-empleados")
-    public ResponseEntity<List<Map<String, Object>>> listarConEmpleados() {
-        List<Turno> turnos = turnoRepository.findAll();
-        List<Map<String, Object>> resultado = turnos.stream().map(turno -> {
-            Map<String, Object> dto = new java.util.LinkedHashMap<>();
-            dto.put("idTurno", turno.getIdTurno());
-            dto.put("nombre", turno.getNombre());
-            dto.put("horaInicio", turno.getHoraInicio());
-            dto.put("horaFin", turno.getHoraFin());
-            dto.put("descripcion", turno.getDescripcion());
-            dto.put("empleados", empleadoRepository.findAll().stream()
-                    .filter(e -> e.getTurno() != null && e.getTurno().getIdTurno().equals(turno.getIdTurno()) && Boolean.TRUE.equals(e.getEstado()))
-                    .map(e -> {
-                        Map<String, Object> emp = new java.util.LinkedHashMap<>();
-                        emp.put("idEmpleado", e.getIdEmpleado());
-                        emp.put("nombres", e.getNombres());
-                        emp.put("apellidos", e.getApellidos());
-                        emp.put("rol", e.getRol() != null ? e.getRol().getNombre() : null);
-                        return emp;
-                    }).collect(Collectors.toList()));
-            return dto;
-        }).collect(Collectors.toList());
-        return ResponseEntity.ok(resultado);
+    /** Todos los turnos con su gente, cual esta en curso ahora y cuantos de cada rol hay en cada uno. */
+    @GetMapping("/resumen")
+    public ResponseEntity<Map<String, Object>> resumen() {
+        return ResponseEntity.ok(turnoService.resumen());
+    }
+
+    /** El turno de quien esta conectado y sus companeros: lo ve todo el personal, no solo recepcion. */
+    @GetMapping("/mi-turno")
+    @PreAuthorize(Roles.PERSONAL)
+    public ResponseEntity<Map<String, Object>> miTurno() {
+        return ResponseEntity.ok(turnoService.miTurno());
+    }
+
+    /** Quien esta de turno ahora, opcionalmente de un solo rol (por ejemplo, el personal de limpieza). */
+    @GetMapping("/en-servicio")
+    @PreAuthorize(Roles.LIMPIEZA)
+    public ResponseEntity<List<Map<String, Object>>> enServicio(@RequestParam(required = false) String rol) {
+        return ResponseEntity.ok(turnoService.enServicio(rol));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(Roles.SOLO_ADMIN)
+    public ResponseEntity<Map<String, Object>> actualizar(@PathVariable @NonNull Integer id,
+                                                          @RequestBody TurnoRequest request) {
+        return ResponseEntity.ok(turnoService.actualizar(id, request));
     }
 }

@@ -1,127 +1,175 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Wallet,
-  CheckCircle,
-  AlertCircle,
-  LockKeyhole,
-  ClipboardList,
-  Plus,
-  History,
-} from "lucide-react";
+import { CheckCircle, AlertCircle } from "lucide-react";
 import { cajaApi } from "../api/caja";
 import { useCaja } from "../context/CajaContext";
+import { useAuth } from "../context/AuthContext";
 import { mensajeDeError } from "../api/errores";
-import type { BitacoraTurno, ResumenTurno, TurnoCaja } from "../api/types";
+import type { BitacoraTurno, InfoApertura, ResumenTurno, TurnoCaja } from "../api/types";
+import { AperturaCard } from "./caja/AperturaCard";
+import { ArqueoRapido } from "./caja/ArqueoRapido";
+import { Bitacora } from "./caja/Bitacora";
+import { CierreForzado } from "./caja/CierreForzado";
+import { CierreGuiado } from "./caja/CierreGuiado";
+import { HistorialTurnos } from "./caja/HistorialTurnos";
+import { Movimientos } from "./caja/Movimientos";
+import { PanelNotas } from "./caja/PanelNotas";
+import { dinero } from "./caja/comun";
 
-const PRIORIDADES = ["ALTA", "MEDIA", "BAJA"];
+type Mensaje = { tipo: "ok" | "error"; texto: string } | null;
 
+/**
+ * Caja unica del hotel. Se abre RECIBIENDO la caja del turno anterior (el efectivo contado debe coincidir con lo que
+ * dejo), y se cierra con un cierre guiado: el sistema verifica el conteo antes de cerrar y, si hay que cerrar con
+ * diferencia, deja una nota pendiente que solo el administrador puede resolver.
+ */
 export function CajaView() {
-  const { refrescar: refrescarCaja } = useCaja();
+  const { refrescar: refrescarCaja, estado: estadoCaja } = useCaja();
+  const { user } = useAuth();
+  const esAdmin = user?.role === "ADMINISTRADOR";
+
   const [resumen, setResumen] = useState<ResumenTurno | null>(null);
   const [bitacora, setBitacora] = useState<BitacoraTurno[]>([]);
   const [historial, setHistorial] = useState<TurnoCaja[]>([]);
+  /** Notas sin resolver de TODOS los turnos (los pendientes que hereda quien abre la caja). */
+  const [pendientes, setPendientes] = useState<BitacoraTurno[]>([]);
+  const [infoApertura, setInfoApertura] = useState<InfoApertura | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
+  const [abriendo, setAbriendo] = useState(false);
+  const [mensaje, setMensaje] = useState<Mensaje>(null);
 
-  const [fondoInicial, setFondoInicial] = useState("0");
-  const [arqueo, setArqueo] = useState({ efectivo: "", observaciones: "" });
-  const [nota, setNota] = useState({ categoria: "GENERAL", mensaje: "", prioridad: "MEDIA" });
+  /** Trae todo lo de la pantalla sin tocar el estado: asi el efecto inicial y los botones comparten la misma carga. */
+  const traer = useCallback(async () => {
+    const [data, pend] = await Promise.all([
+      cajaApi.turnoActual(),
+      cajaApi.pendientesRelevo().catch(() => [] as BitacoraTurno[]),
+    ]);
+    if (data) {
+      // El resumen con movimientos y notas del turno abierto, y su bitacora
+      const completo = await cajaApi.resumen(data.turno.idTurnoCaja).catch(() => data);
+      const notas = completo.notas ?? (await cajaApi.listarBitacora(data.turno.idTurnoCaja));
+      return { pend, resumen: completo, notas, info: null as InfoApertura | null };
+    }
+    return { pend, resumen: null as ResumenTurno | null, notas: [] as BitacoraTurno[], info: await cajaApi.infoApertura().catch(() => null) };
+  }, []);
+
+  const aplicar = useCallback((d: Awaited<ReturnType<typeof traer>>) => {
+    setPendientes(d.pend);
+    setResumen(d.resumen);
+    setBitacora(d.notas);
+    setInfoApertura(d.info);
+  }, []);
 
   const cargar = useCallback(async () => {
     try {
-      const data = await cajaApi.turnoActual();
-      setResumen(data);
-      if (data) {
-        const notas = await cajaApi.listarBitacora(data.turno.idTurnoCaja);
-        setBitacora(notas);
-      } else {
-        setBitacora([]);
-      }
-    } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo cargar el estado de la caja." });
+      aplicar(await traer());
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo cargar el estado de la caja.") });
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [traer, aplicar]);
 
   useEffect(() => {
-    cargar();
-    cajaApi
-      .historial()
-      .then(setHistorial)
-      .catch(() => undefined);
-  }, [cargar]);
+    let vigente = true;
+    traer()
+      .then((d) => vigente && aplicar(d))
+      .catch((err) => vigente && setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo cargar el estado de la caja.") }))
+      .finally(() => vigente && setCargando(false));
+    cajaApi.historial().then((h) => vigente && setHistorial(h)).catch(() => undefined);
+    return () => {
+      vigente = false;
+    };
+  }, [traer, aplicar]);
 
-  const abrirCaja = async () => {
+  const cargarHistorial = useCallback(() => {
+    cajaApi.historial().then(setHistorial).catch(() => undefined);
+  }, []);
+
+  const abrirCaja = async (fondo: number, motivo?: string) => {
     setMensaje(null);
+    setAbriendo(true);
     try {
-      await cajaApi.abrir(Number(fondoInicial || "0"));
-      setMensaje({ tipo: "ok", texto: "Caja abierta. Recepcion, cajero y administrador operan sobre este mismo turno." });
-      cargar();
-      refrescarCaja();
-    } catch (err) {
-      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo abrir la caja.") });
-      cargar(); // si otra persona la abrio primero, mostrar su turno
-      refrescarCaja();
-    }
-  };
-
-  const cerrarCaja = async () => {
-    if (!resumen) return;
-    if (arqueo.efectivo === "") {
-      setMensaje({ tipo: "error", texto: "Declara el efectivo contado antes de cerrar." });
-      return;
-    }
-    try {
-      const turno = await cajaApi.cerrar(
-        resumen.turno.idTurnoCaja,
-        Number(arqueo.efectivo),
-        arqueo.observaciones || undefined
-      );
-      const dif = Number(turno.diferenciaCuadre ?? 0);
+      const turno = await cajaApi.abrir(fondo, motivo);
+      const dif = Number(turno.diferenciaApertura ?? 0);
       setMensaje({
         tipo: "ok",
         texto:
-          dif === 0
-            ? "Caja cerrada y cuadrada correctamente."
-            : `Caja cerrada con una diferencia de S/ ${dif.toFixed(2)} (esperado S/ ${Number(
-                turno.efectivoSistemaEsperado ?? 0
-              ).toFixed(2)}).`,
+          "Caja abierta. Recepcion, cajero y administrador operan sobre este mismo turno." +
+          (dif !== 0 ? ` Quedo una nota pendiente: se recibio con ${dif < 0 ? "faltante" : "sobrante"} de ${dinero(Math.abs(dif))}.` : ""),
       });
-      setArqueo({ efectivo: "", observaciones: "" });
-      cargar();
+      await cargar();
+      cargarHistorial();
       refrescarCaja();
-      cajaApi.historial().then(setHistorial).catch(() => undefined);
     } catch (err) {
-      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo cerrar la caja.") });
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo abrir la caja.") });
+      await cargar(); // si otra persona la abrio primero, mostrar su turno
+      refrescarCaja();
+    } finally {
+      setAbriendo(false);
     }
   };
 
-  const agregarNota = async () => {
+  const alCerrar = async (turno: TurnoCaja, quedanPendientes: number, notaGuardada: boolean) => {
+    const dif = Number(turno.diferenciaCuadre ?? 0);
+    setMensaje({
+      tipo: dif === 0 ? "ok" : "error",
+      texto:
+        (dif === 0
+          ? "Caja cerrada y cuadrada correctamente."
+          : `Caja cerrada con ${dif < 0 ? "faltante" : "sobrante"} de ${dinero(Math.abs(dif))} (esperado ${dinero(turno.efectivoSistemaEsperado)}). Quedo una nota pendiente de prioridad alta para el administrador.`) +
+        (quedanPendientes > 0 ? ` Quedan ${quedanPendientes} nota(s) pendiente(s) para el siguiente turno.` : "") +
+        (notaGuardada ? "" : " La nota para el siguiente turno no se pudo guardar: escribela de nuevo en la bitacora."),
+    });
+    await cargar();
+    cargarHistorial();
+    refrescarCaja();
+  };
+
+  const alForzar = async (turno: TurnoCaja) => {
+    const dif = Number(turno.diferenciaCuadre ?? 0);
+    setMensaje({
+      tipo: dif === 0 ? "ok" : "error",
+      texto:
+        "Caja cerrada por el administrador (cierre forzado)." +
+        (dif === 0 ? " El efectivo cuadra." : ` Quedo ${dif < 0 ? "faltante" : "sobrante"} de ${dinero(Math.abs(dif))} como nota pendiente.`) +
+        " El siguiente turno vera un aviso del cierre forzado.",
+    });
+    await cargar();
+    cargarHistorial();
+    refrescarCaja();
+  };
+
+  const agregarNota = async (nota: { categoria: string; mensaje: string; prioridad: string }): Promise<boolean> => {
     if (!resumen || !nota.mensaje.trim()) {
       setMensaje({ tipo: "error", texto: "Escribe el mensaje de la bitacora." });
-      return;
+      return false;
     }
     try {
       await cajaApi.registrarNota(resumen.turno.idTurnoCaja, nota);
-      setNota({ categoria: "GENERAL", mensaje: "", prioridad: "MEDIA" });
-      const notas = await cajaApi.listarBitacora(resumen.turno.idTurnoCaja);
-      setBitacora(notas);
-    } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo registrar la nota." });
+      await cargar();
+      return true;
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo registrar la nota.") });
+      return false;
     }
   };
 
-  const alternarResuelto = async (n: BitacoraTurno) => {
+  const resolver = async (n: BitacoraTurno, comentario?: string) => {
     try {
-      await cajaApi.marcarResuelto(n.idBitacora, !n.resuelto);
-      if (resumen) {
-        setBitacora(await cajaApi.listarBitacora(resumen.turno.idTurnoCaja));
-      }
-    } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo actualizar la nota." });
+      await cajaApi.marcarResuelto(n.idBitacora, !n.resuelto, comentario);
+      await cargar();
+      cargarHistorial();
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(err, "No se pudo actualizar la nota.") });
+      throw err;
     }
   };
+
+  const alternarDeLaBitacora = (n: BitacoraTurno) => {
+    resolver(n).catch(() => undefined);
+  };
+
+  const sinResolverDelTurno = bitacora.filter((n) => !n.resuelto).length;
 
   return (
     <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
@@ -129,77 +177,46 @@ export function CajaView() {
         <p className="text-[10px] text-slate-400 uppercase font-semibold">Recepcion › Caja</p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">Turno de Caja y Arqueo</h1>
         <p className="text-slate-500 text-[11px] mt-0.5">
-          Caja unica del hotel: apertura con fondo inicial, cobros por metodo de pago y cierre con
-          arqueo ciego.
+          Caja unica del hotel: se recibe contando el efectivo, se cobra por metodo de pago y se cierra con arqueo guiado.
         </p>
       </div>
 
       {mensaje && (
         <div
+          role="status"
           className={`flex items-start gap-2 p-3 rounded-lg border text-xs ${
-            mensaje.tipo === "ok"
-              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-              : "bg-red-50 border-red-300 text-red-800"
+            mensaje.tipo === "ok" ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "bg-red-50 border-red-300 text-red-800"
           }`}
         >
           {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-          <span>{mensaje.texto}</span>
+          <span className="flex-1">{mensaje.texto}</span>
+          <button onClick={() => setMensaje(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
         </div>
+      )}
+
+      {!cargando && (
+        <PanelNotas pendientes={pendientes} turnoActualId={resumen?.turno.idTurnoCaja} esAdmin={esAdmin} onResolver={resolver} />
       )}
 
       {cargando ? (
         <p className="p-6 text-center text-slate-400 text-xs">Cargando caja...</p>
       ) : !resumen ? (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 max-w-md space-y-3">
-          <div className="text-center">
-            <Wallet size={32} className="mx-auto mb-2 text-slate-300" />
-            <h3 className="font-bold text-slate-800 text-sm">La caja esta cerrada</h3>
-            <p className="text-slate-500 text-[11px] mt-1">
-              Es una sola caja para todo el hotel: al abrirla, recepcion, cajero y administrador operan
-              sobre el mismo turno. Registra el fondo inicial en efectivo.
-            </p>
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
-              Fondo inicial (S/)
-            </label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={fondoInicial}
-              onChange={(e) => setFondoInicial(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-            />
-          </div>
-          <button
-            onClick={abrirCaja}
-            className="w-full bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold py-2.5 rounded-lg"
-          >
-            Abrir caja
-          </button>
-        </div>
+        <AperturaCard info={infoApertura} abriendo={abriendo} onAbrir={abrirCaja} />
       ) : (
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-8 space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Fondo inicial</p>
-                <p className="text-lg font-bold text-slate-900">
-                  S/ {Number(resumen.turno.fondoInicialEfectivo ?? 0).toFixed(2)}
-                </p>
+                <p className="text-lg font-bold text-slate-900">{dinero(resumen.turno.fondoInicialEfectivo)}</p>
               </div>
               <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Total cobrado</p>
-                <p className="text-lg font-bold text-emerald-800">
-                  S/ {Number(resumen.totalCobrado ?? 0).toFixed(2)}
-                </p>
+                <p className="text-lg font-bold text-emerald-800">{dinero(resumen.totalCobrado)}</p>
               </div>
               <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] text-slate-400 uppercase font-bold">Transacciones</p>
-                <p className="text-lg font-bold text-slate-900">
-                  {resumen.cantidadTransacciones}
-                </p>
+                <p className="text-lg font-bold text-slate-900">{resumen.cantidadTransacciones}</p>
               </div>
             </div>
 
@@ -208,9 +225,7 @@ export function CajaView() {
                 <span className="font-bold text-slate-700 text-xs">Cobros por metodo de pago</span>
               </div>
               {Object.keys(resumen.totalPorMetodo ?? {}).length === 0 ? (
-                <p className="p-4 text-center text-slate-400 text-xs">
-                  Aun no se han registrado cobros en este turno.
-                </p>
+                <p className="p-4 text-center text-slate-400 text-xs">Aun no se han registrado cobros en este turno.</p>
               ) : (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
@@ -223,9 +238,7 @@ export function CajaView() {
                     {Object.entries(resumen.totalPorMetodo).map(([metodo, total]) => (
                       <tr key={metodo} className="hover:bg-slate-50">
                         <td className="p-3 font-semibold text-slate-800">{metodo}</td>
-                        <td className="p-3 text-right font-bold text-slate-900">
-                          S/ {Number(total).toFixed(2)}
-                        </td>
+                        <td className="p-3 text-right font-bold text-slate-900">{dinero(total)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -233,218 +246,48 @@ export function CajaView() {
               )}
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                <LockKeyhole size={13} className="text-slate-500" /> Arqueo y cierre de caja
-              </h3>
-              {resumen.cierreCiego && (
-                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
-                  Arqueo ciego: cuenta el efectivo fisico y decláralo. El monto esperado por el
-                  sistema se revela recien al cerrar el turno.
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
-                    Efectivo contado (S/)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={arqueo.efectivo}
-                    onChange={(e) => setArqueo((a) => ({ ...a, efectivo: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
-                    Observaciones
-                  </label>
-                  <input
-                    type="text"
-                    value={arqueo.observaciones}
-                    onChange={(e) => setArqueo((a) => ({ ...a, observaciones: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={cerrarCaja}
-                className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-lg"
-              >
-                Cerrar turno
-              </button>
-            </div>
+            <Movimientos
+              movimientos={resumen.movimientos ?? []}
+              total={Number(resumen.totalMovimientos ?? 0)}
+              onCambio={cargar}
+              onError={(texto) => setMensaje({ tipo: "error", texto })}
+            />
+
+            <ArqueoRapido
+              key={`arqueo-${resumen.turno.idTurnoCaja}`}
+              arqueos={resumen.arqueos ?? []}
+              maximo={resumen.maximoArqueos ?? 5}
+              onCambio={cargar}
+              onError={(texto) => setMensaje({ tipo: "error", texto })}
+            />
+
+            {esAdmin && estadoCaja?.excedeLimite && estadoCaja.idTurnoCaja === resumen.turno.idTurnoCaja && (
+              <CierreForzado
+                idTurno={resumen.turno.idTurnoCaja}
+                horasAbierta={estadoCaja.horasAbierta ?? 0}
+                limiteHoras={estadoCaja.limiteHoras ?? 16}
+                abrio={`${resumen.turno.empleado?.nombres ?? ""} ${resumen.turno.empleado?.apellidos ?? ""}`.trim() || "otra persona"}
+                onCerrado={alForzar}
+                onError={(texto) => setMensaje({ tipo: "error", texto })}
+              />
+            )}
+
+            <CierreGuiado
+              key={resumen.turno.idTurnoCaja}
+              resumen={resumen}
+              notasSinResolver={sinResolverDelTurno}
+              onCerrado={alCerrar}
+              onError={(texto) => setMensaje({ tipo: "error", texto })}
+            />
           </div>
 
           <div className="col-span-4 space-y-4">
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                <ClipboardList size={13} className="text-slate-500" /> Bitacora de relevo
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  value={nota.categoria}
-                  onChange={(e) => setNota((n) => ({ ...n, categoria: e.target.value }))}
-                  placeholder="Categoria"
-                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                />
-                <select
-                  value={nota.prioridad}
-                  onChange={(e) => setNota((n) => ({ ...n, prioridad: e.target.value }))}
-                  className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-                >
-                  {PRIORIDADES.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                rows={2}
-                value={nota.mensaje}
-                onChange={(e) => setNota((n) => ({ ...n, mensaje: e.target.value }))}
-                placeholder="Novedad para el siguiente turno..."
-                className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              />
-              <button
-                onClick={agregarNota}
-                className="w-full bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1.5"
-              >
-                <Plus size={12} /> Agregar nota
-              </button>
-
-              <div className="space-y-2 pt-2 border-t border-slate-100">
-                {bitacora.length === 0 ? (
-                  <p className="text-center text-slate-400 text-[11px] py-2">
-                    Sin novedades registradas.
-                  </p>
-                ) : (
-                  bitacora.map((n) => (
-                    <div
-                      key={n.idBitacora}
-                      className={`rounded-lg border p-2 ${
-                        n.resuelto
-                          ? "border-slate-200 bg-slate-50 opacity-60"
-                          : "border-slate-200 bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-bold text-slate-500 uppercase">
-                          {n.categoria}
-                        </span>
-                        <span
-                          className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                            n.prioridad === "ALTA"
-                              ? "bg-red-100 text-red-700"
-                              : n.prioridad === "BAJA"
-                              ? "bg-slate-100 text-slate-600"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {n.prioridad}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-700 mt-1">{n.mensaje}</p>
-                      <button
-                        onClick={() => alternarResuelto(n)}
-                        className="text-[10px] text-emerald-700 font-semibold mt-1 hover:text-emerald-900"
-                      >
-                        {n.resuelto ? "Reabrir" : "Marcar resuelto"}
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <Bitacora notas={bitacora} onAgregar={agregarNota} onAlternar={alternarDeLaBitacora} />
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-3 border-b border-slate-100 flex items-center gap-1.5">
-          <History size={13} className="text-slate-500" />
-          <span className="font-bold text-slate-700 text-xs">Historial de cierres</span>
-        </div>
-        {historial.length === 0 ? (
-          <p className="p-4 text-center text-slate-400 text-xs">Sin turnos registrados.</p>
-        ) : (
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
-                <th className="p-3">Turno</th>
-                <th className="p-3">Abrio</th>
-                <th className="p-3">Cerro</th>
-                <th className="p-3">Apertura</th>
-                <th className="p-3">Cierre</th>
-                <th className="p-3 text-right">Esperado</th>
-                <th className="p-3 text-right">Declarado</th>
-                <th className="p-3 text-right">Diferencia</th>
-                <th className="p-3 text-center">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {historial.map((t) => {
-                const dif = Number(t.diferenciaCuadre ?? 0);
-                return (
-                  <tr key={t.idTurnoCaja} className="hover:bg-slate-50">
-                    <td className="p-3 font-bold text-slate-800">#{t.idTurnoCaja}</td>
-                    <td className="p-3 text-slate-600">
-                      {t.empleado ? `${t.empleado.nombres} ${t.empleado.apellidos}` : "—"}
-                    </td>
-                    <td className="p-3 text-slate-600">
-                      {t.empleadoCierre ? `${t.empleadoCierre.nombres} ${t.empleadoCierre.apellidos}` : "—"}
-                    </td>
-                    <td className="p-3 text-slate-400">
-                      {t.fechaApertura ? t.fechaApertura.slice(0, 16).replace("T", " ") : "—"}
-                    </td>
-                    <td className="p-3 text-slate-400">
-                      {t.fechaCierre ? t.fechaCierre.slice(0, 16).replace("T", " ") : "—"}
-                    </td>
-                    <td className="p-3 text-right text-slate-600">
-                      {t.efectivoSistemaEsperado != null
-                        ? `S/ ${Number(t.efectivoSistemaEsperado).toFixed(2)}`
-                        : "—"}
-                    </td>
-                    <td className="p-3 text-right text-slate-600">
-                      {t.efectivoRealDeclarado != null
-                        ? `S/ ${Number(t.efectivoRealDeclarado).toFixed(2)}`
-                        : "—"}
-                    </td>
-                    <td
-                      className={`p-3 text-right font-bold ${
-                        t.diferenciaCuadre == null
-                          ? "text-slate-400"
-                          : dif === 0
-                          ? "text-emerald-700"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {t.diferenciaCuadre != null ? `S/ ${dif.toFixed(2)}` : "—"}
-                    </td>
-                    <td className="p-3 text-center">
-                      <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                          t.estado === "ABIERTO"
-                            ? "bg-blue-100 text-blue-800"
-                            : t.estado === "CERRADO"
-                            ? "bg-slate-200 text-slate-700"
-                            : "bg-emerald-100 text-emerald-800"
-                        }`}
-                      >
-                        {t.estado}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <HistorialTurnos historial={historial} esAdmin={esAdmin} onCambio={cargarHistorial} />
     </div>
   );
 }

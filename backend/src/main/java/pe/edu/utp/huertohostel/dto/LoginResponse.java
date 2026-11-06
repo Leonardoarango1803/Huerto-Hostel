@@ -6,12 +6,19 @@ public class LoginResponse {
     private String username;
     private String role;
     private Integer userId;
+    /** true con una clave temporal: el front obliga a elegir una propia antes de seguir. */
+    private boolean debeCambiarPassword;
 
     public LoginResponse(String token, String username, String role, Integer userId) {
+        this(token, username, role, userId, false);
+    }
+
+    public LoginResponse(String token, String username, String role, Integer userId, boolean debeCambiarPassword) {
         this.token = token;
         this.username = username;
         this.role = role;
         this.userId = userId;
+        this.debeCambiarPassword = debeCambiarPassword;
     }
 
     public String getToken() {
@@ -44,5 +51,13 @@ public class LoginResponse {
 
     public void setUserId(Integer userId) {
         this.userId = userId;
+    }
+
+    public boolean isDebeCambiarPassword() {
+        return debeCambiarPassword;
+    }
+
+    public void setDebeCambiarPassword(boolean debeCambiarPassword) {
+        this.debeCambiarPassword = debeCambiarPassword;
     }
 }

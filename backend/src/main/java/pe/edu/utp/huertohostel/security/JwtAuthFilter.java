@@ -26,6 +26,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             "/swagger-ui.html"
     );
 
+    private static final String RUTA_CAMBIO_CLAVE = "/api/v1/auth/cambiar-password";
+
     private final JwtService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -62,7 +64,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (jwtService.isTokenValid(token, userDetails)) {
+                boolean selloVigente = userDetails instanceof CustomUserDetails cud
+                        && cud.getSello() == jwtService.extractSello(token);
+                if (jwtService.isTokenValid(token, userDetails) && selloVigente) {
+                    // Con la clave temporal solo se puede cambiar la clave: nada mas hasta elegir la propia.
+                    if (((CustomUserDetails) userDetails).isDebeCambiarPassword()
+                            && !request.getServletPath().equals(RUTA_CAMBIO_CLAVE)) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"error\":\"Cambio de contrasena requerido\","
+                                + "\"message\":\"Debes cambiar tu contrasena temporal antes de continuar.\"}");
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,

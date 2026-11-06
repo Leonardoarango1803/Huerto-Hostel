@@ -15,6 +15,7 @@ export const TIPO_LABEL: Record<TipoMovInventario, string> = {
   SALIDA_CONSUMO: "Consumo",
   AJUSTE_MERMA: "Merma",
   AJUSTE_INGRESO: "Sobrante",
+  DEVOLUCION_CONSUMO: "Devolución (consumo anulado)",
 };
 
 /** true si el movimiento suma al almacen. */
@@ -23,6 +24,7 @@ export const SUMA_STOCK: Record<TipoMovInventario, boolean> = {
   SALIDA_CONSUMO: false,
   AJUSTE_MERMA: false,
   AJUSTE_INGRESO: true,
+  DEVOLUCION_CONSUMO: true,
 };
 
 export type Mensaje = { tipo: "ok" | "error"; texto: string } | null;

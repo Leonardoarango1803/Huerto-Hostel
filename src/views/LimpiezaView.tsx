@@ -8,22 +8,18 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { limpiezaApi } from "../api/limpieza";
+import { PersonalDeTurno } from "../components/PersonalDeTurno";
 import { incidenciasApi } from "../api/incidencias";
+import { mensajeDeError } from "../api/errores";
+import { TIPOS_INCIDENCIA } from "../utils/incidencias";
 import type { EstadoTareaLimpieza, TareaLimpieza, TipoIncidencia } from "../api/types";
 
 const ORIGEN_LABEL: Record<string, string> = {
   CHECK_OUT: "Salida de huesped",
   SOLICITUD_HUESPED: "Pedido del huesped",
   PROGRAMADO: "Programada",
+  POST_MANTENIMIENTO: "Tras una reparación",
 };
-
-const TIPOS_INCIDENCIA: { value: TipoIncidencia; label: string }[] = [
-  { value: "GRIFERIA_DUCHA", label: "Griferia / ducha" },
-  { value: "AIRE_ACONDICIONADO", label: "Aire acondicionado" },
-  { value: "ELECTRICO_FOCO", label: "Electrico / foco" },
-  { value: "CERRADURA_VENTANA", label: "Cerradura / ventana" },
-  { value: "OTRO", label: "Otro" },
-];
 
 export function LimpiezaView() {
   const [tareas, setTareas] = useState<TareaLimpieza[]>([]);
@@ -34,7 +30,9 @@ export function LimpiezaView() {
   const [formIncidencia, setFormIncidencia] = useState<{
     tipoIncidencia: TipoIncidencia;
     descripcion: string;
-  }>({ tipoIncidencia: "OTRO", descripcion: "" });
+    /** null = aun no decidio: la decision es obligatoria. */
+    bloquear: boolean | null;
+  }>({ tipoIncidencia: "OTRO", descripcion: "", bloquear: null });
 
   const cargar = useCallback(async () => {
     try {
@@ -74,22 +72,29 @@ export function LimpiezaView() {
       setMensaje({ tipo: "error", texto: "Describe la incidencia antes de reportarla." });
       return;
     }
+    if (formIncidencia.bloquear === null) {
+      setMensaje({ tipo: "error", texto: "Indica si la avería impide usar la habitación: bloquearla o dejarla disponible." });
+      return;
+    }
     try {
-      await incidenciasApi.reportar({
+      const r = await incidenciasApi.reportar({
         idHabitacion,
         tipoIncidencia: formIncidencia.tipoIncidencia,
         descripcion: formIncidencia.descripcion,
+        bloquearHabitacion: formIncidencia.bloquear,
       });
-      setMensaje({ tipo: "ok", texto: "Incidencia reportada a mantenimiento." });
+      setMensaje({ tipo: "ok", texto: r.mensaje });
       setReportando(null);
-      setFormIncidencia({ tipoIncidencia: "OTRO", descripcion: "" });
-    } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo reportar la incidencia." });
+      setFormIncidencia({ tipoIncidencia: "OTRO", descripcion: "", bloquear: null });
+      cargar();
+    } catch (e) {
+      setMensaje({ tipo: "error", texto: mensajeDeError(e, "No se pudo reportar la incidencia.") });
     }
   };
 
   return (
     <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-4 sm:p-6 min-h-screen">
+      <PersonalDeTurno rol="HOUSEKEEPING" titulo="Personal de limpieza de turno ahora" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] text-slate-400 uppercase font-semibold">
@@ -236,6 +241,19 @@ export function LimpiezaView() {
                     placeholder="Describe el problema..."
                     className="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   />
+                  <div className="space-y-1" role="radiogroup" aria-label="¿Impide usar la habitación?">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">¿Impide usar la habitación?</p>
+                    <label className="flex items-start gap-2 text-[11px] text-slate-700">
+                      <input type="radio" name={`impacto-${t.idTarea}`} checked={formIncidencia.bloquear === true}
+                        onChange={() => setFormIncidencia((f) => ({ ...f, bloquear: true }))} aria-label="Sí, bloquear la habitación" className="mt-0.5" />
+                      <span><strong>Sí:</strong> bloquear (no se vende hasta que se repare)</span>
+                    </label>
+                    <label className="flex items-start gap-2 text-[11px] text-slate-700">
+                      <input type="radio" name={`impacto-${t.idTarea}`} checked={formIncidencia.bloquear === false}
+                        onChange={() => setFormIncidencia((f) => ({ ...f, bloquear: false }))} aria-label="No, dejarla disponible" className="mt-0.5" />
+                      <span><strong>No:</strong> detalle menor, sigue disponible</span>
+                    </label>
+                  </div>
                   <button
                     onClick={() => reportarIncidencia(t)}
                     className="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 rounded-lg"

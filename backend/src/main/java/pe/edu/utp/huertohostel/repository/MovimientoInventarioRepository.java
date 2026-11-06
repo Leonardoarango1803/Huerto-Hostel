@@ -20,6 +20,9 @@ public interface MovimientoInventarioRepository
             """)
     List<Object[]> totalesPorInsumoYTipo(LocalDateTime desde, LocalDateTime hasta);
 
+    /** Movimientos de un tipo con una referencia (por ejemplo los que descontaron un consumo). */
+    List<MovimientoInventario> findByReferenciaOrigenAndTipoMovimiento(String referenciaOrigen, pe.edu.utp.huertohostel.entity.TipoMovInventario tipo);
+
     /** Movimientos con faltante desde una fecha (el almacen no alcanzo para lo que se vendio). */
     @Query("SELECT COUNT(m) FROM MovimientoInventario m WHERE m.cantidadFaltante > 0 AND m.fechaHora >= :desde")
     long countConFaltanteDesde(LocalDateTime desde);

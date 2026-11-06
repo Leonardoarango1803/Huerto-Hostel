@@ -12,5 +12,10 @@ public interface SolicitudServicioRepository extends JpaRepository<SolicitudServ
 
     List<SolicitudServicio> findByEstadoOrderByFechaSolicitudAsc(EstadoSolicitud estado);
 
+    /** Solicitudes de la estadia aun sin atender (y, aparte, las cobrables: su monto todavia no esta en el folio). */
+    long countByEstadiaIdEstadiaAndEstadoIn(Integer idEstadia, java.util.Collection<EstadoSolicitud> estados);
+
+    long countByEstadiaIdEstadiaAndEstadoInAndEsCobrableTrue(Integer idEstadia, java.util.Collection<EstadoSolicitud> estados);
+
     List<SolicitudServicio> findByEstadoInOrderByFechaSolicitudAsc(List<EstadoSolicitud> estados);
 }

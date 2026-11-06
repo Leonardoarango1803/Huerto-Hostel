@@ -16,7 +16,9 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Una clave equivocada en el propio login tambien es 401: ahi no hay sesion que cerrar y recargar borraria el mensaje.
+    const esLogin = String(error.config?.url ?? "").includes("/auth/login");
+    if (error.response?.status === 401 && !esLogin) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       window.location.href = "/login";
