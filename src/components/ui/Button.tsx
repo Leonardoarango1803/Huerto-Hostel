@@ -1,7 +1,8 @@
 import React, { type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost" | "success";
+/** "accent" (terracota) se reserva para la accion principal de cara al huesped: reservar, pagar. */
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "success" | "accent";
 type Size = "sm" | "md" | "lg";
 
 interface ButtonProps {
@@ -19,17 +20,18 @@ interface ButtonProps {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary: "bg-[#1b4332] hover:bg-[#143427] text-white shadow-sm",
-  secondary: "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50",
-  danger: "bg-red-600 hover:bg-red-700 text-white shadow-sm",
-  ghost: "text-slate-600 hover:bg-slate-100",
-  success: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm",
+  primary: "bg-huerto hover:bg-huerto-oscuro text-white border border-huerto",
+  secondary: "bg-white border border-slate-300 text-slate-900 hover:bg-slate-50 hover:border-slate-400",
+  danger: "bg-red-700 hover:bg-red-800 text-white border border-red-700",
+  ghost: "text-slate-700 hover:bg-slate-100 border border-transparent",
+  success: "bg-emerald-700 hover:bg-emerald-900 text-white border border-emerald-700",
+  accent: "bg-terracota hover:bg-terracota-oscuro text-white border border-terracota",
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "text-[11px] px-2.5 py-1 gap-1",
-  md: "text-xs px-3 py-1.5 gap-1.5",
-  lg: "text-sm px-4 py-2 gap-2",
+  sm: "text-xs px-3 min-h-[34px] gap-1.5 rounded-lg",
+  md: "text-sm px-4 min-h-[40px] gap-2 rounded-xl",
+  lg: "text-[15px] px-5 min-h-[48px] gap-2 rounded-xl",
 };
 
 export function Button({
@@ -51,9 +53,9 @@ export function Button({
       disabled={disabled || loading}
       title={title}
       onClick={onClick}
-      className={`inline-flex items-center font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
     >
-      {loading ? <Loader2 size={12} className="animate-spin" /> : icon}
+      {loading ? <Loader2 size={14} className="animate-spin" /> : icon}
       {children}
       {!loading && iconRight}
     </button>

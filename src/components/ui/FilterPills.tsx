@@ -54,10 +54,11 @@ export function FilterPills({
         <button
           key={opt.value}
           onClick={() => handleClick(opt.value)}
-          className={`text-[11px] font-semibold px-3 py-1 rounded-full border transition-colors ${
+          aria-pressed={isActive(opt.value)}
+          className={`text-[13px] font-semibold px-3.5 min-h-[36px] rounded-full border transition-colors ${
             isActive(opt.value)
-              ? "bg-[#1b4332] text-white border-[#1b4332]"
-              : "bg-white text-slate-600 border-slate-300 hover:border-[#1b4332] hover:text-[#1b4332]"
+              ? "bg-huerto text-white border-huerto"
+              : "bg-white text-slate-800 border-slate-300 hover:border-huerto hover:text-huerto"
           }`}
         >
           {opt.label}

@@ -63,6 +63,34 @@ public class GlobalExceptionHandler {
                 .body(buildResponse(HttpStatus.CONFLICT, "Operacion no permitida", ex.getMessage()));
     }
 
+    /** La pasarela no aprobo el cobro de la reserva web: nada quedo registrado. */
+    @ExceptionHandler(PagoRechazadoException.class)
+    public ResponseEntity<Map<String, Object>> handlePagoRechazado(PagoRechazadoException ex) {
+        Map<String, Object> body = buildResponse(HttpStatus.PAYMENT_REQUIRED, "Pago rechazado", ex.getMessage());
+        body.put("codigo", "PAGO_RECHAZADO");
+        body.put("codigoOperacion", ex.getCodigoOperacion());
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED).body(body);
+    }
+
+    /** Demasiados intentos fallidos de login. Retry-After dice en cuantos segundos se puede volver a probar. */
+    @ExceptionHandler(AccesoBloqueadoException.class)
+    public ResponseEntity<Map<String, Object>> handleAccesoBloqueado(AccesoBloqueadoException ex) {
+        Map<String, Object> body = buildResponse(HttpStatus.TOO_MANY_REQUESTS, "Acceso bloqueado", ex.getMessage());
+        body.put("codigo", "ACCESO_BLOQUEADO");
+        body.put("reintentarEnSegundos", ex.getSegundosRestantes());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getSegundosRestantes()))
+                .body(body);
+    }
+
+    /** Cuenta de huesped en el portal administrativo, o del personal en la web. */
+    @ExceptionHandler(SitioIncorrectoException.class)
+    public ResponseEntity<Map<String, Object>> handleSitioIncorrecto(SitioIncorrectoException ex) {
+        Map<String, Object> body = buildResponse(HttpStatus.FORBIDDEN, "Sitio incorrecto", ex.getMessage());
+        body.put("codigo", "SITIO_INCORRECTO");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity

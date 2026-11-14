@@ -39,9 +39,9 @@ export function IngresosTab({ periodo, version }: { periodo: Periodo; version: n
             <GraficoSerie
               datos={d.serie.map((p) => ({ x: p.fecha, alojamiento: p.alojamiento, consumos: p.consumos, cobrado: p.cobrado }))}
               series={[
-                { clave: "alojamiento", nombre: "Alojamiento", color: "#1b4332", apilar: true },
-                { clave: "consumos", nombre: "Consumos", color: "#f59e0b", apilar: true },
-                { clave: "cobrado", nombre: "Cobrado", color: "#3b82f6", tipo: "linea" },
+                { clave: "alojamiento", nombre: "Alojamiento", color: "#2D5A27", apilar: true },
+                { clave: "consumos", nombre: "Consumos", color: "#C9962B", apilar: true },
+                { clave: "cobrado", nombre: "Cobrado", color: "#3B6FB6", tipo: "linea" },
               ]}
               alto={260}
             />

@@ -54,7 +54,7 @@ function EditarTurnoModal({ turno, onCerrar, onGuardado }: { turno: TurnoLaboral
       <FormField label="Descripción">
         <Textarea rows={2} maxLength={200} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} aria-label="Descripción del turno" />
       </FormField>
-      <label className="flex items-center gap-2 text-[11px] text-slate-700">
+      <label className="flex items-center gap-2 text-xs text-slate-700">
         <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} aria-label="Turno activo" />
         Turno activo (un turno con empleados asignados no se puede desactivar)
       </label>
@@ -109,7 +109,7 @@ export function Planificacion({ soloLectura }: { soloLectura: boolean }) {
       {exito && <AlertBanner key={exito} type="success" message={exito} />}
       {error && <AlertBanner type="error" message={error} />}
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="Hora actual" value={datos.ahora} subtitle={enCurso ? `Turno ${enCurso.nombre} en curso` : "Ningún turno en curso"} color="blue" />
         <KpiCard title="De turno ahora" value={datos.enServicio.length} subtitle="empleados activos" color="emerald" />
         <KpiCard title="Asignados a turnos" value={asignados} subtitle={`en ${activos.length} turnos activos`} color="slate" />
@@ -128,14 +128,14 @@ export function Planificacion({ soloLectura }: { soloLectura: boolean }) {
                     {t.nombre} {t.enCurso && <Badge variant="emerald" label="En curso ahora" className="ml-1" />}
                     {!t.estado && <Badge variant="slate" label="Desactivado" className="ml-1" />}
                   </h2>
-                  <p className="text-[11px] text-slate-600">{t.horaInicio} – {t.horaFin}{t.cruzaMedianoche ? " (cruza la medianoche)" : ""}</p>
+                  <p className="text-xs text-slate-600">{t.horaInicio} – {t.horaFin}{t.cruzaMedianoche ? " (cruza la medianoche)" : ""}</p>
                 </div>
               </div>
               {!soloLectura && (
                 <Button size="sm" variant="secondary" icon={<Pencil size={11} />} onClick={() => setEditando(t)}>Editar</Button>
               )}
             </div>
-            {t.descripcion && <p className="text-[11px] text-slate-500 italic">{t.descripcion}</p>}
+            {t.descripcion && <p className="text-xs text-slate-500 italic">{t.descripcion}</p>}
 
             <div className="flex flex-wrap gap-1">
               {ROLES_COBERTURA.map((r) => {
@@ -143,7 +143,7 @@ export function Planificacion({ soloLectura }: { soloLectura: boolean }) {
                 const faltaRecepcion = r === "RECEPCIONISTA" && n === 0 && t.estado;
                 return (
                   <span key={r} title={faltaRecepcion ? "Este turno no tiene recepcionista" : undefined}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border ${faltaRecepcion ? "bg-red-50 border-red-300 text-red-700 font-semibold" : n ? "bg-white/70 border-slate-200 text-slate-700" : "bg-white/40 border-slate-200 text-slate-400"}`}>
+                    className={`text-[12px] px-1.5 py-0.5 rounded border ${faltaRecepcion ? "bg-red-50 border-red-300 text-red-700 font-semibold" : n ? "bg-white/70 border-slate-200 text-slate-700" : "bg-white/40 border-slate-200 text-slate-400"}`}>
                     {ETIQUETA_ROL[r]}: {n}
                   </span>
                 );
@@ -151,21 +151,21 @@ export function Planificacion({ soloLectura }: { soloLectura: boolean }) {
             </div>
 
             <div className="space-y-1">
-              <div className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold uppercase">
+              <div className="flex items-center gap-1 text-[12px] text-slate-500 font-semibold uppercase">
                 <Users size={10} /> {t.empleados.length} empleado{t.empleados.length !== 1 ? "s" : ""}
               </div>
               {t.empleados.length === 0 ? (
-                <p className="text-[11px] text-slate-400 italic">Sin empleados asignados</p>
+                <p className="text-xs text-slate-400 italic">Sin empleados asignados</p>
               ) : (
                 <ul className="space-y-1">
                   {t.empleados.map((e) => (
                     <li key={e.idEmpleado} className="flex items-center justify-between gap-2 bg-white/60 rounded-lg px-2 py-1">
                       <span className="font-medium">
                         {e.nombres} {e.apellidos}
-                        {e.rol && <span className="ml-1.5 text-[10px] text-slate-400">{ETIQUETA_ROL[e.rol] ?? e.rol}</span>}
+                        {e.rol && <span className="ml-1.5 text-[12px] text-slate-400">{ETIQUETA_ROL[e.rol] ?? e.rol}</span>}
                       </span>
                       {!soloLectura && (
-                        <Select value={t.idTurno} aria-label={`Mover a ${e.nombres} de turno`} className="!w-auto !py-0.5 !text-[10px]"
+                        <Select value={t.idTurno} aria-label={`Mover a ${e.nombres} de turno`} className="!w-auto !py-0.5 !text-[12px]"
                           onChange={(ev) => mover(e.idEmpleado, Number(ev.target.value))}>
                           {datos.turnos.filter((o) => o.estado).map((o) => <option key={o.idTurno} value={o.idTurno}>{o.nombre}</option>)}
                         </Select>

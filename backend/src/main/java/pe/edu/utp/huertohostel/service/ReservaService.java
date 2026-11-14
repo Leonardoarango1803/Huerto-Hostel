@@ -25,6 +25,7 @@ import pe.edu.utp.huertohostel.repository.ReservaRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -44,6 +45,7 @@ public class ReservaService {
     private final CajaService cajaService;
     private final LiberacionReservasService liberacionReservasService;
     private final BloqueoPorIncidencia bloqueoPorIncidencia;
+    private final Clock clock;
     private final int adelantoMinimoPorcentaje;
 
     public ReservaService(ReservaRepository reservaRepository,
@@ -54,8 +56,10 @@ public class ReservaService {
                           CajaService cajaService,
                           LiberacionReservasService liberacionReservasService,
                           BloqueoPorIncidencia bloqueoPorIncidencia,
+                          Clock clock,
                           @Value("${app.reservas.adelanto-minimo-porcentaje:0}") int adelantoMinimoPorcentaje) {
         this.bloqueoPorIncidencia = bloqueoPorIncidencia;
+        this.clock = clock;
         this.reservaRepository = reservaRepository;
         this.habitacionRepository = habitacionRepository;
         this.estadiaRepository = estadiaRepository;
@@ -116,8 +120,14 @@ public class ReservaService {
 
         Reserva guardada = reservaRepository.save(reserva);
 
-        habitacion.setEstadoOperativo(EstadoOperativoHab.RESERVADO);
-        habitacionRepository.save(habitacion);
+        // RESERVADO significa "hoy llega alguien": solo se marca si la llegada es hoy y la habitacion esta libre.
+        // Una reserva para otro dia (por ejemplo desde la web, con meses de anticipacion) no la bloquea desde ya;
+        // la tarea periodica de LiberacionReservasService la marca al llegar su dia. Tampoco se le pisa el
+        // estado real si hay un huesped adentro o se esta limpiando.
+        if (habitacion.getEstadoOperativo() == EstadoOperativoHab.DISPONIBLE && !checkin.isAfter(LocalDate.now(clock))) {
+            habitacion.setEstadoOperativo(EstadoOperativoHab.RESERVADO);
+            habitacionRepository.save(habitacion);
+        }
 
         return guardada;
     }
@@ -216,13 +226,22 @@ public class ReservaService {
         return estadiaRepository.save(estadia);
     }
 
+    /**
+     * "Liberar" desde Habitaciones: cancela la reserva que tiene la habitacion RESERVADA hoy (llegada hoy o
+     * antes, sin ingresar). Las reservas para otros dias se respetan: antes se cancelaban todas, incluidas
+     * reservas web pagadas con meses de anticipacion.
+     */
     @Transactional
     public void cancelarReservaPorHabitacion(@NonNull Integer idHabitacion) {
+        LocalDate hoy = LocalDate.now(clock);
         List<Reserva> activas = reservaRepository.findByHabitacionIdHabitacionAndEstadoReservaIn(
                 idHabitacion,
                 Arrays.asList(EstadoReserva.PENDIENTE_ADELANTO, EstadoReserva.CONFIRMADA)
         );
         for (Reserva r : activas) {
+            if (r.getFechaCheckinPrevisto() != null && r.getFechaCheckinPrevisto().isAfter(hoy)) {
+                continue; // reserva para otro dia: no es la que bloquea hoy
+            }
             r.setEstadoReserva(EstadoReserva.CANCELADA);
             reservaRepository.save(r);
         }

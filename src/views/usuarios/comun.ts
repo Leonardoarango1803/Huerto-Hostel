@@ -28,6 +28,7 @@ export const ETIQUETA_ACCION: Record<string, string> = {
   TURNO_EDITADO: "Horario editado",
   ACCESO_CREADO: "Acceso creado",
   PASSWORD_RESTABLECIDA: "Contraseña restablecida",
+  LOGIN_BLOQUEADO: "Cuenta bloqueada por intentos fallidos",
   CHECKOUT_NOCHES_AJUSTADAS: "Check-out: noches ajustadas",
   CHECKOUT_CON_DEUDA: "Check-out con saldo pendiente",
 };
@@ -52,6 +53,13 @@ export function fechaHora(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("es-PE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export function horaCorta(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function nombreCompleto(e: { nombres: string; apellidos: string }): string {

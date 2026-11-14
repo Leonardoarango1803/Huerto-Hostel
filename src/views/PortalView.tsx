@@ -6,7 +6,9 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
+  CalendarDays,
 } from "lucide-react";
+import { MisReservasPortal } from "./web/MisReservasPortal";
 import api from "../api/axiosConfig";
 import { portalApi } from "../api/portal";
 import type {
@@ -16,7 +18,7 @@ import type {
   SolicitudServicio,
 } from "../api/types";
 
-type Tab = "folio" | "consumos" | "solicitudes";
+type Tab = "folio" | "consumos" | "solicitudes" | "reservas";
 
 const ESTADO_BADGE: Record<string, string> = {
   PENDIENTE: "bg-amber-100 text-amber-800",
@@ -86,29 +88,34 @@ export function PortalView() {
   };
 
   if (cargando) {
-    return <p className="p-6 text-center text-slate-400 text-xs">Cargando tu estadia...</p>;
+    return <p className="p-6 text-center text-slate-500 text-sm">Cargando tu estadía...</p>;
   }
 
   if (sinEstadia) {
+    // Antes de llegar (o despues de salir) el portal muestra sus reservas en vez de quedar vacio.
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-10 text-center text-slate-400 max-w-md mx-auto">
-        <Receipt size={32} className="mx-auto mb-2 opacity-30" />
-        <p className="text-xs">
-          No tienes una estadia en curso. El portal se activa durante tu estancia.
-        </p>
+      <div className="flex flex-col gap-6 max-w-[1080px]">
+        <div>
+          <p className="text-[12px] text-slate-500 uppercase font-semibold tracking-wider">Portal del huésped</p>
+          <h1 className="text-xl text-slate-900 mt-0.5">Hola de nuevo</h1>
+          <p className="text-slate-600 text-sm mt-1">
+            Cuando hagas tu check-in, aquí verás tu cuenta y podrás pedir servicios. Mientras tanto, revisa tus reservas.
+          </p>
+        </div>
+        <MisReservasPortal />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-4 sm:p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-sm max-w-[1080px]">
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-semibold">Portal del huesped</p>
-        <h1 className="text-xl font-bold text-slate-900 mt-0.5">
-          Habitacion {folio?.habitacion ?? "—"}
+        <p className="text-[12px] text-slate-500 uppercase font-semibold tracking-wider">Portal del huésped</p>
+        <h1 className="text-xl text-slate-900 mt-0.5">
+          Habitación {folio?.habitacion ?? "—"}
         </h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
-          Consulta tu cuenta, revisa tus consumos y pide servicios desde aqui.
+        <p className="text-slate-600 text-sm mt-0.5">
+          Consulta tu cuenta, revisa tus consumos y pide servicios desde aquí.
         </p>
       </div>
 
@@ -130,6 +137,7 @@ export function PortalView() {
           { id: "folio", label: "Mi cuenta", icon: Receipt },
           { id: "consumos", label: "Consumos", icon: Coffee },
           { id: "solicitudes", label: "Servicios", icon: ConciergeBell },
+          { id: "reservas", label: "Mis reservas", icon: CalendarDays },
         ] as const).map((t) => {
           const Icon = t.icon;
           return (
@@ -157,7 +165,7 @@ export function PortalView() {
                 : "bg-amber-50 border-amber-300"
             }`}
           >
-            <p className="text-[10px] font-bold uppercase text-slate-500">Saldo pendiente</p>
+            <p className="text-[12px] font-bold uppercase text-slate-500">Saldo pendiente</p>
             <p
               className={`text-3xl font-bold ${
                 folio.saldoPendiente <= 0 ? "text-emerald-700" : "text-amber-800"
@@ -165,12 +173,12 @@ export function PortalView() {
             >
               S/ {Math.abs(Number(folio.saldoPendiente ?? 0)).toFixed(2)}
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">
+            <p className="text-[12px] text-slate-500 mt-0.5">
               {folio.saldoPendiente <= 0 ? "Tu cuenta esta al dia" : "Por pagar al check-out"}
             </p>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] divide-y divide-slate-100">
             {[
               { label: "Alojamiento", value: folio.totalAlojamiento },
               { label: "Consumos", value: folio.totalConsumos },
@@ -185,7 +193,7 @@ export function PortalView() {
             ))}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 text-[11px] text-slate-500 space-y-1">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] p-3 text-xs text-slate-500 space-y-1">
             <p>
               Check-in:{" "}
               {folio.fechaCheckin ? folio.fechaCheckin.slice(0, 16).replace("T", " ") : "—"}
@@ -196,7 +204,7 @@ export function PortalView() {
       )}
 
       {tab === "consumos" && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-lg">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden max-w-lg">
           {consumos.length === 0 ? (
             <p className="p-6 text-center text-slate-400 text-xs">
               Todavia no tienes consumos registrados.
@@ -209,7 +217,7 @@ export function PortalView() {
                     <p className="font-semibold text-slate-800">
                       {c.cantidad}x {c.producto?.nombre ?? "—"}
                     </p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[12px] text-slate-400">
                       {c.fechaRegistro ? c.fechaRegistro.slice(0, 16).replace("T", " ") : "—"}
                     </p>
                   </div>
@@ -223,9 +231,11 @@ export function PortalView() {
         </div>
       )}
 
+      {tab === "reservas" && <MisReservasPortal />}
+
       {tab === "solicitudes" && (
         <div className="space-y-4 max-w-lg">
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+          <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
             <h3 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2">
               Pedir un servicio
             </h3>
@@ -258,19 +268,19 @@ export function PortalView() {
               />
             </div>
             {form.idProducto && (
-              <p className="text-[10px] text-amber-700 bg-amber-50 rounded px-2 py-1.5">
+              <p className="text-[12px] text-amber-700 bg-amber-50 rounded px-2 py-1.5">
                 Al elegir un producto, el importe se cargara a tu cuenta.
               </p>
             )}
             <button
               onClick={enviarSolicitud}
-              className="w-full bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+              className="w-full bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5"
             >
               <Plus size={13} /> Enviar solicitud
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
             <div className="p-3 border-b border-slate-100">
               <span className="font-bold text-slate-700 text-xs">
                 Mis solicitudes ({solicitudes.length})
@@ -285,14 +295,14 @@ export function PortalView() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-slate-700 flex-1">{s.descripcion}</p>
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                        className={`text-[11px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
                           ESTADO_BADGE[s.estado] ?? "bg-slate-100 text-slate-600"
                         }`}
                       >
                         {s.estado}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[12px] text-slate-400 mt-0.5">
                       {s.fechaSolicitud
                         ? s.fechaSolicitud.slice(0, 16).replace("T", " ")
                         : "—"}

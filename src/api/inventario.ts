@@ -31,6 +31,20 @@ export const inventarioApi = {
   actualizarInsumo: (id: number, data: Partial<Insumo>) =>
     api.put<Insumo>(`/api/v1/inventario/insumos/${id}`, data).then((r) => r.data),
 
+  /** Para cada insumo (id), los productos activos que lo usan en su receta; los que faltan no se pueden vender. */
+  usoInsumos: () =>
+    api.get<Record<string, string[]>>("/api/v1/inventario/insumos/uso").then((r) => r.data),
+
+  /** Atajo: crea el producto de venta y su receta (este insumo, `cantidad` por venta) en un solo paso. */
+  venderInsumo: (
+    idInsumo: number,
+    data: { nombre?: string; categoria: "COCINA" | "BAR" | "DIRECTO"; precioVenta: number; cantidad: number }
+  ) =>
+    api
+      .post<{ idProducto: number; nombre: string; precioVenta: number }>(
+        `/api/v1/inventario/insumos/${idInsumo}/vender`, data)
+      .then((r) => r.data),
+
   resumenRecetas: () =>
     api.get<ResumenReceta[]>("/api/v1/inventario/recetas").then((r) => r.data),
 

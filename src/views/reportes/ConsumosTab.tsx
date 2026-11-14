@@ -39,7 +39,7 @@ export function ConsumosTab({ periodo, version }: { periodo: Periodo; version: n
           <div className="grid grid-cols-3 gap-4">
             <Seccion titulo="Venta por dia (S/)" className="col-span-2">
               <GraficoSerie datos={d.serie.map((p) => ({ x: p.fecha, venta: p.valor }))}
-                series={[{ clave: "venta", nombre: "Venta", color: "#f59e0b" }]} />
+                series={[{ clave: "venta", nombre: "Venta", color: "#C9962B" }]} />
             </Seccion>
             <Seccion titulo="Por area">
               <GraficoTorta datos={d.porCategoria.map((x) => ({ nombre: etiqueta(x.clave), valor: x.monto }))} />

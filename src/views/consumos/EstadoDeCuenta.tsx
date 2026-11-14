@@ -13,18 +13,18 @@ export function EstadoDeCuenta({ cuenta, onIrAlCheckout }: { cuenta: Cuenta | nu
     { titulo: "Saldo por cobrar", valor: soles(cuenta.saldoPendiente), destacado: true, color: cuenta.saldoPendiente > 0 ? "text-amber-700" : "text-emerald-700" },
   ];
   return (
-    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4" aria-label="Estado de cuenta de la estadía">
-      <div className="grid grid-cols-4 gap-4 flex-1">
+    <div className="bg-white p-3 rounded-2xl border border-[#EFE6D6] flex items-center gap-4" aria-label="Estado de cuenta de la estadía">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
         {celdas.map((c) => (
           <div key={c.titulo}>
-            <p className="text-[10px] text-slate-400 uppercase font-bold">{c.titulo}</p>
+            <p className="text-[12px] text-slate-400 uppercase font-bold">{c.titulo}</p>
             <p className={`${c.destacado ? "text-lg" : "text-sm"} font-bold ${c.color ?? "text-slate-900"}`}>{c.valor}</p>
           </div>
         ))}
       </div>
       {onIrAlCheckout && (
         <button onClick={onIrAlCheckout}
-          className="text-[11px] font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 whitespace-nowrap">
+          className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 whitespace-nowrap">
           Ir al check-out <ArrowRight size={12} />
         </button>
       )}

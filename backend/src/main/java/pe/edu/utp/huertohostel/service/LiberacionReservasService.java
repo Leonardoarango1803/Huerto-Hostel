@@ -118,7 +118,8 @@ public class LiberacionReservasService {
 
     int aplicar(LocalDate hoy) {
         int liberadas = 0;
-        for (Reserva reserva : reservaRepository.findByEstadoReservaIn(ACTIVAS)) {
+        List<Reserva> activas = reservaRepository.findByEstadoReservaIn(ACTIVAS);
+        for (Reserva reserva : activas) {
             if (!debeLiberarse(reserva, hoy)) {
                 continue;
             }
@@ -129,7 +130,58 @@ public class LiberacionReservasService {
             liberar(reserva, hoy);
             liberadas++;
         }
+        sincronizarReservadas(activas, hoy);
         return liberadas;
+    }
+
+    /**
+     * RESERVADO significa "hoy llega alguien" (llegada hoy o antes y todavia sin ingresar):
+     * <ul>
+     *   <li>una habitacion DISPONIBLE con una reserva activa que llega hoy pasa a RESERVADO;</li>
+     *   <li>una habitacion RESERVADO sin ninguna reserva activa que llegue hoy vuelve a DISPONIBLE (o a
+     *   MANTENIMIENTO si una incidencia la bloquea). Corrige las que se marcaron al reservar con meses de
+     *   anticipacion, como hacia el sistema antes.</li>
+     * </ul>
+     * Nunca toca una habitacion ocupada, en limpieza o en mantenimiento. Reutiliza la lista ya leida.
+     */
+    void sincronizarReservadas(List<Reserva> activas, LocalDate hoy) {
+        java.util.Set<Integer> llegaAlguien = new java.util.HashSet<>();
+        java.util.Map<Integer, Habitacion> porMarcar = new java.util.HashMap<>();
+        for (Reserva r : activas) {
+            Habitacion h = r.getHabitacion();
+            if (h == null || !ACTIVAS.contains(r.getEstadoReserva()) || !llegaHoyOAntes(r, hoy)) {
+                continue; // ya liberada en esta corrida, sin habitacion o para otro dia
+            }
+            llegaAlguien.add(h.getIdHabitacion());
+            if (h.getEstadoOperativo() == EstadoOperativoHab.DISPONIBLE) {
+                porMarcar.put(h.getIdHabitacion(), h);
+            }
+        }
+        for (Reserva r : activas) {
+            Habitacion h = r.getHabitacion();
+            if (h == null || !porMarcar.containsKey(h.getIdHabitacion()) || !ACTIVAS.contains(r.getEstadoReserva())
+                    || !llegaHoyOAntes(r, hoy)) {
+                continue;
+            }
+            // Una reserva con estado atrasado que en realidad ya ingreso no debe bloquear la habitacion.
+            if (estadiaRepository.findByReservaIdReserva(r.getIdReserva()).isPresent()) {
+                continue;
+            }
+            Habitacion marcar = porMarcar.remove(h.getIdHabitacion());
+            marcar.setEstadoOperativo(EstadoOperativoHab.RESERVADO);
+            habitacionRepository.save(marcar);
+        }
+        for (Habitacion h : habitacionRepository.findByEstadoOperativo(EstadoOperativoHab.RESERVADO)) {
+            if (!llegaAlguien.contains(h.getIdHabitacion())) {
+                h.setEstadoOperativo(bloqueoPorIncidencia.estadoAlLiberar(h, EstadoOperativoHab.DISPONIBLE));
+                habitacionRepository.save(h);
+            }
+        }
+    }
+
+    /** La reserva ocupa la habitacion hoy: su llegada es hoy o ya paso (y sigue activa). */
+    static boolean llegaHoyOAntes(Reserva reserva, LocalDate hoy) {
+        return reserva.getFechaCheckinPrevisto() != null && !reserva.getFechaCheckinPrevisto().isAfter(hoy);
     }
 
     /** La regla, sin tocar base de datos. {@code hoy} es la fecha en la zona del hotel. */
@@ -172,16 +224,18 @@ public class LiberacionReservasService {
     }
 
     /**
-     * RESERVADO -> DISPONIBLE solo si la habitacion estaba reservada y no queda otra reserva activa
-     * sobre ella. Nunca toca una habitacion OCUPADA, en limpieza o en mantenimiento.
+     * RESERVADO -> DISPONIBLE solo si la habitacion estaba reservada y no queda otra reserva activa que
+     * llegue hoy (las de otros dias no la bloquean). Nunca toca una habitacion OCUPADA, en limpieza o en
+     * mantenimiento.
      */
     public void liberarHabitacionSiNoQuedanReservas(Habitacion habitacion) {
         if (habitacion.getEstadoOperativo() != EstadoOperativoHab.RESERVADO) {
             return;
         }
-        boolean quedanActivas = !reservaRepository
+        LocalDate hoy = LocalDate.now(clock);
+        boolean quedanActivas = reservaRepository
                 .findByHabitacionIdHabitacionAndEstadoReservaIn(habitacion.getIdHabitacion(), ACTIVAS)
-                .isEmpty();
+                .stream().anyMatch(r -> llegaHoyOAntes(r, hoy));
         if (!quedanActivas) {
             habitacion.setEstadoOperativo(bloqueoPorIncidencia.estadoAlLiberar(habitacion, EstadoOperativoHab.DISPONIBLE));
             habitacionRepository.save(habitacion);

@@ -49,17 +49,17 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
     : "Abrir con diferencia";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 max-w-xl space-y-3">
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] p-5 max-w-xl space-y-3">
       <div className="text-center">
         <Wallet size={30} className="mx-auto mb-2 text-slate-300" />
         <h3 className="font-bold text-slate-800 text-sm">La caja esta cerrada</h3>
-        <p className="text-slate-500 text-[11px] mt-1">
+        <p className="text-slate-500 text-xs mt-1">
           Es una sola caja para todo el hotel. Al abrirla recibes el efectivo del turno anterior: cuentalo y declaralo.
         </p>
       </div>
 
       {anterior && (
-        <p className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">
+        <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">
           El turno #{anterior.idTurnoCaja} lo cerro {anterior.cerroPor} el {fechaLarga(anterior.fechaCierre)}.
           {fase === "revelado" && <> Dejo <strong>{dinero(anterior.efectivoDeclarado)}</strong> en la caja.</>}
         </p>
@@ -67,17 +67,17 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
 
       {pendientesDeDinero.length > 0 && (
         <div className="border border-red-300 bg-red-50 rounded-lg p-2.5 space-y-1.5" role="alert">
-          <p className="text-[11px] font-bold text-red-800 flex items-center gap-1.5">
+          <p className="text-xs font-bold text-red-800 flex items-center gap-1.5">
             <AlertTriangle size={13} /> Hay {pendientesDeDinero.length} diferencia(s) de dinero sin resolver
           </p>
-          <ul className="text-[11px] text-red-900 space-y-0.5 list-disc pl-4">
+          <ul className="text-xs text-red-900 space-y-0.5 list-disc pl-4">
             {pendientesDeDinero.slice(0, 4).map((n) => (
               <li key={n.idBitacora}>
                 {n.monto != null && <strong>{n.monto < 0 ? "Faltante " : "Sobrante "}{dinero(Math.abs(n.monto))}</strong>} — turno #{n.turnoCaja?.idTurnoCaja ?? "?"}
               </li>
             ))}
           </ul>
-          <label className="flex items-center gap-2 text-[11px] text-red-900 pt-1">
+          <label className="flex items-center gap-2 text-xs text-red-900 pt-1">
             <input type="checkbox" checked={enterado} onChange={(e) => setEnterado(e.target.checked)} />
             Estoy enterado: las resuelve el administrador desde esta pantalla.
           </label>
@@ -85,7 +85,7 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
       )}
 
       <div>
-        <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1" htmlFor="fondo-inicial">
+        <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1" htmlFor="fondo-inicial">
           Efectivo que recibes y cuentas (S/)
         </label>
         <input
@@ -104,7 +104,7 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
       </div>
 
       {noCoincide && fase === "recontar" && (
-        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-2" role="status">
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-2" role="status">
           <strong>No coincide con lo que dejo el turno anterior.</strong> Vuelve a contar billetes y monedas con calma. Si el
           conteo es correcto, verifica de nuevo para ver lo que se esperaba.
         </p>
@@ -112,7 +112,7 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
 
       {noCoincide && fase === "revelado" && anterior && (
         <div className="space-y-2">
-          <p className="text-[11px] text-red-900 bg-red-50 border border-red-300 rounded-lg px-2.5 py-2" role="status">
+          <p className="text-xs text-red-900 bg-red-50 border border-red-300 rounded-lg px-2.5 py-2" role="status">
             <strong>
               {diferencia < 0 ? "Faltan" : "Sobran"} {dinero(Math.abs(diferencia))}
             </strong>{" "}
@@ -134,12 +134,12 @@ export function AperturaCard({ info, abriendo, onAbrir }: Props) {
       <button
         onClick={intentar}
         disabled={!hayFondo || abriendo || faltaEnterarse || (noCoincide && fase === "revelado" && !motivo.trim())}
-        className="w-full bg-[#1b4332] hover:bg-[#143427] disabled:opacity-50 text-white text-xs font-semibold py-2.5 rounded-lg"
+        className="w-full bg-[#2D5A27] hover:bg-[#1E3F1A] disabled:opacity-50 text-white text-xs font-semibold py-2.5 rounded-lg"
       >
         {abriendo ? "Abriendo..." : textoBoton}
       </button>
       {!anterior && (
-        <p className="text-[10px] text-slate-400 text-center">Es la primera apertura: no hay un turno anterior con quien comparar.</p>
+        <p className="text-[12px] text-slate-400 text-center">Es la primera apertura: no hay un turno anterior con quien comparar.</p>
       )}
     </div>
   );

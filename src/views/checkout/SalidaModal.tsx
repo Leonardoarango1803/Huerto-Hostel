@@ -146,7 +146,7 @@ export function SalidaModal({ estadia, folio, habitacionBloqueada, cajaCerrada, 
         </label>
       )}
 
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-1.5 text-xs">
+      <div className="bg-slate-50 rounded-2xl border border-[#EFE6D6] p-4 space-y-1.5 text-xs">
         <div className="flex justify-between text-slate-600">
           <span>Alojamiento{ajustar && hayAjuste ? ` (${plural(folio.nochesReales, "noche", "noches")})` : ""}</span>
           <span className="font-semibold">{soles(Number(folio.totalAlojamiento) + ajuste)}</span>
@@ -202,7 +202,7 @@ export function SalidaModal({ estadia, folio, habitacionBloqueada, cajaCerrada, 
         </>
       )}
 
-      <p className="text-[11px] text-slate-500">{destino}</p>
+      <p className="text-xs text-slate-500">{destino}</p>
     </FormModal>
   );
 }

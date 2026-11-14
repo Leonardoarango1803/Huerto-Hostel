@@ -40,7 +40,7 @@ export function CrearAccesoModal({ empleado, onCerrar, onListo }: Props) {
       <FormField label="Usuario" hint="Vacío = se sugiere uno a partir de su nombre.">
         <Input value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} aria-label="Usuario" />
       </FormField>
-      <label className="flex items-center gap-2 text-[11px] text-slate-700">
+      <label className="flex items-center gap-2 text-xs text-slate-700">
         <input type="checkbox" checked={propia} onChange={(e) => setPropia(e.target.checked)} aria-label="Escribir la clave yo" />
         Prefiero escribir yo la clave (si no, se genera una temporal)
       </label>
@@ -82,14 +82,14 @@ export function RestablecerModal({ empleado, onCerrar, onListo }: Props) {
       subtitle={`${nombreCompleto(empleado)} · usuario ${empleado.acceso.username}`}
       submitLabel="Restablecer" loading={guardando} onClose={onCerrar} onSubmit={guardar} size="sm">
       {error && <AlertBanner type="error" message={error} dismissible={false} />}
-      <p className="text-[11px] text-slate-600">
+      <p className="text-xs text-slate-600">
         Se crea una clave temporal y se cierran sus sesiones abiertas. Al volver a entrar tendrá que elegir una propia.
       </p>
       <FormField label="Tu contraseña de administrador" required hint="Confirma que eres tú quien hace este cambio.">
         <Input type="password" autoComplete="current-password" value={passwordAdmin}
           onChange={(e) => setPasswordAdmin(e.target.value)} aria-label="Tu contraseña de administrador" />
       </FormField>
-      <label className="flex items-center gap-2 text-[11px] text-slate-700">
+      <label className="flex items-center gap-2 text-xs text-slate-700">
         <input type="checkbox" checked={propia} onChange={(e) => setPropia(e.target.checked)} aria-label="Escribir la clave nueva" />
         Prefiero escribir yo la clave nueva
       </label>

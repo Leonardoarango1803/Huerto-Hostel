@@ -212,7 +212,7 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
         <div className="flex items-start justify-between p-4 border-b border-slate-200">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Nuevo Ingreso</h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               {paso === 1 ? "Paso 1 de 2 — Identificar al huésped" : "Paso 2 de 2 — Asignar habitación"}
             </p>
           </div>
@@ -256,7 +256,7 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
                   <CheckCircle size={14} className="text-emerald-600 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-emerald-800">Huésped ya registrado</p>
-                    <p className="text-[11px] text-emerald-700">
+                    <p className="text-xs text-emerald-700">
                       {clienteEncontrado.nombres} {clienteEncontrado.apellidos}
                     </p>
                   </div>
@@ -268,7 +268,7 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
                   <UserPlus size={14} className="text-blue-600 shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-blue-800">Nuevo — datos pre-llenados desde RENIEC</p>
-                    <p className="text-[11px] text-blue-700">
+                    <p className="text-xs text-blue-700">
                       {datosCliente.nombres} {datosCliente.apellidos}
                     </p>
                   </div>
@@ -372,7 +372,7 @@ export function NuevoIngresoModal({ open, onClose, onSuccess }: Props) {
                     <p className="text-xs font-semibold text-emerald-800 flex items-center gap-1">
                       <LogIn size={12} /> Check-in inmediato
                     </p>
-                    <p className="text-[10px] text-emerald-600 mt-0.5">
+                    <p className="text-[12px] text-emerald-600 mt-0.5">
                       {cajaCerrada
                         ? "La caja esta cerrada: puedes crear la reserva, pero el check-in requiere abrirla."
                         : "El huésped entra a la habitación ahora mismo."}

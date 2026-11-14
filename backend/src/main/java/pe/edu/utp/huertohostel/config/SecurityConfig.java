@@ -56,6 +56,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("POST", "/api/v1/auth/login").permitAll()
                         .requestMatchers("GET", "/api/v1/ping").permitAll()
+                        // Web publica: tipos, disponibilidad y reserva con alta de cuenta (ver PublicoController)
+                        .requestMatchers("/api/v1/publico/**").permitAll()
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",

@@ -44,7 +44,7 @@ function diasEntre(prevista: string | undefined, hoy: string): number {
 function EstadoDeSalida({ dias }: { dias: number }) {
   if (dias > 0) return <Badge variant="red" label={`Vencida hace ${dias} día${dias === 1 ? "" : "s"}`} />;
   if (dias === 0) return <Badge variant="amber" label="Sale hoy" />;
-  return <span className="text-[10px] text-slate-400">Faltan {-dias} día{dias === -1 ? "" : "s"}</span>;
+  return <span className="text-[12px] text-slate-400">Faltan {-dias} día{dias === -1 ? "" : "s"}</span>;
 }
 
 export function CheckoutView() {
@@ -155,15 +155,15 @@ export function CheckoutView() {
   const saldoDeLista = (e: Estadia): number | undefined => resumen?.saldos?.[String(e.idEstadia)];
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">
             Recepción &gt; Check-out
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Salidas y Check-out del Día</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Supervisión de salidas, verificación de folios y liquidación de estadías.
           </p>
         </div>
@@ -187,7 +187,7 @@ export function CheckoutView() {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
           title="Salidas Programadas"
           value={resumen?.salidaHoy ?? estadias.length}
@@ -222,7 +222,7 @@ export function CheckoutView() {
       <div className="grid grid-cols-12 gap-4">
         {/* Lista estadías */}
         <div className="col-span-7 space-y-3">
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2">
+          <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex items-center gap-2">
             <SearchBar
               value={searchTerm}
               onChange={setSearchTerm}
@@ -234,13 +234,13 @@ export function CheckoutView() {
           <div className="flex gap-1 border-b border-slate-200" role="tablist" aria-label="Estadías">
             {([["curso", "En curso"], ["finalizadas", "Finalizadas (comprobantes)"]] as const).map(([id, texto]) => (
               <button key={id} role="tab" aria-selected={vista === id} onClick={() => setVista(id)}
-                className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px ${vista === id ? "border-[#1b4332] text-[#1b4332]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+                className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px ${vista === id ? "border-[#2D5A27] text-[#2D5A27]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
                 {texto}
               </button>
             ))}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
             {vista === "finalizadas" ? (
               <HistorialComprobantes busqueda={searchTerm} onVer={setComprobanteDe} />
             ) : loading ? (
@@ -261,7 +261,7 @@ export function CheckoutView() {
                     <div
                       key={e.idEstadia}
                       onClick={() => setSelectedId(e.idEstadia)}
-                      className={`p-3 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50 border-l-4 border-[#1b4332]" : "hover:bg-slate-50"}`}
+                      className={`p-3 cursor-pointer transition-colors ${isSelected ? "bg-emerald-50 border-l-4 border-[#2D5A27]" : "hover:bg-slate-50"}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
@@ -272,7 +272,7 @@ export function CheckoutView() {
                             <Badge variant={estadoEstadiaToVariant(e.estadoEstadia)} label="En curso" />
                             <EstadoDeSalida dias={dias} />
                           </div>
-                          <div className="text-[10px] text-slate-500 flex gap-3 mt-0.5 flex-wrap">
+                          <div className="text-[12px] text-slate-500 flex gap-3 mt-0.5 flex-wrap">
                             <span>Hab. {e.habitacion.numero} — {e.habitacion.tipoHabitacion.nombre}</span>
                             <span>{e.reserva.cliente.tipoDocumento} {e.reserva.cliente.numeroDocumento}</span>
                             <span>Check-in: {formatFecha(e.fechaCheckinReal)}</span>
@@ -289,7 +289,7 @@ export function CheckoutView() {
                           ) : (
                             <p className="font-bold text-emerald-700">Cuenta saldada</p>
                           )}
-                          <p className="text-[10px] text-slate-400">{e.reserva.numNoches} noches · alojamiento {soles(e.reserva.montoAlojamientoTotal)}</p>
+                          <p className="text-[12px] text-slate-400">{e.reserva.numNoches} noches · alojamiento {soles(e.reserva.montoAlojamientoTotal)}</p>
                         </div>
                       </div>
                     </div>
@@ -304,16 +304,16 @@ export function CheckoutView() {
         <div className="col-span-5 space-y-3">
           {selectedEstadia ? (
             <>
-              <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+              <div className="bg-white rounded-2xl border border-[#EFE6D6] p-4 space-y-3">
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Folio de Estadía</p>
+                  <p className="text-[12px] text-slate-400 uppercase font-semibold">Folio de Estadía</p>
                   <h2 className="text-sm font-bold text-slate-900">
                     {selectedEstadia.reserva.cliente.nombres} {selectedEstadia.reserva.cliente.apellidos}
                   </h2>
-                  <p className="text-[11px] text-slate-500">Hab. {selectedEstadia.habitacion.numero} · {selectedEstadia.habitacion.tipoHabitacion.nombre}</p>
+                  <p className="text-xs text-slate-500">Hab. {selectedEstadia.habitacion.numero} · {selectedEstadia.habitacion.tipoHabitacion.nombre}</p>
                 </div>
 
-                <div className="space-y-1.5 text-[11px]">
+                <div className="space-y-1.5 text-xs">
                   <div className="flex gap-2">
                     <span className="text-slate-400 w-24">Check-in real</span>
                     <span>{formatFecha(selectedEstadia.fechaCheckinReal)}</span>
@@ -334,13 +334,13 @@ export function CheckoutView() {
                 </div>
 
                 {saldoDetalle && saldoDetalle.nochesReales < saldoDetalle.noches && (
-                  <div className="flex items-start gap-2 text-[11px] bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2">
+                  <div className="flex items-start gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2">
                     <Clock size={13} className="mt-0.5 flex-shrink-0" />
                     <span>Salida anticipada: usó {saldoDetalle.nochesReales} de {saldoDetalle.noches} noches. Al procesar la salida puedes cobrar solo las usadas.</span>
                   </div>
                 )}
                 {saldoDetalle && saldoDetalle.nochesReales > saldoDetalle.noches && (
-                  <div className="flex items-start gap-2 text-[11px] bg-red-50 border border-red-200 text-red-900 rounded-lg px-3 py-2">
+                  <div className="flex items-start gap-2 text-xs bg-red-50 border border-red-200 text-red-900 rounded-lg px-3 py-2">
                     <Clock size={13} className="mt-0.5 flex-shrink-0" />
                     <span>Se quedó de más: lleva {saldoDetalle.nochesReales} noches y se reservaron {saldoDetalle.noches}. Al procesar la salida puedes cobrar las noches extra.</span>
                   </div>
@@ -349,8 +349,8 @@ export function CheckoutView() {
                 {saldoLoading ? (
                   <div className="h-24 bg-slate-100 animate-pulse rounded-lg" />
                 ) : saldoDetalle ? (
-                  <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs">
-                    <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resumen de Folio</p>
+                  <div className="bg-slate-50 rounded-2xl border border-[#EFE6D6] p-4 space-y-2 text-xs">
+                    <p className="font-bold text-slate-800 text-xs uppercase tracking-wide">Resumen de Folio</p>
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-slate-600">
                         <span>Alojamiento</span>
@@ -375,13 +375,13 @@ export function CheckoutView() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-50 rounded-lg p-3 text-center text-[11px] text-slate-400">
+                  <div className="bg-slate-50 rounded-lg p-3 text-center text-xs text-slate-400">
                     Saldo no disponible
                   </div>
                 )}
 
                 {saldoDetalle && (saldoDetalle.comandasActivas > 0 || saldoDetalle.solicitudesCobrablesPendientes > 0) && (
-                  <div className="text-[11px] bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2 space-y-0.5">
+                  <div className="text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2 space-y-0.5">
                     {saldoDetalle.comandasActivas > 0 && (
                       <p>• {saldoDetalle.comandasActivas} comanda{saldoDetalle.comandasActivas === 1 ? "" : "s"} sin entregar (aún no están en el folio).</p>
                     )}
@@ -392,10 +392,10 @@ export function CheckoutView() {
                 )}
 
                 {detalle && (detalle.consumos.length > 0 || detalle.pagos.length > 0) && (
-                  <div className="text-[11px] space-y-2" aria-label="Detalle del folio">
+                  <div className="text-xs space-y-2" aria-label="Detalle del folio">
                     {detalle.consumos.length > 0 && (
                       <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Consumos ({detalle.consumos.length})</p>
+                        <p className="text-[12px] text-slate-400 uppercase font-semibold mb-0.5">Consumos ({detalle.consumos.length})</p>
                         <ul className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
                           {detalle.consumos.map((c, i) => (
                             <li key={i} className="flex justify-between py-0.5 gap-2">
@@ -408,7 +408,7 @@ export function CheckoutView() {
                     )}
                     {detalle.pagos.length > 0 && (
                       <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Pagos ({detalle.pagos.length})</p>
+                        <p className="text-[12px] text-slate-400 uppercase font-semibold mb-0.5">Pagos ({detalle.pagos.length})</p>
                         <ul className="divide-y divide-slate-100 max-h-32 overflow-y-auto">
                           {detalle.pagos.map((p, i) => (
                             <li key={i} className="flex justify-between py-0.5 gap-2">
@@ -444,7 +444,7 @@ export function CheckoutView() {
               </div>
             </>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+            <div className="bg-white rounded-2xl border border-[#EFE6D6] p-6 text-center">
               <p className="text-xs text-slate-400">Selecciona una estadía para ver el folio y procesar la salida</p>
             </div>
           )}

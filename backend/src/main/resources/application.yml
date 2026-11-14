@@ -69,6 +69,8 @@ app:
     liberacion-cron: "0 */15 * * * *"
     # Pago minimo, en % del alojamiento, para confirmar una reserva. 0 = sin minimo.
     adelanto-minimo-porcentaje: 0
+    # Adelanto que la web publica cobra en linea para confirmar al instante (nunca menos que el minimo).
+    adelanto-web-porcentaje: ${ADELANTO_WEB_PORCENTAJE:30}
 
 logging:
   level:

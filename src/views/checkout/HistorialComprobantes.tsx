@@ -52,11 +52,11 @@ export function HistorialComprobantes({ busqueda, onVer }: { busqueda: string; o
               {e.reserva.cliente.nombres} {e.reserva.cliente.apellidos}
               {e.salidaForzada && <Badge variant="red" label={`Salió con deuda S/ ${Number(e.saldoAlSalir ?? 0).toFixed(2)}`} />}
             </p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[12px] text-slate-500">
               Hab. {e.habitacion.numero} · {e.reserva.cliente.tipoDocumento} {e.reserva.cliente.numeroDocumento} · Salió {fechaHora(e.fechaCheckoutReal)}
             </p>
             {e.salidaForzada && e.motivoSalidaForzada && (
-              <p className="text-[10px] text-red-700">Motivo: {e.motivoSalidaForzada}</p>
+              <p className="text-[12px] text-red-700">Motivo: {e.motivoSalidaForzada}</p>
             )}
           </div>
           <Button size="sm" variant="secondary" icon={<ReceiptText size={11} />} onClick={() => onVer(e.idEstadia)}

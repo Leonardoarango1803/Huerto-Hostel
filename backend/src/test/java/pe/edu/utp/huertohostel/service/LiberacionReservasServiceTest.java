@@ -101,20 +101,84 @@ class LiberacionReservasServiceTest {
     }
 
     @Test
-    void noLiberaLaHabitacionSiQuedaOtraReservaActivaSobreElla() {
+    void noLiberaLaHabitacionSiQuedaOtraReservaQueLlegaHoy() {
         Habitacion habitacion = habitacion(5, EstadoOperativoHab.RESERVADO);
         Reserva vencida = reserva(10, EstadoReserva.PENDIENTE_ADELANTO, LocalDate.parse("2026-10-30"),
                 LocalDate.parse("2026-11-01"), habitacion);
-        Reserva proxima = reserva(11, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-10-30"),
-                LocalDate.parse("2026-11-20"), habitacion);
+        Reserva otraDeHoy = reserva(11, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-10-30"),
+                LocalDate.parse("2026-11-01"), habitacion);
         when(reservaRepository.findByEstadoReservaIn(any())).thenReturn(List.of(vencida));
         when(estadiaRepository.findByReservaIdReserva(10)).thenReturn(Optional.empty());
-        when(reservaRepository.findByHabitacionIdHabitacionAndEstadoReservaIn(eq(5), any())).thenReturn(List.of(proxima));
+        when(reservaRepository.findByHabitacionIdHabitacionAndEstadoReservaIn(eq(5), any())).thenReturn(List.of(otraDeHoy));
 
         servicio(reloj("2026-11-01T15:00:00Z", LIMA)).liberarVencidas();
 
         assertEquals(EstadoReserva.CANCELADA, vencida.getEstadoReserva());
         assertEquals(EstadoOperativoHab.RESERVADO, habitacion.getEstadoOperativo());
+        verify(habitacionRepository, never()).save(any());
+    }
+
+    @Test
+    void siSoloQuedanReservasDeOtrosDiasLaHabitacionVuelveADisponible() {
+        Habitacion habitacion = habitacion(5, EstadoOperativoHab.RESERVADO);
+        Reserva vencida = reserva(10, EstadoReserva.PENDIENTE_ADELANTO, LocalDate.parse("2026-10-30"),
+                LocalDate.parse("2026-11-01"), habitacion);
+        Reserva delOtroMes = reserva(11, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-10-30"),
+                LocalDate.parse("2026-12-20"), habitacion);
+        when(reservaRepository.findByEstadoReservaIn(any())).thenReturn(List.of(vencida));
+        when(estadiaRepository.findByReservaIdReserva(10)).thenReturn(Optional.empty());
+        when(reservaRepository.findByHabitacionIdHabitacionAndEstadoReservaIn(eq(5), any())).thenReturn(List.of(delOtroMes));
+
+        servicio(reloj("2026-11-01T15:00:00Z", LIMA)).liberarVencidas();
+
+        assertEquals(EstadoOperativoHab.DISPONIBLE, habitacion.getEstadoOperativo());
+        assertEquals(EstadoReserva.CONFIRMADA, delOtroMes.getEstadoReserva(), "la de diciembre no se toca");
+    }
+
+    // ------------------------------------------------------------------ RESERVADO = "hoy llega alguien"
+
+    @Test
+    void elDiaDeLlegadaLaHabitacionLibrePasaAReservada() {
+        Habitacion habitacion = habitacion(5, EstadoOperativoHab.DISPONIBLE);
+        Reserva llegaHoy = reserva(20, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-09-01"),
+                LocalDate.parse("2026-11-01"), habitacion);
+        when(reservaRepository.findByEstadoReservaIn(any())).thenReturn(List.of(llegaHoy));
+        when(estadiaRepository.findByReservaIdReserva(20)).thenReturn(Optional.empty());
+
+        servicio(reloj("2026-11-01T13:00:00Z", LIMA)).liberarVencidas(); // 08:00 en Lima
+
+        assertEquals(EstadoOperativoHab.RESERVADO, habitacion.getEstadoOperativo());
+        verify(habitacionRepository).save(habitacion);
+        assertEquals(EstadoReserva.CONFIRMADA, llegaHoy.getEstadoReserva());
+    }
+
+    @Test
+    void unaHabitacionMarcadaConMesesDeAnticipacionVuelveADisponible() {
+        Habitacion habitacion = habitacion(5, EstadoOperativoHab.RESERVADO);
+        Reserva futura = reserva(21, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-10-20"),
+                LocalDate.parse("2027-02-14"), habitacion);
+        when(reservaRepository.findByEstadoReservaIn(any())).thenReturn(List.of(futura));
+        when(habitacionRepository.findByEstadoOperativo(EstadoOperativoHab.RESERVADO)).thenReturn(List.of(habitacion));
+
+        servicio(reloj("2026-11-01T15:00:00Z", LIMA)).liberarVencidas();
+
+        assertEquals(EstadoOperativoHab.DISPONIBLE, habitacion.getEstadoOperativo());
+        assertEquals(EstadoReserva.CONFIRMADA, futura.getEstadoReserva());
+    }
+
+    @Test
+    void elDiaDeLlegadaNoSeMarcaUnaHabitacionOcupadaNiEnLimpieza() {
+        for (EstadoOperativoHab estado : List.of(EstadoOperativoHab.OCUPADA, EstadoOperativoHab.PENDIENTE_LIMPIEZA,
+                EstadoOperativoHab.EN_LIMPIEZA, EstadoOperativoHab.MANTENIMIENTO)) {
+            Habitacion habitacion = habitacion(5, estado);
+            Reserva llegaHoy = reserva(20, EstadoReserva.CONFIRMADA, LocalDate.parse("2026-09-01"),
+                    LocalDate.parse("2026-11-01"), habitacion);
+            when(reservaRepository.findByEstadoReservaIn(any())).thenReturn(List.of(llegaHoy));
+
+            servicio(reloj("2026-11-01T13:00:00Z", LIMA)).liberarVencidas();
+
+            assertEquals(estado, habitacion.getEstadoOperativo());
+        }
         verify(habitacionRepository, never()).save(any());
     }
 

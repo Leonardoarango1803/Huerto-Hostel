@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ArrowDownUp, History, Pencil, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDownUp, History, Pencil, Plus, ShoppingBag } from "lucide-react";
 import { inventarioApi } from "../../api/inventario";
 import { mensajeDeError } from "../../api/errores";
 import type { AreaInsumo, Insumo, Proveedor } from "../../api/types";
@@ -30,6 +30,8 @@ const VACIO_INSUMO = {
   estado: true,
 };
 
+const VACIO_VENTA = { nombre: "", categoria: "BAR", precioVenta: "", cantidad: "1" };
+
 const VACIO_MOV = {
   idInsumo: "",
   modo: "ENTRADA" as ModoMovimiento,
@@ -45,6 +47,14 @@ export function InsumosTab({
   const [busqueda, setBusqueda] = useState("");
   const [area, setArea] = useState("");
   const [soloReponer, setSoloReponer] = useState(false);
+  const [soloSinProducto, setSoloSinProducto] = useState(false);
+
+  // Productos que usan cada insumo (null = aun no se sabe o este rol no lo ve). Los de limpieza son de uso interno.
+  const [uso, setUso] = useState<Record<string, string[]> | null>(null);
+  const [versionUso, setVersionUso] = useState(0);
+  const [vendiendo, setVendiendo] = useState<Insumo | null>(null);
+  const [formVenta, setFormVenta] = useState({ ...VACIO_VENTA });
+  const [errorVenta, setErrorVenta] = useState<string | null>(null);
 
   const [editando, setEditando] = useState<Insumo | "nuevo" | null>(null);
   const [formInsumo, setFormInsumo] = useState({ ...VACIO_INSUMO });
@@ -56,15 +66,31 @@ export function InsumosTab({
 
   const [guardando, setGuardando] = useState(false);
 
+  useEffect(() => {
+    if (!verFiltroArea) return; // housekeeping no ve recetas ni productos
+    let vigente = true;
+    inventarioApi.usoInsumos().then((u) => vigente && setUso(u)).catch(() => undefined);
+    return () => { vigente = false; };
+  }, [verFiltroArea, versionUso, insumos]);
+
+  /** Activo, no es de limpieza y no esta en ninguna receta: existe en el almacen pero no se puede vender. */
+  const sinProducto = (i: Insumo) =>
+    uso !== null && i.estado !== false && i.area !== "LIMPIEZA" && !(uso[String(i.idInsumo)]?.length);
+  const cuantosSinProducto = useMemo(
+    () => (uso === null ? 0 : insumos.filter((i) => i.estado !== false && i.area !== "LIMPIEZA" && !(uso[String(i.idInsumo)]?.length)).length),
+    [insumos, uso]
+  );
+
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return insumos.filter((i) => {
       if (q && !i.nombre.toLowerCase().includes(q)) return false;
       if (area && i.area !== area) return false;
       if (soloReponer && !["reponer", "agotado"].includes(estadoStock(i))) return false;
+      if (soloSinProducto && (uso === null || i.estado === false || i.area === "LIMPIEZA" || uso[String(i.idInsumo)]?.length)) return false;
       return true;
     });
-  }, [insumos, busqueda, area, soloReponer]);
+  }, [insumos, busqueda, area, soloReponer, soloSinProducto, uso]);
 
   const valorTotal = useMemo(
     () =>
@@ -197,6 +223,49 @@ export function InsumosTab({
     }
   };
 
+  const abrirVenta = (i: Insumo) => {
+    setErrorVenta(null);
+    setFormVenta({
+      nombre: i.nombre,
+      categoria: i.area === "COCINA" ? "COCINA" : "BAR",
+      precioVenta: "",
+      cantidad: i.unidadMedida === "UND" ? "1" : "",
+    });
+    setVendiendo(i);
+  };
+
+  const costoVenta = vendiendo ? Number(formVenta.cantidad || 0) * Number(vendiendo.costoUnitario ?? 0) : 0;
+  const margenVenta = Number(formVenta.precioVenta || 0) - costoVenta;
+
+  const guardarVenta = async () => {
+    if (!vendiendo) return;
+    const precio = Number(formVenta.precioVenta);
+    const cantidad = Number(formVenta.cantidad);
+    if (!formVenta.nombre.trim()) return setErrorVenta("Escribe el nombre con el que se venderá.");
+    if (!(precio > 0)) return setErrorVenta("Indica el precio de venta (mayor a cero).");
+    if (!(cantidad > 0)) return setErrorVenta("Indica cuánto se descuenta del almacén en cada venta.");
+    setGuardando(true);
+    setErrorVenta(null);
+    try {
+      const p = await inventarioApi.venderInsumo(vendiendo.idInsumo, {
+        nombre: formVenta.nombre.trim(),
+        categoria: formVenta.categoria as "COCINA" | "BAR" | "DIRECTO",
+        precioVenta: precio,
+        cantidad,
+      });
+      onCambio({
+        tipo: "ok",
+        texto: `"${p.nombre}" ya se vende en Productos y servicios (${soles(p.precioVenta)}). Cada venta descuenta ${num(cantidad)} ${vendiendo.unidadMedida} de "${vendiendo.nombre}".`,
+      });
+      setVendiendo(null);
+      setVersionUso((v) => v + 1);
+    } catch (e) {
+      setErrorVenta(mensajeDeError(e, "No se pudo crear el producto."));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const etiquetaEstado = (i: Insumo) => {
     switch (estadoStock(i)) {
       case "inactivo": return <Badge variant="slate" label="Inactivo" />;
@@ -208,20 +277,20 @@ export function InsumosTab({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
+      <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-2xl border border-[#EFE6D6]">
         <input
           type="text"
           placeholder="Buscar insumo..."
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+          className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs w-48 focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
         />
         {verFiltroArea && (
           <select
             value={area}
             onChange={(e) => setArea(e.target.value)}
             aria-label="Filtrar por area"
-            className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+            className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
           >
             <option value="">Todas las areas</option>
             {AREAS.map((a) => (
@@ -233,6 +302,12 @@ export function InsumosTab({
           <input type="checkbox" checked={soloReponer} onChange={(e) => setSoloReponer(e.target.checked)} />
           Solo por reponer
         </label>
+        {cuantosSinProducto > 0 && (
+          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+            <input type="checkbox" checked={soloSinProducto} onChange={(e) => setSoloSinProducto(e.target.checked)} />
+            Solo sin producto ({cuantosSinProducto})
+          </label>
+        )}
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" icon={<ArrowDownUp size={12} />} onClick={() => abrirMovimiento("ENTRADA")}>
             Registrar movimiento
@@ -245,7 +320,7 @@ export function InsumosTab({
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         <div className="p-3 border-b border-slate-100 flex justify-between text-xs">
           <span className="font-bold text-slate-700">
             Insumos en almacen ({visibles.length}{visibles.length !== insumos.length ? ` de ${insumos.length}` : ""})
@@ -265,7 +340,7 @@ export function InsumosTab({
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Insumo</th>
                 <th className="p-3">Area</th>
                 <th className="p-3 text-right">Stock</th>
@@ -280,7 +355,14 @@ export function InsumosTab({
             <tbody className="divide-y divide-slate-100">
               {visibles.map((i) => (
                 <tr key={i.idInsumo} className={`hover:bg-slate-50 ${i.estado === false ? "opacity-60" : ""}`}>
-                  <td className="p-3 font-semibold text-slate-800">{i.nombre}</td>
+                  <td className="p-3 font-semibold text-slate-800">
+                    {i.nombre}
+                    {uso && uso[String(i.idInsumo)]?.length ? (
+                      <span className="block text-[12px] font-normal text-slate-400">Se vende como: {uso[String(i.idInsumo)].join(", ")}</span>
+                    ) : sinProducto(i) ? (
+                      <span className="block text-[12px] font-normal text-amber-700">Sin producto: no aparece en Productos y servicios</span>
+                    ) : null}
+                  </td>
                   <td className="p-3 text-slate-500">{AREA_LABEL[i.area ?? "GENERAL"]}</td>
                   <td className="p-3 text-right font-bold text-slate-900">
                     {num(i.stockActual)} <span className="font-normal text-slate-400">{i.unidadMedida}</span>
@@ -302,14 +384,14 @@ export function InsumosTab({
                         title="Registrar entrada"
                         onClick={() => abrirMovimiento("ENTRADA", i)}
                         disabled={i.estado === false}
-                        className="px-2 py-1 rounded border border-slate-200 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
+                        className="px-2 py-1 rounded border border-slate-200 text-[12px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
                       >
                         + Entrada
                       </button>
                       <button
                         title="Conteo fisico"
                         onClick={() => abrirMovimiento("CONTEO", i)}
-                        className="px-2 py-1 rounded border border-slate-200 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                        className="px-2 py-1 rounded border border-slate-200 text-[12px] font-semibold text-slate-600 hover:bg-slate-50"
                       >
                         Contar
                       </button>
@@ -321,6 +403,16 @@ export function InsumosTab({
                       >
                         <History size={12} />
                       </button>
+                      {puedeGestionar && sinProducto(i) && (
+                        <button
+                          title="Crear el producto de venta con este insumo"
+                          aria-label={`Vender ${i.nombre}`}
+                          onClick={() => abrirVenta(i)}
+                          className="px-2 py-1 rounded border border-emerald-200 text-[12px] font-semibold text-emerald-800 hover:bg-emerald-50 inline-flex items-center gap-1"
+                        >
+                          <ShoppingBag size={11} /> Vender
+                        </button>
+                      )}
                       {puedeGestionar && (
                         <button
                           title="Editar insumo"
@@ -340,6 +432,58 @@ export function InsumosTab({
         )}
       </div>
 
+      {/* Vender este insumo: crea el producto y su receta */}
+      <FormModal
+        open={vendiendo !== null}
+        title="Vender este insumo"
+        subtitle={vendiendo ? `Crea el producto en Productos y servicios con la receta de "${vendiendo.nombre}"` : undefined}
+        submitLabel="Crear producto"
+        loading={guardando}
+        onClose={() => setVendiendo(null)}
+        onSubmit={guardarVenta}
+        size="sm"
+      >
+        {errorVenta && <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorVenta}</p>}
+        <FormField label="Nombre del producto" required>
+          <Input value={formVenta.nombre} maxLength={100} aria-label="Nombre del producto"
+            onChange={(e) => setFormVenta({ ...formVenta, nombre: e.target.value })} />
+        </FormField>
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Categoría" required>
+            <Select value={formVenta.categoria} aria-label="Categoría del producto"
+              onChange={(e) => setFormVenta({ ...formVenta, categoria: e.target.value })}>
+              <option value="BAR">Bar</option>
+              <option value="COCINA">Cocina</option>
+              <option value="DIRECTO">Directo (recepción)</option>
+            </Select>
+          </FormField>
+          <FormField label="Precio de venta (S/)" required>
+            <Input type="number" step="0.01" min="0" value={formVenta.precioVenta} aria-label="Precio de venta"
+              onChange={(e) => setFormVenta({ ...formVenta, precioVenta: e.target.value })} placeholder="0.00" />
+          </FormField>
+        </div>
+        <FormField label={`Se descuenta por cada venta (${vendiendo?.unidadMedida ?? ""})`} required>
+          <Input type="number" step="any" min="0" value={formVenta.cantidad} aria-label="Cantidad por venta"
+            onChange={(e) => setFormVenta({ ...formVenta, cantidad: e.target.value })} />
+        </FormField>
+        {vendiendo && (
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600 space-y-0.5">
+            <p>
+              Cada vez que se venda 1 «{formVenta.nombre || vendiendo.nombre}», se descontarán{" "}
+              <strong>{num(Number(formVenta.cantidad || 0))} {vendiendo.unidadMedida}</strong> de «{vendiendo.nombre}».
+            </p>
+            {Number(formVenta.precioVenta) > 0 && Number(vendiendo.costoUnitario ?? 0) > 0 && (
+              <p>
+                Costo {soles(costoVenta)} · margen <strong className={margenVenta < 0 ? "text-red-600" : "text-emerald-700"}>{soles(margenVenta)}</strong>
+              </p>
+            )}
+            {vendiendo.unidadMedida !== "UND" && (
+              <p className="text-amber-700">Este insumo se mide en {vendiendo.unidadMedida}: indica cuántos {vendiendo.unidadMedida} lleva cada unidad vendida.</p>
+            )}
+          </div>
+        )}
+      </FormModal>
+
       {/* Alta / edicion de insumo */}
       <FormModal
         open={editando !== null}
@@ -351,7 +495,7 @@ export function InsumosTab({
         onSubmit={guardarInsumo}
       >
         <div className="space-y-3">
-          {errorInsumo && <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorInsumo}</p>}
+          {errorInsumo && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorInsumo}</p>}
           <FormField label="Nombre" required>
             <Input value={formInsumo.nombre} onChange={(e) => setFormInsumo((f) => ({ ...f, nombre: e.target.value }))} />
           </FormField>
@@ -405,7 +549,7 @@ export function InsumosTab({
         onSubmit={guardarMovimiento}
       >
         <div className="space-y-3">
-          {errorMov && <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorMov}</p>}
+          {errorMov && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorMov}</p>}
           <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
             {([
               ["ENTRADA", "Entrada (compra)"],
@@ -416,8 +560,8 @@ export function InsumosTab({
                 key={modo}
                 type="button"
                 onClick={() => setFormMov((f) => ({ ...f, modo }))}
-                className={`flex-1 text-[11px] font-semibold py-1.5 rounded-md ${
-                  formMov.modo === modo ? "bg-white shadow-sm text-[#1b4332]" : "text-slate-500"
+                className={`flex-1 text-xs font-semibold py-1.5 rounded-md ${
+                  formMov.modo === modo ? "bg-white shadow-sm text-[#2D5A27]" : "text-slate-500"
                 }`}
               >
                 {etiqueta}

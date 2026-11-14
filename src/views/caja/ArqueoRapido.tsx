@@ -46,12 +46,12 @@ export function ArqueoRapido({ arqueos, maximo, onCambio, onError }: Props) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+    <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
       <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
         <Calculator size={13} className="text-slate-500" /> Arqueo a mitad de turno
-        <span className="ml-auto text-[10px] font-semibold text-slate-500">{arqueos.length} de {maximo}</span>
+        <span className="ml-auto text-[12px] font-semibold text-slate-500">{arqueos.length} de {maximo}</span>
       </h3>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         Cuenta el efectivo sin cerrar la caja y comprueba que va bien. Si no cuadra se anota en la bitacora para que el
         siguiente turno lo sepa.
       </p>
@@ -64,10 +64,10 @@ export function ArqueoRapido({ arqueos, maximo, onCambio, onError }: Props) {
           Comprobar
         </button>
       </div>
-      {lleno && <p className="text-[11px] text-amber-800">Ya usaste los {maximo} arqueos de este turno: el conteo final se hace al cerrar.</p>}
+      {lleno && <p className="text-xs text-amber-800">Ya usaste los {maximo} arqueos de este turno: el conteo final se hace al cerrar.</p>}
 
       {ultimo && (
-        <div role="status" className={`text-[11px] rounded-lg border px-2.5 py-2 flex items-start gap-1.5 ${
+        <div role="status" className={`text-xs rounded-lg border px-2.5 py-2 flex items-start gap-1.5 ${
           ultimo.cuadra ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-amber-50 border-amber-300 text-amber-900"}`}>
           {ultimo.cuadra ? <CheckCircle size={14} className="mt-0.5 shrink-0" /> : <AlertTriangle size={14} className="mt-0.5 shrink-0" />}
           <span>
@@ -82,7 +82,7 @@ export function ArqueoRapido({ arqueos, maximo, onCambio, onError }: Props) {
       {arqueos.length > 0 && (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="py-1.5">Hora</th><th>Quien</th><th className="text-right">Conto</th><th className="text-center">Resultado</th>
             </tr>
           </thead>
@@ -93,7 +93,7 @@ export function ArqueoRapido({ arqueos, maximo, onCambio, onError }: Props) {
                 <td className="text-slate-600">{a.empleado}</td>
                 <td className="text-right text-slate-800 font-semibold">{dinero(a.efectivoContado)}</td>
                 <td className="text-center">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ESTILO[a.resultado]}`}>
+                  <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${ESTILO[a.resultado]}`}>
                     {a.resultado}{a.diferencia != null && a.diferencia !== 0 ? ` ${dinero(a.diferencia)}` : ""}
                   </span>
                 </td>

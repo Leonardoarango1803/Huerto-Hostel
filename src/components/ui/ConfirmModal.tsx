@@ -28,15 +28,15 @@ export function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-      <div className="relative bg-white rounded-xl shadow-xl w-80 p-5 space-y-4">
+      <div className="absolute inset-0 bg-tinta/45" onClick={onCancel} />
+      <div role="alertdialog" aria-modal="true" aria-label={title} className="relative bg-white rounded-2xl shadow-2xl w-[22rem] max-w-[calc(100vw-2rem)] p-6 space-y-5">
         <div className="flex gap-3 items-start">
-          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <AlertTriangle size={16} className="text-red-600" />
+          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <AlertTriangle size={18} className="text-red-700" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-            <p className="text-xs text-slate-500 mt-1">{message}</p>
+            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            <p className="text-sm text-slate-600 mt-1 leading-relaxed">{message}</p>
           </div>
         </div>
         <div className="flex justify-end gap-2">

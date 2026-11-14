@@ -40,7 +40,7 @@ export function ClaveTemporalModal({ username, clave, nombre, motivo, onCerrar }
             <h2 className="text-sm font-bold text-slate-900">
               {motivo === "nueva" ? "Cuenta creada" : "Contraseña restablecida"}
             </h2>
-            <p className="text-[11px] text-slate-500">Para {nombre}</p>
+            <p className="text-xs text-slate-500">Para {nombre}</p>
           </div>
         </div>
 
@@ -60,7 +60,7 @@ export function ClaveTemporalModal({ username, clave, nombre, motivo, onCerrar }
           </div>
         </div>
 
-        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
           <strong>Se muestra una sola vez.</strong> Entrégasela a {nombre} ahora. Al ingresar, el sistema le pedirá elegir su
           propia contraseña y esta clave dejará de servir.
         </p>

@@ -3,7 +3,12 @@ import { enMemoria, pedirReporte, type MapaReportes, type Periodo, type RutaRepo
 
 // ---------- Formatos y etiquetas ----------
 
-export const PALETA = ["#1b4332", "#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#64748b"];
+/**
+ * Paleta categorica del tema Huerto, validada para daltonismo (separacion entre vecinos, croma y
+ * luminosidad). Se usa en este orden y no se recicla: con mas de 6 series, agrupar en "Otros".
+ * El ocre tiene poco contraste sobre blanco: los graficos siempre llevan leyenda y tooltip.
+ */
+export const PALETA = ["#4F8A45", "#9A4FA0", "#C9962B", "#3B6FB6", "#C4532F", "#0E8FB0"];
 
 export function soles(v: number | null | undefined): string {
   return `S/ ${Number(v ?? 0).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -54,8 +59,8 @@ export function etiqueta(clave: string): string {
 }
 
 export const COLOR_ESTADO_HAB: Record<string, string> = {
-  DISPONIBLE: "#10b981", OCUPADA: "#1e293b", RESERVADO: "#3b82f6", PENDIENTE_LIMPIEZA: "#f59e0b",
-  EN_LIMPIEZA: "#06b6d4", MANTENIMIENTO: "#ef4444",
+  DISPONIBLE: "#4F8A45", OCUPADA: "#C4532F", RESERVADO: "#3B6FB6", PENDIENTE_LIMPIEZA: "#C9962B",
+  EN_LIMPIEZA: "#0E8FB0", MANTENIMIENTO: "#8C8073",
 };
 
 // ---------- Carga de un reporte ----------

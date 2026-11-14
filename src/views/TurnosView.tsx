@@ -12,13 +12,13 @@ export function TurnosView() {
   const esRecepcion = user?.role === "RECEPCIONISTA";
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="pt-1">
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+        <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">
           {esAdmin ? "Admin > Turnos" : "Mi turno"}
         </p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">{esAdmin ? "Gestión de turnos" : "Mi turno de trabajo"}</h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           {esAdmin
             ? "Horarios del personal, quién está de turno ahora y qué roles cubre cada turno."
             : "Tu horario, si estás en tu turno ahora y quiénes trabajan contigo."}

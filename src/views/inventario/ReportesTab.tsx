@@ -47,13 +47,13 @@ export function ReportesTab({ verCosto, onCambio }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 bg-white p-3 rounded-xl border border-slate-200">
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+      <div className="flex flex-wrap items-end gap-2 bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Desde
           <input type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)}
             className="block mt-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-normal" />
         </label>
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Hasta
           <input type="date" value={hasta} min={desde} max={hoyISO()} onChange={(e) => setHasta(e.target.value)}
             className="block mt-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-normal" />
@@ -69,7 +69,7 @@ export function ReportesTab({ verCosto, onCambio }: Props) {
         <LoadingState />
       ) : (
         <div className={`space-y-3 transition-opacity ${cargando ? "opacity-50" : ""}`}>
-          <div className={`grid gap-3 ${verCosto ? "grid-cols-5" : "grid-cols-2"}`}>
+          <div className={`grid gap-3 ${verCosto ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-5" : "grid-cols-2"}`}>
             {verCosto && <KpiCard title="Valor del stock" value={soles(reporte.valorizacionStock)} color="emerald" />}
             {verCosto && <KpiCard title="Costo de consumo" value={soles(reporte.costoConsumoTotal)} subtitle="Segun costo actual" color="blue" />}
             {verCosto && <KpiCard title="Costo de mermas" value={soles(reporte.costoMermaTotal)} color="amber" />}
@@ -77,7 +77,7 @@ export function ReportesTab({ verCosto, onCambio }: Props) {
             <KpiCard title="Agotados" value={reporte.insumosAgotados} color="red" />
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
             <div className="p-3 border-b border-slate-100 text-xs font-bold text-slate-700">
               Consumo por insumo ({reporte.filas.length})
             </div>
@@ -86,7 +86,7 @@ export function ReportesTab({ verCosto, onCambio }: Props) {
             ) : (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                     <th className="p-3">Insumo</th>
                     <th className="p-3 text-right">Entradas</th>
                     <th className="p-3 text-right">Consumido</th>

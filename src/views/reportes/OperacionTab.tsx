@@ -43,9 +43,9 @@ export function OperacionTab({ periodo, version }: { periodo: Periodo; version: 
                   <Tarjeta titulo="Tiempo por tarea" valor={minutos(l.minutosPromedio)} detalle="de inicio a fin" />
                 </Cuadricula>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Origen</p><Desglose datos={l.porOrigen} usar="cantidad" formato={entero} vacio="Sin tareas en este periodo." /></div>
+                  <div><p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Origen</p><Desglose datos={l.porOrigen} usar="cantidad" formato={entero} vacio="Sin tareas en este periodo." /></div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Por empleado</p>
+                    <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Por empleado</p>
                     <Tabla columnas={["Empleado", "Tareas", "Tiempo promedio"]} derecha={[1, 2]} vacio="Sin tareas en este periodo."
                       filas={l.porEmpleado.map((e) => [e.clave, entero(e.cantidad), minutos(e.monto)])} />
                   </div>
@@ -65,9 +65,9 @@ export function OperacionTab({ periodo, version }: { periodo: Periodo; version: 
                   <Tarjeta titulo="Descartadas" valor={entero(i.descartadas)} detalle="duplicadas o sin procedencia" />
                 </Cuadricula>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Por tipo</p><Desglose datos={i.porTipo} usar="cantidad" formato={entero} vacio="Sin incidencias en este periodo." /></div>
+                  <div><p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Por tipo</p><Desglose datos={i.porTipo} usar="cantidad" formato={entero} vacio="Sin incidencias en este periodo." /></div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Habitaciones con mas incidencias</p>
+                    <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Habitaciones con mas incidencias</p>
                     <Tabla columnas={["Habitacion", "Incidencias"]} derecha={[1]} vacio="Sin incidencias en este periodo."
                       filas={i.habitacionesRecurrentes.map((h) => [`Hab. ${h.clave}`, entero(h.cantidad)])} />
                   </div>
@@ -84,11 +84,11 @@ export function OperacionTab({ periodo, version }: { periodo: Periodo; version: 
                   <Tarjeta titulo="Tiempo de atencion" valor={minutos(s.minutosAtencionPromedio)} detalle="desde el pedido hasta atenderlo" />
                 </Cuadricula>
                 <div className="grid grid-cols-2 gap-4">
-                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Por estado</p><Desglose datos={s.porEstado} usar="cantidad" formato={entero} vacio="Sin solicitudes en este periodo." /></div>
+                  <div><p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Por estado</p><Desglose datos={s.porEstado} usar="cantidad" formato={entero} vacio="Sin solicitudes en este periodo." /></div>
                   <div className="text-xs space-y-2 pt-5">
                     <p className="flex justify-between"><span className="text-slate-500">Pedidos cobrables</span><strong>{entero(s.cobrables)}</strong></p>
                     <p className="flex justify-between"><span className="text-slate-500">Monto cobrable</span><strong>{soles(s.montoCobrable)}</strong></p>
-                    <p className="text-[10px] text-slate-400">Los estados se muestran como: {["PENDIENTE", "ASIGNADA", "EN_ATENCION", "ATENDIDA"].map(etiqueta).join(", ")}.</p>
+                    <p className="text-[12px] text-slate-400">Los estados se muestran como: {["PENDIENTE", "ASIGNADA", "EN_ATENCION", "ATENDIDA"].map(etiqueta).join(", ")}.</p>
                   </div>
                 </div>
               </div>

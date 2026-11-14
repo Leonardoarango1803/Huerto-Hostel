@@ -27,11 +27,11 @@ const nombre = (e?: { nombres: string; apellidos: string } | null) => (e ? `${e.
 
 function Opcion({ marcada, titulo, detalle, onChoose }: { marcada: boolean; titulo: string; detalle: string; onChoose: () => void }) {
   return (
-    <label className={`flex items-start gap-2.5 border rounded-lg p-3 cursor-pointer ${marcada ? "border-[#1b4332] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
+    <label className={`flex items-start gap-2.5 border rounded-lg p-3 cursor-pointer ${marcada ? "border-[#2D5A27] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
       <input type="radio" name="opcion" checked={marcada} onChange={onChoose} className="mt-0.5" aria-label={titulo} />
       <span>
         <span className="block text-xs font-semibold text-slate-800">{titulo}</span>
-        <span className="block text-[11px] text-slate-500 mt-0.5">{detalle}</span>
+        <span className="block text-xs text-slate-500 mt-0.5">{detalle}</span>
       </span>
     </label>
   );
@@ -71,7 +71,7 @@ function ResolverModal({ incidencia, onCerrar, onHecho, onError }: {
           placeholder="Ej.: se cambió el compresor del aire" aria-label="Qué se hizo" />
       </FormField>
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold text-slate-700">
+        <p className="text-xs font-semibold text-slate-700">
           ¿Qué pasa con la habitación{estadoHab ? ` (hoy: ${estadoHab})` : ""}?
         </p>
         <Opcion marcada={destino === "LIMPIEZA"} onChoose={() => setDestino("LIMPIEZA")} titulo="Enviar a limpieza antes de venderla"
@@ -79,7 +79,7 @@ function ResolverModal({ incidencia, onCerrar, onHecho, onError }: {
         <Opcion marcada={destino === "DISPONIBLE"} onChoose={() => setDestino("DISPONIBLE")} titulo="Dejarla disponible ahora"
           detalle="Se puede vender de inmediato. Úsalo si quedó limpia o ya se limpió." />
         {!bloqueada && (
-          <p className="text-[11px] text-slate-500">
+          <p className="text-xs text-slate-500">
             Esta habitación no estaba bloqueada por mantenimiento: si eliges “disponible” no cambia su estado.
           </p>
         )}
@@ -129,7 +129,7 @@ function DescartarModal({ incidencia, onCerrar, onHecho, onError }: {
         <Textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} aria-label="Motivo"
           placeholder={tipo === "DUPLICADA" ? "Ej.: es la misma que reportó recepción el lunes" : "Ej.: el huésped no sabía usar el control"} />
       </FormField>
-      <p className="text-[11px] text-slate-500">Si esta incidencia bloqueaba la habitación, se libera (salvo que otra la siga bloqueando).</p>
+      <p className="text-xs text-slate-500">Si esta incidencia bloqueaba la habitación, se libera (salvo que otra la siga bloqueando).</p>
     </FormModal>
   );
 }
@@ -168,7 +168,7 @@ function ReabrirModal({ incidencia, onCerrar, onHecho, onError }: {
         <Textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} aria-label="Qué falló de nuevo"
           placeholder="Ej.: el aire volvió a gotear esta mañana" />
       </FormField>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         La incidencia vuelve a Pendiente y queda anotado que se reabrió. Si bloqueaba la habitación, la bloquea otra vez.
       </p>
     </FormModal>
@@ -267,14 +267,14 @@ export function IncidenciasView() {
     f === "DESCARTADAS" ? i.estado === "DUPLICADA" || i.estado === "NO_PROCEDE" : i.estado === f).length;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">
+          <p className="text-[12px] text-slate-400 uppercase font-semibold">
             Operación › Mantenimiento
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Incidencias de Mantenimiento</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Averías reportadas por habitación y su seguimiento hasta la reparación.
           </p>
         </div>
@@ -306,18 +306,18 @@ export function IncidenciasView() {
           </button>
           <button
             onClick={() => setMostrarForm((v) => !v)}
-            className="bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
+            className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
           >
             <Plus size={13} /> Reportar
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {(["PENDIENTE", "EN_REPARACION", "RESUELTO", "DESCARTADAS"] as Filtro[]).map((e) => (
           <button key={e} onClick={() => setFiltro(filtro === e ? "" : e)}
-            className={`text-left bg-white rounded-xl border p-3 hover:bg-slate-50 ${filtro === e ? "border-[#1b4332]" : "border-slate-200"}`}>
-            <p className="text-[10px] text-slate-400 uppercase font-bold">
+            className={`text-left bg-white rounded-xl border p-3 hover:bg-slate-50 ${filtro === e ? "border-[#2D5A27]" : "border-slate-200"}`}>
+            <p className="text-[12px] text-slate-400 uppercase font-bold">
               {e === "DESCARTADAS" ? "Descartadas" : NOMBRE_ESTADO_INCIDENCIA[e as EstadoIncidencia]}
             </p>
             <p className="text-lg font-bold text-slate-900">{cuenta(e)}</p>
@@ -336,18 +336,18 @@ export function IncidenciasView() {
         >
           {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
           <span className="flex-1">{mensaje.texto}</span>
-          <button onClick={() => setMensaje(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
+          <button onClick={() => setMensaje(null)} className="text-[12px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
         </div>
       )}
 
       {mostrarForm && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
           <h3 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2">
             Nueva incidencia
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Habitación
               </label>
               <select
@@ -365,7 +365,7 @@ export function IncidenciasView() {
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Tipo
               </label>
               <select
@@ -384,7 +384,7 @@ export function IncidenciasView() {
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Descripción
               </label>
               <input
@@ -398,36 +398,36 @@ export function IncidenciasView() {
             </div>
           </div>
           <div className="space-y-2" role="radiogroup" aria-label="¿Impide usar la habitación?">
-            <p className="text-[10px] text-slate-500 font-bold uppercase">¿Impide usar la habitación?</p>
+            <p className="text-[12px] text-slate-500 font-bold uppercase">¿Impide usar la habitación?</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <label className={`flex items-start gap-2.5 border rounded-lg p-3 cursor-pointer ${form.bloquear === true ? "border-red-400 bg-red-50" : "border-slate-200 hover:bg-slate-50"}`}>
                 <input type="radio" name="impacto" checked={form.bloquear === true} onChange={() => setForm((f) => ({ ...f, bloquear: true }))}
                   className="mt-0.5" aria-label="Sí, bloquear la habitación" />
                 <span>
                   <span className="block text-xs font-semibold text-slate-800">Sí: bloquear la habitación</span>
-                  <span className="block text-[11px] text-slate-500 mt-0.5">Pasa a MANTENIMIENTO y no se vende hasta resolver o liberarla. Para averías graves (sin agua, sin luz, cerradura rota).</span>
+                  <span className="block text-xs text-slate-500 mt-0.5">Pasa a MANTENIMIENTO y no se vende hasta resolver o liberarla. Para averías graves (sin agua, sin luz, cerradura rota).</span>
                 </span>
               </label>
-              <label className={`flex items-start gap-2.5 border rounded-lg p-3 cursor-pointer ${form.bloquear === false ? "border-[#1b4332] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
+              <label className={`flex items-start gap-2.5 border rounded-lg p-3 cursor-pointer ${form.bloquear === false ? "border-[#2D5A27] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
                 <input type="radio" name="impacto" checked={form.bloquear === false} onChange={() => setForm((f) => ({ ...f, bloquear: false }))}
                   className="mt-0.5" aria-label="No, dejarla disponible" />
                 <span>
                   <span className="block text-xs font-semibold text-slate-800">No: dejarla disponible</span>
-                  <span className="block text-[11px] text-slate-500 mt-0.5">Sigue a la venta, con la incidencia a la vista en Habitaciones y Reservas. Para detalles menores (foco, control de TV).</span>
+                  <span className="block text-xs text-slate-500 mt-0.5">Sigue a la venta, con la incidencia a la vista en Habitaciones y Reservas. Para detalles menores (foco, control de TV).</span>
                 </span>
               </label>
             </div>
           </div>
           <button
             onClick={reportar}
-            className="bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold px-4 py-2 rounded-lg"
+            className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold px-4 py-2 rounded-lg"
           >
             Registrar incidencia
           </button>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         {cargando ? (
           <p className="p-4 text-center text-slate-400 text-xs">Cargando...</p>
         ) : visibles.length === 0 ? (
@@ -438,7 +438,7 @@ export function IncidenciasView() {
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Habitación</th>
                 <th className="p-3">Tipo</th>
                 <th className="p-3">Descripción</th>
@@ -456,10 +456,10 @@ export function IncidenciasView() {
                     <td className="p-3 font-semibold text-slate-800">
                       Hab. {i.habitacion?.numero ?? "—"}
                       {i.habitacion?.estadoOperativo && (
-                        <div className="text-[10px] font-normal text-slate-400">{i.habitacion.estadoOperativo}</div>
+                        <div className="text-[12px] font-normal text-slate-400">{i.habitacion.estadoOperativo}</div>
                       )}
                       {abierta && (
-                        <span className={`inline-flex items-center gap-1 mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${i.bloqueaHabitacion ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>
+                        <span className={`inline-flex items-center gap-1 mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded ${i.bloqueaHabitacion ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}`}>
                           {i.bloqueaHabitacion ? <><Lock size={9} /> BLOQUEA</> : "NO BLOQUEA"}
                         </span>
                       )}
@@ -468,33 +468,33 @@ export function IncidenciasView() {
                     <td className="p-3 text-slate-600 max-w-xs">
                       <div>{i.descripcion}</div>
                       {i.observaciones && (
-                        <div className="text-[10px] text-slate-400 mt-0.5 whitespace-pre-line">
+                        <div className="text-[12px] text-slate-400 mt-0.5 whitespace-pre-line">
                           {i.estado === "RESUELTO" ? "Solución: " : ""}{i.observaciones}
                         </div>
                       )}
                       {(i.vecesReabierta ?? 0) > 0 && (
-                        <span className="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                        <span className="inline-block mt-1 text-[11px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
                           Reabierta {i.vecesReabierta}×
                         </span>
                       )}
                     </td>
                     <td className="p-3 text-slate-600">
                       <div>{nombre(i.empleadoReporta)}</div>
-                      <div className="text-[10px] text-slate-400">{i.empleadoResponsable ? `Atiende: ${nombre(i.empleadoResponsable)}` : "Sin responsable"}</div>
+                      <div className="text-[12px] text-slate-400">{i.empleadoResponsable ? `Atiende: ${nombre(i.empleadoResponsable)}` : "Sin responsable"}</div>
                     </td>
                     <td className="p-3 text-slate-500 whitespace-nowrap">
-                      <div className="text-[10px] text-slate-400">{i.fechaReporte ? i.fechaReporte.slice(0, 16).replace("T", " ") : "—"}</div>
+                      <div className="text-[12px] text-slate-400">{i.fechaReporte ? i.fechaReporte.slice(0, 16).replace("T", " ") : "—"}</div>
                       {abierta ? (
                         <>
                           <div>Abierta hace <strong>{duracion(i.fechaReporte)}</strong></div>
-                          <div className="text-[10px]">{i.fechaInicioReparacion ? `Respuesta: ${duracion(i.fechaReporte, i.fechaInicioReparacion)}` : "Sin atender aún"}</div>
+                          <div className="text-[12px]">{i.fechaInicioReparacion ? `Respuesta: ${duracion(i.fechaReporte, i.fechaInicioReparacion)}` : "Sin atender aún"}</div>
                         </>
                       ) : (
                         <div>{i.estado === "RESUELTO" ? "Resuelta en" : "Cerrada en"} <strong>{duracion(i.fechaReporte, i.fechaResolucion)}</strong></div>
                       )}
                     </td>
                     <td className="p-3 text-center">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${BADGE[i.estado]}`}>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${BADGE[i.estado]}`}>
                         {NOMBRE_ESTADO_INCIDENCIA[i.estado]}
                       </span>
                     </td>
@@ -505,7 +505,7 @@ export function IncidenciasView() {
                             {i.estado === "PENDIENTE" && (
                               <button
                                 onClick={() => ejecutar(() => incidenciasApi.cambiarEstado(i.idIncidencia, "EN_REPARACION"), "No se pudo actualizar la incidencia.")}
-                                className="bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                                className="bg-slate-800 hover:bg-slate-900 text-white text-[12px] font-semibold px-2.5 py-1 rounded-lg"
                               >
                                 Iniciar reparación
                               </button>
@@ -513,21 +513,21 @@ export function IncidenciasView() {
                             <button
                               onClick={() => setDialogo({ tipo: "resolver", incidencia: i })}
                               aria-label={`Resolver incidencia de la habitación ${i.habitacion?.numero ?? ""}`}
-                              className="bg-[#1b4332] hover:bg-[#143427] text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                              className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-[12px] font-semibold px-2.5 py-1 rounded-lg"
                             >
                               {i.estado === "PENDIENTE" ? "Resolver" : "Marcar resuelta"}
                             </button>
                             <button
                               onClick={() => ejecutar(() => incidenciasApi.cambiarBloqueo(i.idIncidencia, !i.bloqueaHabitacion), "No se pudo cambiar el bloqueo.")}
                               aria-label={`${i.bloqueaHabitacion ? "Liberar" : "Bloquear"} la habitación ${i.habitacion?.numero ?? ""}`}
-                              className="border border-slate-300 text-slate-700 hover:bg-slate-50 text-[10px] font-semibold px-2.5 py-1 rounded-lg inline-flex items-center gap-1"
+                              className="border border-slate-300 text-slate-700 hover:bg-slate-50 text-[12px] font-semibold px-2.5 py-1 rounded-lg inline-flex items-center gap-1"
                             >
                               {i.bloqueaHabitacion ? <><Unlock size={10} /> Liberar habitación</> : <><Lock size={10} /> Bloquear habitación</>}
                             </button>
                             <button
                               onClick={() => setDialogo({ tipo: "descartar", incidencia: i })}
                               aria-label={`Cerrar sin reparar la incidencia de la habitación ${i.habitacion?.numero ?? ""}`}
-                              className="text-slate-500 hover:text-slate-800 text-[10px] font-semibold px-2 py-1"
+                              className="text-slate-500 hover:text-slate-800 text-[12px] font-semibold px-2 py-1"
                             >
                               Duplicada / no procede
                             </button>
@@ -537,7 +537,7 @@ export function IncidenciasView() {
                           <button
                             onClick={() => setDialogo({ tipo: "reabrir", incidencia: i })}
                             aria-label={`Reabrir la incidencia de la habitación ${i.habitacion?.numero ?? ""}`}
-                            className="border border-slate-300 text-slate-700 hover:bg-slate-50 text-[10px] font-semibold px-2.5 py-1 rounded-lg inline-flex items-center gap-1"
+                            className="border border-slate-300 text-slate-700 hover:bg-slate-50 text-[12px] font-semibold px-2.5 py-1 rounded-lg inline-flex items-center gap-1"
                           >
                             <RotateCcw size={10} /> Reabrir
                           </button>

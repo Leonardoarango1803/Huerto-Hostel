@@ -38,7 +38,7 @@ Propósito: administrar el ciclo operativo completo de un hostel — reservas, c
 | Host | Supabase (pooler) |
 | Endpoint | `aws-1-sa-east-1.pooler.supabase.com:5432` |
 | Base de datos | `postgres` |
-| Usuario | `postgres.iyojtryjtmnwrgmoohbi` |
+| Usuario | en `backend/.env` (no versionado) |
 
 ### Arquitectura de capas
 
@@ -321,22 +321,26 @@ El frontend arranca en `http://localhost:5173`.
 
 ### Variables de entorno
 
-El backend usa `${VAR:default}` — en desarrollo local los defaults ya apuntan a Supabase:
+El backend no tiene credenciales por defecto. Para desarrollo local van en `backend/.env` (ignorado por git,
+plantilla en `backend/.env.example`); en producción, en el dashboard de Render.
 
-| Variable | Default (desarrollo) | Requerida en prod |
+| Variable | Dónde | Notas |
 |---|---|---|
-| `DATABASE_URL` | `jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres` | Sí |
-| `DATABASE_USERNAME` | `postgres.iyojtryjtmnwrgmoohbi` | Sí |
-| `DATABASE_PASSWORD` | `p7vtOsdEsXL0NMGH` | Sí |
-| `JWT_SECRET` | `clave-secreta-desarrollo-local-min-256-bits-...` | Sí (cambiar) |
-| `FRONTEND_URL` | `http://localhost:5173` | Sí (URL de Vercel) |
-| `PORT` | `8091` | Sí (Render lo asigna) |
+| `DATABASE_URL` | Render / `backend/.env` | Sí |
+| `DATABASE_USERNAME` | Render / `backend/.env` | Sí |
+| `DATABASE_PASSWORD` | Render / `backend/.env` | Sí |
+| `JWT_SECRET` | Render / `backend/.env` | Sí, 256 bits aleatorios |
+| `DECOLECTA_API_KEY` | Render / `backend/.env` | Sí |
+| `FRONTEND_URL` | Render | Sí en prod: las dos URLs de Vercel separadas por coma |
+| `PORT` | Render lo asigna | Local: `8091` |
 
 El frontend usa:
 
 | Variable | Default |
 |---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8091` (configurable en `.env.local`) |
+| `VITE_SITIO` | sin definir = web y admin juntos (solo para desarrollar). En Vercel: `web` o `admin` |
+| `VITE_URL_WEB` | opcional: dirección de la web pública, para enlazarla desde el login del admin |
 
 ---
 
@@ -353,25 +357,52 @@ Los hashes BCrypt (factor 12) están en V4 y V7. **No modificar las migraciones 
 
 ## Despliegue en producción
 
-### Backend → Render
+### Backend → Render (Docker)
 
-1. Crear "Web Service" en Render, conectar repo, directorio raíz: `backend`
-2. Runtime: Java, versión 21
-3. Build command: `mvn clean package -DskipTests`
-4. Start command: `java -jar target/huerto-hostel-0.0.1-SNAPSHOT.jar`
-5. Variables de entorno (reemplazar defaults por valores reales):
-   - `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`
-   - `JWT_SECRET` (generar 256-bit aleatorio)
-   - `FRONTEND_URL` (URL de Vercel, ej: `https://huerto-hostel.vercel.app`)
+El backend se construye con `backend/Dockerfile` (Maven + JRE 21), no con el runtime Java de Render.
+Configuración del servicio (Settings → Build & Deploy):
 
-### Frontend → Vercel
+- Runtime: **Docker**
+- Root Directory: vacío (raíz del repo)
+- Dockerfile Path: `./backend/Dockerfile`
+- Docker Build Context Directory: `./backend`
 
-1. Importar repo en Vercel, framework: Vite
-2. Variable de entorno: `VITE_API_BASE_URL=https://<nombre>.onrender.com`
-3. El archivo `vercel.json` ya está configurado para SPA routing:
-   ```json
-   { "rewrites": [{ "source": "/(.*)", "destination": "/" }] }
-   ```
+`render.yaml` describe lo mismo para un Blueprint; si el servicio ya existe, se configura a mano.
+
+Variables de entorno: las de la tabla de arriba, y `FRONTEND_URL` con las DOS direcciones de Vercel
+separadas por coma, sin `/` al final (ej: `https://huerto-hostel.vercel.app,https://huerto-hostel-admin.vercel.app`).
+
+### Frontend → Vercel: dos proyectos, un solo repositorio
+
+El mismo repositorio se publica como dos sitios. Lo que cambia entre ellos es solo `VITE_SITIO`
+(ver `src/sitio.ts`): cada uno se compila con sus pantallas y nada del otro.
+
+| | Web pública | Portal administrativo |
+|---|---|---|
+| Proyecto de Vercel (ej.) | `huerto-hostel` | `huerto-hostel-admin` |
+| Qué tiene | Inicio, habitaciones, reservar, "Mi cuenta" (portal del huésped) | Login del personal y los módulos |
+| Quién entra | Visitantes y huéspedes | Solo el personal |
+| `VITE_SITIO` | `web` | `admin` |
+| `VITE_API_BASE_URL` | `https://<nombre>.onrender.com` | la misma |
+| `VITE_URL_WEB` | — | opcional: la dirección de la web |
+
+Para cada proyecto: *Add New → Project*, importar el mismo repositorio, framework Vite, poner sus
+variables (en *Production* y *Preview*) y desplegar. El proyecto que ya existe puede quedar como la web
+pública: solo agrégale `VITE_SITIO=web` y vuelve a desplegar.
+
+- La web no enlaza al admin: al personal se le pasa la dirección del portal directamente. El admin
+  lleva `noindex` para que no aparezca en Google.
+- `vercel.json` (compartido) trae el ruteo SPA y las cabeceras de seguridad. Su
+  `Content-Security-Policy` solo deja llamar a `https://*.onrender.com`: si el backend se muda a otro
+  dominio, agrégalo en `connect-src`.
+
+### Acceso seguro (backend)
+
+- Login con `sitio`: el admin rechaza cuentas de huésped y la web rechaza cuentas del personal (403).
+- 5 intentos fallidos en 15 min bloquean la cuenta 15 min; 30 desde la misma IP bloquean esa IP (429).
+  Restablecer la clave desbloquea la cuenta. Los bloqueos quedan en la bitácora de Usuarios.
+- En el admin la sesión se cierra tras 30 min sin uso (salvo cocina y bar, que dejan su tablero de
+  comandas a la vista). La sesión dura como máximo 8 h.
 
 ### Flyway en producción
 

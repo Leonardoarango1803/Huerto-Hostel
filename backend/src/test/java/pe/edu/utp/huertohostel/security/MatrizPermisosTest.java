@@ -73,6 +73,10 @@ class MatrizPermisosTest {
         // Cualquier sesion abierta (la clave temporal solo permite esta ruta); el filtro JWT exige estar autenticado
         m.put("POST /api/v1/auth/cambiar-password", PUBLICO);
         m.put("GET /api/v1/ping", PUBLICO);
+        // Web publica: un visitante consulta y reserva (crea su cuenta de huesped en el mismo paso)
+        m.put("GET /api/v1/publico/tipos-habitacion", PUBLICO);
+        m.put("GET /api/v1/publico/disponibilidad", PUBLICO);
+        m.put("POST /api/v1/publico/reservas", PUBLICO);
 
         // Catalogos de apoyo
         m.put("GET /api/v1/areas", RECEPCION);
@@ -167,12 +171,12 @@ class MatrizPermisosTest {
                 "POST /api/v1/inventario/conteos", "GET /api/v1/inventario/reportes/consumo")) {
             m.put(ruta, INVENTARIO_OPERA);
         }
-        for (String ruta : List.of("GET /api/v1/inventario/recetas", "GET /api/v1/inventario/recetas/{idProducto}",
+        for (String ruta : List.of("GET /api/v1/inventario/recetas", "GET /api/v1/inventario/recetas/{idProducto}", "GET /api/v1/inventario/insumos/uso",
                 "GET /api/v1/inventario/proveedores")) {
             m.put(ruta, INVENTARIO);
         }
         for (String ruta : List.of("POST /api/v1/inventario/insumos", "PUT /api/v1/inventario/insumos/{id}",
-                "PUT /api/v1/inventario/recetas/{idProducto}", "POST /api/v1/inventario/proveedores",
+                "PUT /api/v1/inventario/recetas/{idProducto}", "POST /api/v1/inventario/insumos/{id}/vender", "POST /api/v1/inventario/proveedores",
                 "PUT /api/v1/inventario/proveedores/{id}")) {
             m.put(ruta, SOLO_ADMIN);
         }
@@ -190,7 +194,8 @@ class MatrizPermisosTest {
 
         // Portal del huesped
         for (String ruta : List.of("GET /api/v1/portal/folio", "GET /api/v1/portal/consumos",
-                "GET /api/v1/portal/solicitudes", "POST /api/v1/portal/solicitudes")) {
+                "GET /api/v1/portal/solicitudes", "POST /api/v1/portal/solicitudes",
+                "GET /api/v1/portal/reservas", "POST /api/v1/portal/reservas")) {
             m.put(ruta, SOLO_CLIENTE);
         }
 

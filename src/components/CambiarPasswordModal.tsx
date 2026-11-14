@@ -43,13 +43,13 @@ export function CambiarPasswordModal({ obligatorio = false, onCerrar }: Props) {
   const formulario = (
     <div className="space-y-3">
       {obligatorio && (
-        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
           Entraste con una <strong>clave temporal</strong>. Por seguridad elige una contraseña propia para continuar:
           solo tú la conocerás.
         </p>
       )}
-      {error && <p role="alert" className="text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-      {listo && <p role="status" className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg px-3 py-2">Contraseña cambiada. Tu sesión se renovó.</p>}
+      {error && <p role="alert" className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+      {listo && <p role="status" className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg px-3 py-2">Contraseña cambiada. Tu sesión se renovó.</p>}
       <FormField label={obligatorio ? "Clave temporal que te entregaron" : "Contraseña actual"} required>
         <Input type="password" autoComplete="current-password" value={actual} onChange={(e) => setActual(e.target.value)} aria-label="Contraseña actual" />
       </FormField>
@@ -62,7 +62,7 @@ export function CambiarPasswordModal({ obligatorio = false, onCerrar }: Props) {
       </FormField>
       <div className="flex items-center justify-between pt-1">
         {obligatorio ? (
-          <button onClick={logout} className="text-[11px] text-slate-500 hover:text-slate-700 flex items-center gap-1">
+          <button onClick={logout} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
             <LogOut size={12} /> Cerrar sesión
           </button>
         ) : <span />}
@@ -76,13 +76,13 @@ export function CambiarPasswordModal({ obligatorio = false, onCerrar }: Props) {
 
   if (obligatorio) {
     return (
-      <div className="min-h-screen bg-[#f5f6f8] flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm w-full max-w-md p-6 space-y-4">
+      <div className="min-h-screen bg-[#FBF7F0] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] w-full max-w-md p-6 space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center"><KeyRound size={16} /></div>
             <div>
               <h1 className="text-sm font-bold text-slate-900">Elige tu contraseña</h1>
-              <p className="text-[11px] text-slate-500">Usuario: {user?.username}</p>
+              <p className="text-xs text-slate-500">Usuario: {user?.username}</p>
             </div>
           </div>
           {formulario}

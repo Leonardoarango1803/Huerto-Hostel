@@ -63,8 +63,8 @@ export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, on
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-2 bg-white p-3 rounded-xl border border-slate-200">
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+      <div className="flex flex-wrap items-end gap-2 bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Insumo
           <select
             value={idInsumo}
@@ -77,7 +77,7 @@ export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, on
             ))}
           </select>
         </label>
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Tipo
           <select
             value={tipo}
@@ -90,12 +90,12 @@ export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, on
             ))}
           </select>
         </label>
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Desde
           <input type="date" value={desde} max={hoyISO()} onChange={(e) => setDesde(e.target.value)}
             className="block mt-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-normal" />
         </label>
-        <label className="text-[10px] font-bold text-slate-500 uppercase">
+        <label className="text-[12px] font-bold text-slate-500 uppercase">
           Hasta
           <input type="date" value={hasta} max={hoyISO()} onChange={(e) => setHasta(e.target.value)}
             className="block mt-1 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-normal" />
@@ -107,14 +107,14 @@ export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, on
         {hayFiltros && (
           <button
             onClick={() => { setIdInsumo(""); setTipo(""); setDesde(""); setHasta(""); setSoloFaltantes(false); }}
-            className="text-[11px] text-emerald-700 font-semibold hover:underline pb-1.5"
+            className="text-xs text-emerald-700 font-semibold hover:underline pb-1.5"
           >
             Limpiar filtros
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         <div className="p-3 border-b border-slate-100 text-xs">
           <span className="font-bold text-slate-700">Movimientos ({movimientos.length})</span>
           {movimientos.length >= LIMITE && (
@@ -128,7 +128,7 @@ export function MovimientosTab({ insumos, version, idInsumoInicial, verCosto, on
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Fecha</th>
                 <th className="p-3">Insumo</th>
                 <th className="p-3">Tipo</th>

@@ -25,10 +25,10 @@ export function MiTurno() {
 
   if (!datos.asignado || !datos.turno) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-2">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] p-8 text-center space-y-2">
         <Clock size={28} className="mx-auto text-slate-300" />
         <p className="text-sm font-semibold text-slate-600">Sin turno asignado</p>
-        <p className="text-[11px] text-slate-400">Pide al administrador que te asigne un turno.</p>
+        <p className="text-xs text-slate-400">Pide al administrador que te asigne un turno.</p>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export function MiTurno() {
           <div>
             <h2 className="font-bold text-lg text-slate-800">Turno {t.nombre}</h2>
             <p className="text-sm text-slate-600">{t.horaInicio} – {t.horaFin}{t.cruzaMedianoche ? " (cruza la medianoche)" : ""}</p>
-            {t.descripcion && <p className="text-[11px] text-slate-500 italic mt-0.5">{t.descripcion}</p>}
+            {t.descripcion && <p className="text-xs text-slate-500 italic mt-0.5">{t.descripcion}</p>}
           </div>
           <div className="ml-auto">
             {t.enCurso
@@ -57,13 +57,13 @@ export function MiTurno() {
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <User size={16} className="text-slate-500" />
             <span className="font-semibold">{datos.yo.nombres} {datos.yo.apellidos}</span>
-            {datos.yo.rol && <span className="text-[11px] text-slate-500">· {ETIQUETA_ROL[datos.yo.rol] ?? datos.yo.rol}</span>}
+            {datos.yo.rol && <span className="text-xs text-slate-500">· {ETIQUETA_ROL[datos.yo.rol] ?? datos.yo.rol}</span>}
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold uppercase">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] p-4 space-y-3">
+        <div className="flex items-center gap-1.5 text-[12px] text-slate-500 font-bold uppercase">
           <Users size={12} /> Tus compañeros de turno ({t.empleados.length})
         </div>
         <ul className="space-y-1.5">
@@ -72,9 +72,9 @@ export function MiTurno() {
               className={`flex items-center justify-between rounded-lg px-3 py-2 ${e.idEmpleado === yoId ? "bg-emerald-50 border border-emerald-200" : "bg-slate-50"}`}>
               <span className="font-medium text-slate-700">
                 {e.nombres} {e.apellidos}
-                {e.idEmpleado === yoId && <span className="ml-1.5 text-[9px] bg-emerald-200 text-emerald-800 px-1 py-0.5 rounded font-bold">TÚ</span>}
+                {e.idEmpleado === yoId && <span className="ml-1.5 text-[11px] bg-emerald-200 text-emerald-800 px-1 py-0.5 rounded font-bold">TÚ</span>}
               </span>
-              {e.rol && <span className="text-[10px] text-slate-400">{ETIQUETA_ROL[e.rol] ?? e.rol}</span>}
+              {e.rol && <span className="text-[12px] text-slate-400">{ETIQUETA_ROL[e.rol] ?? e.rol}</span>}
             </li>
           ))}
         </ul>

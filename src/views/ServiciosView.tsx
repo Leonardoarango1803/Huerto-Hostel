@@ -130,12 +130,12 @@ export function ServiciosView() {
   const activos = productos.filter((p) => p.estado).length;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Servicios</p>
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Servicios</p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Catálogo de Servicios</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">Gestión de productos y servicios del hostel.</p>
+          <p className="text-slate-500 text-xs mt-0.5">Gestión de productos y servicios del hostel.</p>
         </div>
         <Button icon={<Plus size={13} />} onClick={abrirNuevo}>Nuevo Producto</Button>
       </div>
@@ -149,18 +149,18 @@ export function ServiciosView() {
         <KpiCard title="Inactivos" value={productos.length - activos} subtitle="deshabilitados" color="amber" />
       </div>
 
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center gap-2">
+      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex items-center gap-2">
         <SearchBar value={search} onChange={setSearch} placeholder="Buscar por nombre o categoría" className="flex-1 max-w-xs" />
-        <span className="text-[10px] text-slate-400 ml-auto">{filtrados.length} registros</span>
+        <span className="text-[12px] text-slate-400 ml-auto">{filtrados.length} registros</span>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         {loading ? <LoadingState /> : filtrados.length === 0 ? (
           <EmptyState title="Sin productos" description="No hay productos/servicios registrados." action={<Button onClick={abrirNuevo} icon={<Plus size={13} />}>Nuevo Producto</Button>} />
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Nombre</th>
                 <th className="p-3">Categoría</th>
                 <th className="p-3">Precio Venta</th>
@@ -173,7 +173,7 @@ export function ServiciosView() {
                 <tr key={p.idProducto} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-3">
                     <div className="font-semibold">{p.nombre}</div>
-                    {p.descripcion && <div className="text-[10px] text-slate-400">{p.descripcion}</div>}
+                    {p.descripcion && <div className="text-[12px] text-slate-400">{p.descripcion}</div>}
                   </td>
                   <td className="p-3">
                     <Badge variant={(categoriaVariant[p.categoria] ?? "default") as "amber" | "blue" | "emerald"} label={categoriaLabel[p.categoria] ?? p.categoria} />

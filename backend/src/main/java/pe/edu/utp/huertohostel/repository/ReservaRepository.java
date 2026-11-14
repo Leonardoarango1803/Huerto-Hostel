@@ -33,6 +33,18 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer> {
             @Param("checkout") LocalDate checkout,
             @Param("estadosExcluidos") List<EstadoReserva> estadosExcluidos);
 
+    /** Habitaciones con alguna reserva que se cruza con el rango (misma regla que findConflictos, de una vez). */
+    @Query("""
+            SELECT DISTINCT r.habitacion.idHabitacion FROM Reserva r
+            WHERE r.estadoReserva NOT IN :estadosExcluidos
+              AND r.fechaCheckinPrevisto < :checkout
+              AND r.fechaCheckoutPrevisto > :checkin
+            """)
+    List<Integer> findHabitacionesConCruce(
+            @Param("checkin") LocalDate checkin,
+            @Param("checkout") LocalDate checkout,
+            @Param("estadosExcluidos") List<EstadoReserva> estadosExcluidos);
+
     /** Ingreso por alojamiento de las reservas vigentes (excluye canceladas). */
     @Query("""
             SELECT COALESCE(SUM(r.montoAlojamientoTotal), 0) FROM Reserva r

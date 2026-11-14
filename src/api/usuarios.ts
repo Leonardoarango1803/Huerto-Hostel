@@ -7,6 +7,8 @@ export interface AccesoEmpleado {
   /** true mientras la persona no cambie la clave temporal que se le entrego. */
   debeCambiarPassword: boolean;
   ultimoAcceso: string | null;
+  /** Bloqueo temporal por intentos fallidos de login: se levanta solo a esa hora, o al restablecer la clave. */
+  bloqueadaHasta?: string | null;
 }
 
 export interface EmpleadoAdmin {

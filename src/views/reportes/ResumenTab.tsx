@@ -44,11 +44,11 @@ export function ResumenTab({ periodo, version }: { periodo: Periodo; version: nu
             <div className="grid grid-cols-2 gap-4">
               <Seccion titulo="Cobrado por dia (S/)">
                 <GraficoSerie datos={d.serie.map((p) => ({ x: p.fecha, cobrado: p.cobrado }))}
-                  series={[{ clave: "cobrado", nombre: "Cobrado", color: "#10b981" }]} />
+                  series={[{ clave: "cobrado", nombre: "Cobrado", color: "#4F8A45" }]} />
               </Seccion>
               <Seccion titulo="Ocupacion por dia (%)">
                 <GraficoSerie datos={d.serie.map((p) => ({ x: p.fecha, ocupacion: p.ocupacionPct }))}
-                  series={[{ clave: "ocupacion", nombre: "Ocupacion", color: "#3b82f6", tipo: "linea" }]}
+                  series={[{ clave: "ocupacion", nombre: "Ocupacion", color: "#3B6FB6", tipo: "linea" }]}
                   formato={porcentaje} formatoEje={(v) => `${decimal(v, 0)}%`} />
               </Seccion>
             </div>
@@ -71,13 +71,13 @@ export function ResumenTab({ periodo, version }: { periodo: Periodo; version: nu
                   vacio="Aun no hay consumos en este periodo."
                   filas={d.topProductos.map((p) => [p.nombre, etiqueta(p.categoria), entero(p.unidades), soles(p.venta)])} />
               </Seccion>
-              <Seccion titulo="Inventario" accion={<Link to="/inventario" className="text-[10px] text-emerald-700 font-semibold hover:underline no-imprimir">Ver</Link>}>
+              <Seccion titulo="Inventario" accion={<Link to="/inventario" className="text-[12px] text-emerald-700 font-semibold hover:underline no-imprimir">Ver</Link>}>
                 {hayAlertaInventario ? (
                   <ul className="space-y-2 text-xs">
                     <li className="flex justify-between"><span className="text-slate-500">Agotados</span><strong className={inv.insumosAgotados ? "text-red-600" : ""}>{inv.insumosAgotados}</strong></li>
                     <li className="flex justify-between"><span className="text-slate-500">En o bajo el minimo</span><strong className={inv.insumosStockBajo ? "text-amber-600" : ""}>{inv.insumosStockBajo}</strong></li>
                     <li className="flex justify-between"><span className="text-slate-500">Ventas con faltante (7 dias)</span><strong>{inv.faltantesUltimos7Dias}</strong></li>
-                    <li className="flex items-start gap-1.5 text-[10px] text-amber-700 pt-1"><AlertTriangle size={12} className="shrink-0" /> Revisa el almacen antes de que falte para vender.</li>
+                    <li className="flex items-start gap-1.5 text-[12px] text-amber-700 pt-1"><AlertTriangle size={12} className="shrink-0" /> Revisa el almacen antes de que falte para vender.</li>
                   </ul>
                 ) : (
                   <p className="text-xs text-emerald-700">El stock esta sobre el minimo y no hubo faltantes.</p>

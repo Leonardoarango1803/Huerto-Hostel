@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import api from "../api/axiosConfig";
+import { SITIO_LOGIN } from "../sitio";
+import { borrarAvisoDeInactividad, marcarActividad, olvidarActividad } from "../hooks/useCierrePorInactividad";
 
 interface AuthUser {
   username: string;
@@ -12,7 +14,8 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
-  login: (username: string, password: string) => Promise<void>;
+  /** Inicia sesion y devuelve el usuario (para llevarlo a la pantalla de inicio de su rol). */
+  login: (username: string, password: string) => Promise<AuthUser>;
   /** Cambia la clave propia; la sesion se renueva (la anterior deja de valer). */
   cambiarPassword: (passwordActual: string, passwordNueva: string) => Promise<void>;
   logout: () => void;
@@ -54,11 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user", JSON.stringify(authUser));
     setToken(datos.token);
     setUser(authUser);
+    return authUser;
   };
 
   const login = async (username: string, password: string) => {
-    const response = await api.post("/api/v1/auth/login", { username, password });
-    guardarSesion(response.data);
+    // El backend acepta en cada sitio solo sus cuentas: personal en el admin, huespedes en la web.
+    const response = await api.post("/api/v1/auth/login", { username, password, sitio: SITIO_LOGIN });
+    marcarActividad(); // la sesion nueva empieza a contar su inactividad desde ahora
+    borrarAvisoDeInactividad();
+    return guardarSesion(response.data);
   };
 
   const cambiarPassword = async (passwordActual: string, passwordNueva: string) => {
@@ -69,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    olvidarActividad();
     setToken(null);
     setUser(null);
   };

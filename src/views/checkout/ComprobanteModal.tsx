@@ -64,7 +64,7 @@ export function ComprobanteModal({ idEstadia, onCerrar }: Props) {
                 <h2 className="text-sm font-bold text-slate-900">
                   {datos?.tipo === "PRE_CUENTA" ? "Estado de cuenta (pre-cuenta)" : "Comprobante de la estadía"}
                 </h2>
-                <p className="text-[11px] text-slate-500">{datos ? `N.° ${datos.numero}` : "Generando..."}</p>
+                <p className="text-xs text-slate-500">{datos ? `N.° ${datos.numero}` : "Generando..."}</p>
               </div>
             </div>
             <button onClick={onCerrar} aria-label="Cerrar comprobante" className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
@@ -73,14 +73,14 @@ export function ComprobanteModal({ idEstadia, onCerrar }: Props) {
           <div className="px-4 pt-3 flex gap-2" role="tablist" aria-label="Formato del comprobante">
             {FORMATOS.map((f) => (
               <button key={f.id} role="tab" aria-selected={formato === f.id} onClick={() => setFormato(f.id)}
-                className={`flex-1 text-left border rounded-lg px-3 py-2 ${formato === f.id ? "border-[#1b4332] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                className={`flex-1 text-left border rounded-lg px-3 py-2 ${formato === f.id ? "border-[#2D5A27] bg-emerald-50" : "border-slate-200 hover:bg-slate-50"}`}>
                 <span className="block text-xs font-semibold text-slate-800">{f.texto}</span>
-                <span className="block text-[10px] text-slate-500">{f.detalle}</span>
+                <span className="block text-[12px] text-slate-500">{f.detalle}</span>
               </button>
             ))}
           </div>
 
-          {error && <p role="alert" className="mx-4 mt-3 text-[11px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+          {error && <p role="alert" className="mx-4 mt-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
 
           <div className="p-4 overflow-auto flex-1 bg-slate-100 mt-3 flex justify-center">
             {datos ? (

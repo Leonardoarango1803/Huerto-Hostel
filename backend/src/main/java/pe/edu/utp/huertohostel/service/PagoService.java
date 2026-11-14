@@ -64,6 +64,26 @@ public class PagoService {
     }
 
     /**
+     * Adelanto pagado por el propio huesped desde la web publica (sin sesion todavia). No entra a
+     * ningun turno de caja ni tiene empleado responsable, igual que un pago desde el portal: el
+     * huesped no abre ni cierra caja. Lo usa solo ReservaWebService.
+     */
+    @Transactional
+    public Pago registrarPagoWeb(Pago pago) {
+        if (pago.getMonto() == null || pago.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("El monto del pago debe ser mayor a cero.");
+        }
+        if (pago.getReserva() == null) {
+            throw new IllegalStateException("El pago web debe referirse a una reserva.");
+        }
+        pago.setIdPago(null);
+        pago.setFechaPago(LocalDateTime.now());
+        pago.setTurnoCaja(null);
+        pago.setEmpleadoRegistra(null);
+        return pagoRepository.save(pago);
+    }
+
+    /**
      * Todo pago queda ligado a su reserva aunque solo llegue la estadia (la pasarela de recepcion manda solo la
      * estadia), y si llegan las dos tienen que ser de la misma estadia. Asi el historial, los reportes y el saldo
      * hablan del mismo pago.

@@ -69,14 +69,14 @@ export function SolicitudesView() {
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">
+          <p className="text-[12px] text-slate-400 uppercase font-semibold">
             Recepcion › Solicitudes
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Solicitudes del Huesped</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Pedidos enviados desde el portal. Los cobrables se cargan al folio de la estadia.
           </p>
         </div>
@@ -115,7 +115,7 @@ export function SolicitudesView() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         {cargando ? (
           <p className="p-4 text-center text-slate-400 text-xs">Cargando...</p>
         ) : solicitudes.length === 0 ? (
@@ -126,7 +126,7 @@ export function SolicitudesView() {
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Habitacion</th>
                 <th className="p-3">Solicitud</th>
                 <th className="p-3">Fecha</th>
@@ -160,7 +160,7 @@ export function SolicitudesView() {
                   </td>
                   <td className="p-3 text-center">
                     <span
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                      className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${
                         BADGE[s.estado] ?? "bg-slate-100 text-slate-600"
                       }`}
                     >
@@ -172,7 +172,7 @@ export function SolicitudesView() {
                       {s.estado === "PENDIENTE" && (
                         <button
                           onClick={() => avanzar(s, "EN_ATENCION")}
-                          className="bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                          className="bg-slate-800 hover:bg-slate-900 text-white text-[12px] font-semibold px-2.5 py-1 rounded-lg"
                         >
                           Atender
                         </button>
@@ -180,7 +180,7 @@ export function SolicitudesView() {
                       {s.estado === "EN_ATENCION" && (
                         <button
                           onClick={() => avanzar(s, "ATENDIDA")}
-                          className="bg-[#1b4332] hover:bg-[#143427] text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                          className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-[12px] font-semibold px-2.5 py-1 rounded-lg"
                         >
                           Completar
                         </button>
@@ -188,7 +188,7 @@ export function SolicitudesView() {
                       {puedeCargar && s.esCobrable && s.estado === "ATENDIDA" && (
                         <button
                           onClick={() => cargarAlFolio(s)}
-                          className="border border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-[10px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1"
+                          className="border border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-[12px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1"
                         >
                           <Receipt size={11} /> Cargar al folio
                         </button>

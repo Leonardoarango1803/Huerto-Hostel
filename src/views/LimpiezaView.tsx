@@ -93,15 +93,15 @@ export function LimpiezaView() {
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-4 sm:p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-4 sm:p-6 min-h-screen">
       <PersonalDeTurno rol="HOUSEKEEPING" titulo="Personal de limpieza de turno ahora" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">
+          <p className="text-[12px] text-slate-400 uppercase font-semibold">
             Operacion › Housekeeping
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Tareas de Limpieza</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Al completar una tarea la habitacion pasa automaticamente a DISPONIBLE.
           </p>
         </div>
@@ -142,7 +142,7 @@ export function LimpiezaView() {
       {cargando ? (
         <p className="p-6 text-center text-slate-400 text-xs">Cargando tareas...</p>
       ) : tareas.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] p-12 text-center text-slate-400">
           <Sparkles size={32} className="mx-auto mb-2 opacity-30" />
           <p className="text-xs">No hay tareas de limpieza pendientes.</p>
         </div>
@@ -151,20 +151,20 @@ export function LimpiezaView() {
           {tareas.map((t) => (
             <div
               key={t.idTarea}
-              className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3"
+              className="bg-white rounded-2xl border border-[#EFE6D6] p-4 space-y-3"
             >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-lg font-bold text-slate-900">
                     Hab. {t.habitacion?.numero ?? "—"}
                   </p>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-500">
                     {t.habitacion?.tipoHabitacion?.nombre ?? ""}
                     {t.habitacion?.piso ? ` · Piso ${t.habitacion.piso}` : ""}
                   </p>
                 </div>
                 <span
-                  className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                  className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${
                     t.estado === "PENDIENTE"
                       ? "bg-amber-100 text-amber-800"
                       : t.estado === "EN_PROCESO"
@@ -176,13 +176,13 @@ export function LimpiezaView() {
                 </span>
               </div>
 
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 {ORIGEN_LABEL[t.origen] ?? t.origen} ·{" "}
                 {t.fechaCreacion ? t.fechaCreacion.slice(0, 16).replace("T", " ") : "—"}
               </p>
 
               {t.observaciones && (
-                <p className="text-[10px] text-slate-600 bg-slate-50 rounded px-2 py-1.5">
+                <p className="text-[12px] text-slate-600 bg-slate-50 rounded px-2 py-1.5">
                   {t.observaciones}
                 </p>
               )}
@@ -199,7 +199,7 @@ export function LimpiezaView() {
                   )}
                   <button
                     onClick={() => avanzar(t, "COMPLETADA")}
-                    className="w-full bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+                    className="w-full bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle size={14} /> Marcar como lista
                   </button>
@@ -242,13 +242,13 @@ export function LimpiezaView() {
                     className="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                   />
                   <div className="space-y-1" role="radiogroup" aria-label="¿Impide usar la habitación?">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">¿Impide usar la habitación?</p>
-                    <label className="flex items-start gap-2 text-[11px] text-slate-700">
+                    <p className="text-[12px] text-slate-500 font-bold uppercase">¿Impide usar la habitación?</p>
+                    <label className="flex items-start gap-2 text-xs text-slate-700">
                       <input type="radio" name={`impacto-${t.idTarea}`} checked={formIncidencia.bloquear === true}
                         onChange={() => setFormIncidencia((f) => ({ ...f, bloquear: true }))} aria-label="Sí, bloquear la habitación" className="mt-0.5" />
                       <span><strong>Sí:</strong> bloquear (no se vende hasta que se repare)</span>
                     </label>
-                    <label className="flex items-start gap-2 text-[11px] text-slate-700">
+                    <label className="flex items-start gap-2 text-xs text-slate-700">
                       <input type="radio" name={`impacto-${t.idTarea}`} checked={formIncidencia.bloquear === false}
                         onChange={() => setFormIncidencia((f) => ({ ...f, bloquear: false }))} aria-label="No, dejarla disponible" className="mt-0.5" />
                       <span><strong>No:</strong> detalle menor, sigue disponible</span>

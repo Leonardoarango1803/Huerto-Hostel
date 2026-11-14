@@ -172,11 +172,11 @@ export function CajaView() {
   const sinResolverDelTurno = bitacora.filter((n) => !n.resuelto).length;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-semibold">Recepcion › Caja</p>
+        <p className="text-[12px] text-slate-400 uppercase font-semibold">Recepcion › Caja</p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">Turno de Caja y Arqueo</h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           Caja unica del hotel: se recibe contando el efectivo, se cobra por metodo de pago y se cierra con arqueo guiado.
         </p>
       </div>
@@ -190,7 +190,7 @@ export function CajaView() {
         >
           {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
           <span className="flex-1">{mensaje.texto}</span>
-          <button onClick={() => setMensaje(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
+          <button onClick={() => setMensaje(null)} className="text-[12px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
         </div>
       )}
 
@@ -206,21 +206,21 @@ export function CajaView() {
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-8 space-y-4">
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Fondo inicial</p>
+              <div className="bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+                <p className="text-[12px] text-slate-400 uppercase font-bold">Fondo inicial</p>
                 <p className="text-lg font-bold text-slate-900">{dinero(resumen.turno.fondoInicialEfectivo)}</p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Total cobrado</p>
+              <div className="bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+                <p className="text-[12px] text-slate-400 uppercase font-bold">Total cobrado</p>
                 <p className="text-lg font-bold text-emerald-800">{dinero(resumen.totalCobrado)}</p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                <p className="text-[10px] text-slate-400 uppercase font-bold">Transacciones</p>
+              <div className="bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+                <p className="text-[12px] text-slate-400 uppercase font-bold">Transacciones</p>
                 <p className="text-lg font-bold text-slate-900">{resumen.cantidadTransacciones}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
               <div className="p-3 border-b border-slate-100">
                 <span className="font-bold text-slate-700 text-xs">Cobros por metodo de pago</span>
               </div>
@@ -229,7 +229,7 @@ export function CajaView() {
               ) : (
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+                    <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                       <th className="p-3">Metodo</th>
                       <th className="p-3 text-right">Total</th>
                     </tr>

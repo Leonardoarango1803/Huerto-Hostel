@@ -100,13 +100,13 @@ export function CierreGuiado({ resumen, notasSinResolver, onCerrado, onError }: 
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+    <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
       <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
         <LockKeyhole size={13} className="text-slate-500" /> Arqueo y cierre de caja
       </h3>
 
       {resumen.cierreCiego ? (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
           Arqueo ciego: cuenta el efectivo fisico y declaralo. Antes de cerrar el sistema verifica tu conteo y te orienta si
           no cuadra.
         </p>
@@ -115,7 +115,7 @@ export function CierreGuiado({ resumen, notasSinResolver, onCerrado, onError }: 
       <AvisoFueraDeTurno turno={resumen.miTurno} accion="cerrar" />
 
       {resumen.superaTope && (
-        <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 flex items-start gap-1.5" role="status">
+        <p className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 flex items-start gap-1.5" role="status">
           <AlertTriangle size={13} className="mt-0.5 shrink-0" />
           Hay mucho efectivo en la caja (tope de {dinero(resumen.topeEfectivo)}). Considera un retiro a custodia y registralo
           en "Retiros y gastos".
@@ -123,18 +123,18 @@ export function CierreGuiado({ resumen, notasSinResolver, onCerrado, onError }: 
       )}
 
       <div className="flex items-center justify-between">
-        <label className="text-[10px] text-slate-500 font-bold uppercase" htmlFor="efectivo-contado">Efectivo contado (S/)</label>
+        <label className="text-[12px] text-slate-500 font-bold uppercase" htmlFor="efectivo-contado">Efectivo contado (S/)</label>
         <button type="button" onClick={() => { setPorDenominacion((v) => !v); setVerificacion(null); }}
-          className="text-[10px] font-semibold text-emerald-700 hover:underline flex items-center gap-1">
+          className="text-[12px] font-semibold text-emerald-700 hover:underline flex items-center gap-1">
           <Coins size={11} /> {porDenominacion ? "Escribir el total" : "Contar por billetes y monedas"}
         </button>
       </div>
 
       {porDenominacion ? (
         <div className="space-y-2">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {DENOMINACIONES.map((d) => (
-              <label key={d} className="text-[10px] text-slate-500">
+              <label key={d} className="text-[12px] text-slate-500">
                 {etiquetaDenominacion(d)}
                 <input type="number" min={0} step={1} value={desglose[d] ?? ""} placeholder="0"
                   onChange={(e) => cambiarDenominacion(d, e.target.value)} aria-label={etiquetaDenominacion(d)}
@@ -158,36 +158,36 @@ export function CierreGuiado({ resumen, notasSinResolver, onCerrado, onError }: 
       )}
 
       {cuadra && vigente && (
-        <div className="text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg px-2.5 py-2 flex items-start gap-1.5" role="status">
+        <div className="text-xs text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg px-2.5 py-2 flex items-start gap-1.5" role="status">
           <CheckCircle size={14} className="mt-0.5 shrink-0" /> {vigente.mensaje}
         </div>
       )}
 
       {conDiferencia && vigente && (
         <div className={`rounded-lg border px-2.5 py-2 space-y-2 ${vigente.revelado ? "bg-red-50 border-red-300 text-red-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} role="status">
-          <p className="text-[11px] font-bold flex items-start gap-1.5">
+          <p className="text-xs font-bold flex items-start gap-1.5">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {vigente.mensaje}
           </p>
-          {vigente.recomendacion && <p className="text-[11px]">{vigente.recomendacion}</p>}
+          {vigente.recomendacion && <p className="text-xs">{vigente.recomendacion}</p>}
           {vigente.revelado && vigente.efectivoEsperado != null && (
-            <p className="text-[11px]">
+            <p className="text-xs">
               Esperado: <strong>{dinero(vigente.efectivoEsperado)}</strong> · Declarado: <strong>{dinero(monto)}</strong> · Diferencia:{" "}
               <strong>{dinero(vigente.diferencia)}</strong>
             </p>
           )}
           <div className="flex gap-2">
-            <button onClick={volverAContar} className="text-[11px] font-semibold bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-lg">
+            <button onClick={volverAContar} className="text-xs font-semibold bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-lg">
               Volver a contar
             </button>
             {!vigente.revelado && (
-              <button onClick={verificar} disabled={verificando} className="text-[11px] font-semibold bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-lg">
+              <button onClick={verificar} disabled={verificando} className="text-xs font-semibold bg-white border border-slate-300 text-slate-700 px-2.5 py-1 rounded-lg">
                 Verificar de nuevo
               </button>
             )}
           </div>
           {vigente.revelado && (
             <div className="space-y-1.5 pt-1 border-t border-red-200">
-              <p className="text-[11px] font-semibold">
+              <p className="text-xs font-semibold">
                 Si el conteo es definitivo puedes cerrar con diferencia: explica el motivo. Quedara una nota pendiente de
                 prioridad alta para el administrador, y el siguiente turno la vera al recibir la caja.
               </p>
@@ -202,18 +202,18 @@ export function CierreGuiado({ resumen, notasSinResolver, onCerrado, onError }: 
       {vigente !== null && (
         <>
           {notasSinResolver > 0 && (
-            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
               Este turno tiene {notasSinResolver} nota(s) sin resolver: al cerrar pasan al siguiente turno como pendientes.
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Observaciones del cierre</label>
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">Observaciones del cierre</label>
               <input type="text" value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Dejar una nota para el siguiente turno (opcional)</label>
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">Dejar una nota para el siguiente turno (opcional)</label>
               <input type="text" value={notaRelevo} onChange={(e) => setNotaRelevo(e.target.value)}
                 placeholder="Ej.: falta cambio de billetes pequeños"
                 className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />

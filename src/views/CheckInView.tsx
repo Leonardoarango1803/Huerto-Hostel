@@ -71,11 +71,11 @@ export function CheckInView() {
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-semibold">Recepción › Check-in</p>
+        <p className="text-[12px] text-slate-400 uppercase font-semibold">Recepción › Check-in</p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">Registro de Entrada</h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           Selecciona una reserva confirmada para registrar el ingreso y activar la estadía.
         </p>
       </div>
@@ -93,7 +93,7 @@ export function CheckInView() {
         </div>
       )}
 
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex items-center gap-2">
         <Search size={14} className="text-slate-400" />
         <input
           type="text"
@@ -105,15 +105,15 @@ export function CheckInView() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-xs">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] p-8 text-center text-slate-400 text-xs">
           Cargando reservas...
         </div>
       ) : pendientes.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-xs">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] p-8 text-center text-slate-400 text-xs">
           No hay reservas pendientes de check-in.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
           <div className="p-3 border-b border-slate-100 flex items-center gap-1.5">
             <LogIn size={14} className="text-emerald-700" />
             <span className="font-bold text-slate-700 text-xs">
@@ -122,7 +122,7 @@ export function CheckInView() {
           </div>
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase tracking-wider">
                 <th className="p-3">N° Reserva</th>
                 <th className="p-3">Huésped</th>
                 <th className="p-3">Habitación</th>
@@ -145,7 +145,7 @@ export function CheckInView() {
                         <p className="font-semibold text-slate-800">
                           {r.cliente ? `${r.cliente.nombres} ${r.cliente.apellidos}` : "—"}
                         </p>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-[12px] text-slate-400">
                           {r.cliente?.numeroDocumento ?? "—"}
                         </p>
                       </div>
@@ -157,7 +157,7 @@ export function CheckInView() {
                       <span className="font-semibold text-slate-800">
                         {r.habitacion?.numero ?? "—"}
                       </span>
-                      <span className="text-slate-400 text-[10px]">
+                      <span className="text-slate-400 text-[12px]">
                         {r.habitacion?.tipoHabitacion?.nombre ?? ""}
                       </span>
                     </div>
@@ -176,7 +176,7 @@ export function CheckInView() {
                   </td>
                   <td className="p-3 text-center">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      className={`text-[12px] font-bold px-2 py-0.5 rounded-full border ${
                         estadoColor[r.estadoReserva] ?? "bg-slate-100 text-slate-600"
                       }`}
                     >
@@ -188,7 +188,7 @@ export function CheckInView() {
                       onClick={() => hacerCheckin(r.idReserva)}
                       disabled={procesando === r.idReserva || cajaCerrada}
                       title={cajaCerrada ? AVISO_CAJA_CERRADA : undefined}
-                      className="bg-[#1b4332] hover:bg-[#143427] disabled:bg-slate-300 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 mx-auto"
+                      className="bg-[#2D5A27] hover:bg-[#1E3F1A] disabled:bg-slate-300 text-white text-[12px] font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 mx-auto"
                     >
                       <LogIn size={11} />
                       {procesando === r.idReserva ? "Procesando..." : "Check-in"}

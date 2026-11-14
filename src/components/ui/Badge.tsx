@@ -1,5 +1,6 @@
 type BadgeVariant =
   | "disponible"
+  | "reservado"
   | "ocupada"
   | "pendiente_limpieza"
   | "en_limpieza"
@@ -23,30 +24,36 @@ interface BadgeProps {
   className?: string;
 }
 
+/**
+ * Escala semantica del diseño: el estado se lee por el texto y el color lo refuerza.
+ * Disponible/confirmada = verde · reservada/en curso = azul · ocupada = terracota ·
+ * pendiente = ocre · en limpieza = verde agua · mantenimiento/finalizada = neutro.
+ */
 const variantClasses: Record<BadgeVariant, string> = {
-  disponible: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  ocupada: "bg-blue-100 text-blue-800 border-blue-300",
-  pendiente_limpieza: "bg-amber-100 text-amber-800 border-amber-300",
-  en_limpieza: "bg-sky-100 text-sky-800 border-sky-300",
-  mantenimiento: "bg-red-100 text-red-800 border-red-300",
-  confirmada: "bg-blue-100 text-blue-800 border-blue-300",
-  pendiente_adelanto: "bg-amber-100 text-amber-800 border-amber-300",
-  cancelada: "bg-red-100 text-red-800 border-red-300",
-  completada: "bg-slate-100 text-slate-700 border-slate-300",
-  en_curso: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  finalizada: "bg-slate-100 text-slate-600 border-slate-200",
-  emerald: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  blue: "bg-blue-100 text-blue-800 border-blue-300",
-  amber: "bg-amber-100 text-amber-800 border-amber-300",
-  red: "bg-red-100 text-red-800 border-red-300",
-  slate: "bg-slate-100 text-slate-600 border-slate-200",
-  default: "bg-slate-100 text-slate-700 border-slate-300",
+  disponible: "bg-emerald-100 text-emerald-800",
+  reservado: "bg-blue-100 text-blue-700",
+  ocupada: "bg-red-100 text-red-800",
+  pendiente_limpieza: "bg-amber-100 text-amber-800",
+  en_limpieza: "bg-sky-100 text-sky-800",
+  mantenimiento: "bg-slate-200 text-slate-700",
+  confirmada: "bg-emerald-100 text-emerald-800",
+  pendiente_adelanto: "bg-amber-100 text-amber-800",
+  cancelada: "bg-red-100 text-red-800",
+  completada: "bg-slate-200 text-slate-700",
+  en_curso: "bg-blue-100 text-blue-700",
+  finalizada: "bg-slate-200 text-slate-700",
+  emerald: "bg-emerald-100 text-emerald-800",
+  blue: "bg-blue-100 text-blue-700",
+  amber: "bg-amber-100 text-amber-800",
+  red: "bg-red-100 text-red-800",
+  slate: "bg-slate-200 text-slate-700",
+  default: "bg-slate-200 text-slate-700",
 };
 
 export function Badge({ variant = "default", label, className = "" }: BadgeProps) {
   return (
     <span
-      className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${variantClasses[variant]} ${className}`}
+      className={`inline-block whitespace-nowrap text-[12px] font-bold px-2.5 py-0.5 rounded-full ${variantClasses[variant]} ${className}`}
     >
       {label}
     </span>
@@ -67,6 +74,7 @@ export function estadoReservaToVariant(estado: string): BadgeVariant {
 export function estadoHabToVariant(estado: string): BadgeVariant {
   const map: Record<string, BadgeVariant> = {
     DISPONIBLE: "disponible",
+    RESERVADO: "reservado",
     OCUPADA: "ocupada",
     PENDIENTE_LIMPIEZA: "pendiente_limpieza",
     EN_LIMPIEZA: "en_limpieza",

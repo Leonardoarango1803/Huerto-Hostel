@@ -11,9 +11,6 @@ import { COLOR_ESTADO_HAB, decimal, entero, etiqueta, minutos, porcentaje, soles
 /** Cada cuanto se vuelve a pedir el panel. El servidor lo guarda 20 s, asi que varios usuarios comparten la consulta. */
 const REFRESCO_MS = 30_000;
 
-const BORDE: Record<Kpi["tono"], string> = {
-  verde: "border-l-emerald-500", ambar: "border-l-amber-500", rojo: "border-l-red-500", azul: "border-l-blue-500", gris: "border-l-slate-300",
-};
 const COLOR_TEXTO: Record<Kpi["tono"], string> = {
   verde: "text-emerald-700", ambar: "text-amber-700", rojo: "text-red-700", azul: "text-blue-700", gris: "text-slate-900",
 };
@@ -35,15 +32,15 @@ function formatoDe(g: Grafico) {
 function TarjetaKpi({ kpi, ir }: { kpi: Kpi; ir: (ruta: string) => void }) {
   const contenido = (
     <>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{kpi.titulo}</p>
-      <p className={`text-2xl font-bold mt-1 leading-tight ${COLOR_TEXTO[kpi.tono]}`}>{valorDe(kpi)}</p>
+      <p className="text-[13px] font-semibold text-slate-600">{kpi.titulo}</p>
+      <p className={`text-[28px] font-bold mt-1 leading-tight tracking-tight tabular-nums ${COLOR_TEXTO[kpi.tono]}`}>{valorDe(kpi)}</p>
       {kpi.variacionPct !== null && <div className="mt-1"><Variacion pct={kpi.variacionPct} contra="ayer" /></div>}
-      {kpi.detalle && <p className="text-[10px] text-slate-400 mt-1">{kpi.detalle}</p>}
+      {kpi.detalle && <p className="text-[12px] text-slate-500 mt-1">{kpi.detalle}</p>}
     </>
   );
-  const clase = `bg-white p-4 rounded-xl border border-slate-200/80 border-l-4 ${BORDE[kpi.tono]} shadow-sm text-left`;
+  const clase = "bg-white p-4 rounded-2xl border border-[#EFE6D6] text-left";
   return kpi.ruta ? (
-    <button onClick={() => ir(kpi.ruta as string)} className={`${clase} hover:shadow-md transition-shadow`}>{contenido}</button>
+    <button onClick={() => ir(kpi.ruta as string)} className={`${clase} hover:border-slate-300 transition-colors`}>{contenido}</button>
   ) : (
     <div className={clase}>{contenido}</div>
   );
@@ -58,14 +55,14 @@ const AVISO_ESTILO: Record<Aviso["tipo"], { caja: string; icono: typeof Info }> 
 function FilaAviso({ aviso, ir }: { aviso: Aviso; ir: (ruta: string) => void }) {
   const { caja, icono: Icono } = AVISO_ESTILO[aviso.tipo];
   return (
-    <div className={`flex items-start gap-2 p-2.5 rounded-lg border text-[11px] ${caja}`}>
+    <div className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${caja}`}>
       <Icono size={14} className="mt-0.5 shrink-0" />
       <div className="flex-1">
         <p className="font-semibold">{aviso.titulo}</p>
-        {aviso.detalle && <p className="text-[10px] opacity-80 mt-0.5">{aviso.detalle}</p>}
+        {aviso.detalle && <p className="text-[12px] opacity-80 mt-0.5">{aviso.detalle}</p>}
       </div>
       {aviso.ruta && (
-        <button onClick={() => ir(aviso.ruta as string)} className="text-[10px] font-semibold underline shrink-0">Ir</button>
+        <button onClick={() => ir(aviso.ruta as string)} className="text-[12px] font-semibold underline shrink-0">Ir</button>
       )}
     </div>
   );
@@ -79,13 +76,13 @@ function GraficoDelPanel({ g }: { g: Grafico }) {
         <GraficoTorta datos={g.puntos.map((p) => ({ nombre: etiqueta(p.nombre), valor: p.valor }))} formato={formato} />
       ) : g.tipo === "lineas" ? (
         <GraficoSerie esFecha={false} datos={g.puntos.map((p) => ({ x: p.nombre, valor: p.valor }))}
-          series={[{ clave: "valor", nombre: g.titulo, color: "#3b82f6", tipo: "linea" }]}
+          series={[{ clave: "valor", nombre: g.titulo, color: "#3B6FB6", tipo: "linea" }]}
           formato={formato} formatoEje={g.formato === "porcentaje" ? (v) => `${decimal(v, 0)}%` : formato} />
       ) : g.puntos.length > 0 && g.puntos.every((p) => p.nombre.length > 8) ? (
         <GraficoBarrasHorizontales datos={g.puntos.map((p) => ({ nombre: etiqueta(p.nombre), valor: p.valor }))} formato={formato} />
       ) : (
         <GraficoSerie esFecha={false} datos={g.puntos.map((p) => ({ x: etiqueta(p.nombre), valor: p.valor }))}
-          series={[{ clave: "valor", nombre: g.titulo, color: "#1b4332" }]} formato={formato} />
+          series={[{ clave: "valor", nombre: g.titulo, color: "#2D5A27" }]} formato={formato} />
       )}
     </Seccion>
   );
@@ -94,7 +91,7 @@ function GraficoDelPanel({ g }: { g: Grafico }) {
 function ListaDelPanel({ lista, ir }: { lista: Lista; ir: (ruta: string) => void }) {
   return (
     <Seccion titulo={lista.titulo}
-      accion={lista.ruta ? <button onClick={() => ir(lista.ruta as string)} className="text-[10px] text-emerald-700 font-semibold hover:underline">Ver todo</button> : undefined}>
+      accion={lista.ruta ? <button onClick={() => ir(lista.ruta as string)} className="text-[12px] text-emerald-700 font-semibold hover:underline">Ver todo</button> : undefined}>
       <Tabla columnas={lista.columnas} filas={lista.filas} vacio={lista.vacio} />
     </Seccion>
   );
@@ -140,7 +137,7 @@ const ESQUELETOS: Record<string, { titulo: string; subtitulo: string; kpis: stri
 };
 
 function columnasDeKpis(n: number): string {
-  return n <= 4 ? "grid-cols-4" : n === 5 ? "grid-cols-5" : "grid-cols-6";
+  return n <= 4 ? "grid-cols-2 md:grid-cols-4" : n === 5 ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-5" : "grid-cols-2 md:grid-cols-3 xl:grid-cols-6";
 }
 
 function columnasDeGraficos(n: number): string {
@@ -232,12 +229,12 @@ export function DashboardView() {
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-xl font-bold text-slate-900">{panel?.titulo ?? esqueleto.titulo}</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Hola, {user?.username}. {panel?.subtitulo ?? esqueleto.subtitulo}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-slate-400 flex items-center gap-1.5">
+          <span className="text-[12px] text-slate-400 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             {panel ? `En vivo · actualizado ${haceCuanto(panel.generadoEn, ahora)}` : "Cargando datos..."}
           </span>
@@ -265,16 +262,16 @@ export function DashboardView() {
           </Seccion>
 
           {totalHab > 0 && (
-            <Seccion titulo="Estado de las habitaciones" accion={<button onClick={() => ir("/habitaciones")} className="text-[10px] text-emerald-700 font-semibold hover:underline">Ir al mapa</button>}>
+            <Seccion titulo="Estado de las habitaciones" accion={<button onClick={() => ir("/habitaciones")} className="text-[12px] text-emerald-700 font-semibold hover:underline">Ir al mapa</button>}>
               <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex mb-3">
                 {panel.habitaciones.map((h) => (
-                  <div key={h.clave} title={`${etiqueta(h.clave)}: ${h.cantidad}`} style={{ width: `${(h.cantidad * 100) / totalHab}%`, background: COLOR_ESTADO_HAB[h.clave] ?? "#64748b" }} />
+                  <div key={h.clave} title={`${etiqueta(h.clave)}: ${h.cantidad}`} style={{ width: `${(h.cantidad * 100) / totalHab}%`, background: COLOR_ESTADO_HAB[h.clave] ?? "#8C8073" }} />
                 ))}
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-2">
                 {panel.habitaciones.map((h) => (
                   <div key={h.clave} className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_ESTADO_HAB[h.clave] ?? "#64748b" }} />
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_ESTADO_HAB[h.clave] ?? "#8C8073" }} />
                     <span className="text-slate-500">{etiqueta(h.clave)}</span>
                     <strong className="text-slate-900">{h.cantidad}</strong>
                   </div>

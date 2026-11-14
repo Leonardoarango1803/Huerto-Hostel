@@ -10,20 +10,22 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, placeholder = "Buscar...", className = "" }: SearchBarProps) {
   return (
     <div className={`relative ${className}`}>
-      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
       <input
-        type="text"
+        type="search"
+        aria-label={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-7 pr-7 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1b4332] focus:border-[#1b4332] placeholder-slate-400"
+        className="w-full pl-9 pr-9 min-h-[40px] text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-huerto/30 focus:border-huerto placeholder-slate-400"
       />
       {value && (
         <button
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          aria-label="Limpiar búsqueda"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 w-7 h-7 flex items-center justify-center"
         >
-          <X size={12} />
+          <X size={14} />
         </button>
       )}
     </div>

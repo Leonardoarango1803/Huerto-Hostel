@@ -5,7 +5,7 @@ import type { AvisoTurno } from "../../api/types";
 export function AvisoFueraDeTurno({ turno, accion }: { turno: AvisoTurno | null | undefined; accion: "abrir" | "cerrar" }) {
   if (!turno || turno.enCurso) return null;
   return (
-    <p role="status" className="text-[11px] text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-2 flex items-start gap-1.5">
+    <p role="status" className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-2.5 py-2 flex items-start gap-1.5">
       <Clock size={13} className="mt-0.5 shrink-0" />
       <span>
         Vas a {accion === "abrir" ? "abrir" : "cerrar"} la caja fuera de tu turno ({turno.nombre}, {turno.horaInicio}–{turno.horaFin}).

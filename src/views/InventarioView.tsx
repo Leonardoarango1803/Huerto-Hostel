@@ -82,15 +82,15 @@ export function InventarioView() {
   const tabsVisibles = TABS.filter((t) => !t.roles || (rol && t.roles.includes(rol as Rol)));
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-semibold">
+        <p className="text-[12px] text-slate-400 uppercase font-semibold">
           {esHousekeeping ? "Limpieza" : "Administracion"} › Inventario
         </p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">
           {esHousekeeping ? "Insumos de limpieza" : "Inventario y Recetas"}
         </h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           Controla el stock, define las recetas de cada producto y revisa la trazabilidad de cada movimiento del
           almacen.
         </p>
@@ -107,7 +107,7 @@ export function InventarioView() {
         >
           {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
           <span className="flex-1">{mensaje.texto}</span>
-          <button onClick={() => setMensaje(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">
+          <button onClick={() => setMensaje(null)} className="text-[12px] font-semibold opacity-70 hover:opacity-100">
             Cerrar
           </button>
         </div>

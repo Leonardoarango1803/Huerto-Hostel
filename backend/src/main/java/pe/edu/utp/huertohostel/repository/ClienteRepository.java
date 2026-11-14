@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
     Optional<Cliente> findByNumeroDocumento(String numeroDocumento);
     boolean existsByNumeroDocumento(String numeroDocumento);
+    /** El correo del cliente es UNIQUE en la base. */
+    boolean existsByCorreoIgnoreCase(String correo);
 }

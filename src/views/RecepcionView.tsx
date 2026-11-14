@@ -90,7 +90,7 @@ export function RecepcionView() {
 
       {/* Tarjetas resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500">
               Habitaciones Libres
@@ -102,7 +102,7 @@ export function RecepcionView() {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500">Ocupadas</p>
             <p className="text-2xl font-bold text-rose-700 mt-1">2</p>
@@ -112,7 +112,7 @@ export function RecepcionView() {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500">En Limpieza</p>
             <p className="text-2xl font-bold text-amber-700 mt-1">1</p>
@@ -122,7 +122,7 @@ export function RecepcionView() {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-slate-500">
               Mantenimiento
@@ -144,7 +144,7 @@ export function RecepcionView() {
           {mockRooms.map((room) => (
             <div
               key={room.id}
-              className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-slate-300 transition-all"
+              className="bg-white p-4 rounded-2xl border border-[#EFE6D6] flex flex-col justify-between hover:border-slate-300 transition-all"
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -154,7 +154,7 @@ export function RecepcionView() {
                   <p className="text-xs text-slate-500">{room.type}</p>
                 </div>
                 <span
-                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${statusStyles[room.status]}`}
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${statusStyles[room.status]}`}
                 >
                   {statusLabels[room.status]}
                 </span>
@@ -166,7 +166,7 @@ export function RecepcionView() {
                     Huésped:{" "}
                     <span className="font-semibold">{room.guestName}</span>
                   </p>
-                  <p className="text-slate-500 text-[11px]">
+                  <p className="text-slate-500 text-xs">
                     Salida: {room.checkOutDate}
                   </p>
                 </div>
@@ -175,7 +175,7 @@ export function RecepcionView() {
               <div className="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
                 <span className="font-bold text-slate-800">
                   S/ {room.pricePerNight}{" "}
-                  <span className="text-[10px] font-normal text-slate-500">
+                  <span className="text-[12px] font-normal text-slate-500">
                     / noche
                   </span>
                 </span>

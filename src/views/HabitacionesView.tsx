@@ -48,7 +48,7 @@ const ESTADOS_CAMBIO: Record<string, { label: string; estado: string }[]> = {
     { label: "Mantenimiento",     estado: "MANTENIMIENTO" },
   ],
   RESERVADO: [
-    { label: "Liberar (cancelar reserva)", estado: "DISPONIBLE" },
+    { label: "Liberar (cancelar la reserva de hoy)", estado: "DISPONIBLE" },
   ],
   PENDIENTE_LIMPIEZA: [
     { label: "Iniciar Limpieza",  estado: "EN_LIMPIEZA" },
@@ -151,11 +151,11 @@ export function HabitacionesView() {
   const tiposUnicos = [...new Set(habitaciones.map((h) => h.tipoHabitacion.nombre))];
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex justify-between items-start pt-1">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Gestion de Habitaciones</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">Control del inventario fisico, tarifas y estados operativos.</p>
+          <p className="text-slate-500 text-xs mt-0.5">Control del inventario fisico, tarifas y estados operativos.</p>
         </div>
         {puedeGestionar && (
           <button
@@ -170,12 +170,12 @@ export function HabitacionesView() {
       {errorEstado && (
         <div role="alert" className="flex items-start gap-2 p-3 rounded-lg border bg-red-50 border-red-300 text-red-800 text-xs">
           <span className="flex-1">{errorEstado}</span>
-          <button onClick={() => setErrorEstado(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
+          <button onClick={() => setErrorEstado(null)} className="text-[12px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
         </div>
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
         {[
           { label: "Total",        value: habitaciones.length,                                          color: "text-slate-900"   },
           { label: "Disponibles",  value: countByStatus("DISPONIBLE"),                                  color: "text-emerald-800" },
@@ -183,23 +183,23 @@ export function HabitacionesView() {
           { label: "En Limpieza",  value: countByStatus("PENDIENTE_LIMPIEZA") + countByStatus("EN_LIMPIEZA"), color: "text-amber-600"   },
           { label: "Mantenimiento",value: countByStatus("MANTENIMIENTO"),                               color: "text-rose-700"    },
         ].map((k) => (
-          <div key={k.label} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-[9px] font-bold text-slate-400 uppercase">{k.label}</p>
+          <div key={k.label} className="bg-white p-3 rounded-2xl border border-[#EFE6D6]">
+            <p className="text-[11px] font-bold text-slate-400 uppercase">{k.label}</p>
             <p className={`text-xl font-bold mt-1 ${k.color}`}>{k.value}</p>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+      <div className="bg-white p-3 rounded-2xl border border-[#EFE6D6] space-y-2.5">
         <div className="flex justify-between items-center gap-3">
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">ESTADO:</span>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-[12px] font-bold text-slate-400 uppercase mr-1">ESTADO:</span>
             {["Todas", "Disponible", "Ocupada", "Aprob. Limpieza", "En Limpieza", "Mantenimiento"].map((st) => (
               <button
                 key={st}
                 onClick={() => setActiveStatusFilter(st)}
-                className={`px-2.5 py-1 rounded-full font-medium text-[11px] transition-colors ${
+                className={`px-2.5 py-1 rounded-full font-medium text-xs transition-colors ${
                   activeStatusFilter === st ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"
                 }`}
               >
@@ -225,11 +225,11 @@ export function HabitacionesView() {
           </div>
         </div>
         {tiposUnicos.length > 0 && (
-          <div className="flex items-center gap-1.5 text-[11px] border-t border-slate-100 pt-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">TIPO:</span>
-            <button onClick={() => setActiveTypeFilter("Todos")} className={`px-2 py-0.5 rounded text-[10px] font-medium ${activeTypeFilter === "Todos" ? "bg-emerald-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>Todos</button>
+          <div className="flex items-center gap-1.5 text-xs border-t border-slate-100 pt-2">
+            <span className="text-[12px] font-bold text-slate-400 uppercase mr-1">TIPO:</span>
+            <button onClick={() => setActiveTypeFilter("Todos")} className={`px-2 py-0.5 rounded text-[12px] font-medium ${activeTypeFilter === "Todos" ? "bg-emerald-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>Todos</button>
             {tiposUnicos.map((t) => (
-              <button key={t} onClick={() => setActiveTypeFilter(t)} className={`px-2 py-0.5 rounded text-[10px] font-medium ${activeTypeFilter === t ? "bg-emerald-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{t}</button>
+              <button key={t} onClick={() => setActiveTypeFilter(t)} className={`px-2 py-0.5 rounded text-[12px] font-medium ${activeTypeFilter === t ? "bg-emerald-800 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{t}</button>
             ))}
           </div>
         )}
@@ -237,7 +237,7 @@ export function HabitacionesView() {
 
       {/* Cards */}
       {filtered.length === 0 ? (
-        <div className="bg-white p-8 rounded-xl border border-slate-200 text-center">
+        <div className="bg-white p-8 rounded-2xl border border-[#EFE6D6] text-center">
           <BedDouble size={32} className="mx-auto text-slate-300 mb-2" />
           <p className="text-sm text-slate-500">No se encontraron habitaciones.</p>
         </div>
@@ -247,43 +247,43 @@ export function HabitacionesView() {
             const cfg = statusConfig[room.estadoOperativo] ?? statusConfig.DISPONIBLE;
             const acciones = puedeGestionar ? (ESTADOS_CAMBIO[room.estadoOperativo] ?? []) : [];
             return (
-              <div key={room.idHabitacion} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+              <div key={room.idHabitacion} className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden flex flex-col justify-between">
                 <div>
                   <div className="p-3 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
                     <div className="flex items-center gap-2">
                       <span className="text-xl font-bold text-slate-900 font-mono">{room.numero}</span>
                       <div>
                         <h3 className="font-bold text-slate-900 text-xs">{room.tipoHabitacion.nombre}</h3>
-                        <p className="text-[10px] text-slate-400">Piso {room.piso}{room.descripcion ? ` - ${room.descripcion}` : ""}</p>
+                        <p className="text-[12px] text-slate-400">Piso {room.piso}{room.descripcion ? ` - ${room.descripcion}` : ""}</p>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1.5 ${cfg.badge}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold border flex items-center gap-1.5 ${cfg.badge}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                       {cfg.label}
                     </span>
                   </div>
-                  <div className="p-3 space-y-2 text-[11px]">
+                  <div className="p-3 space-y-2 text-xs">
                     <div className="flex justify-between items-baseline border-b border-slate-100 pb-2">
                       <div>
-                        <span className="text-[9px] text-slate-400 uppercase font-bold block">Tarifa / noche</span>
+                        <span className="text-[11px] text-slate-400 uppercase font-bold block">Tarifa / noche</span>
                         <span className="text-lg font-bold text-slate-900">S/ {room.tipoHabitacion.precioNoche?.toFixed(2)}</span>
                       </div>
-                      <div className="text-right text-[10px] text-slate-600">
+                      <div className="text-right text-[12px] text-slate-600">
                         <span className="block font-semibold">{room.tipoHabitacion.capacidadPersonas} personas</span>
                       </div>
                     </div>
                     {room.estadoOperativo === "DISPONIBLE" && (
-                      <p className="text-[9px] text-emerald-800 flex items-center gap-1 bg-emerald-50/60 p-1.5 rounded border border-emerald-100">
+                      <p className="text-[11px] text-emerald-800 flex items-center gap-1 bg-emerald-50/60 p-1.5 rounded border border-emerald-100">
                         <CheckCircle size={11} /> Lista para ingresar
                       </p>
                     )}
                     {room.estadoOperativo === "MANTENIMIENTO" && (
-                      <div className="bg-rose-50 p-2 rounded-lg text-[10px] text-rose-800 flex items-center gap-1">
+                      <div className="bg-rose-50 p-2 rounded-lg text-[12px] text-rose-800 flex items-center gap-1">
                         <Wrench size={12} /> Fuera de servicio
                       </div>
                     )}
                     {(room.estadoOperativo === "EN_LIMPIEZA" || room.estadoOperativo === "PENDIENTE_LIMPIEZA") && (
-                      <div className="bg-amber-50/70 p-2 rounded-lg text-[10px] text-amber-800 flex items-center gap-1">
+                      <div className="bg-amber-50/70 p-2 rounded-lg text-[12px] text-amber-800 flex items-center gap-1">
                         <Sparkles size={12} /> Limpieza en proceso
                       </div>
                     )}
@@ -296,7 +296,7 @@ export function HabitacionesView() {
                       <button
                         key={ac.estado}
                         onClick={() => cambiarEstado(room.idHabitacion, ac.estado)}
-                        className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white py-1 rounded text-[10px] font-semibold shadow-sm"
+                        className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white py-1 rounded text-[12px] font-semibold shadow-sm"
                       >
                         {ac.label}
                       </button>
@@ -305,7 +305,7 @@ export function HabitacionesView() {
                 )}
                 {room.estadoOperativo === "OCUPADA" && (
                   <div className="p-2.5 bg-slate-50 border-t border-slate-100">
-                    <span className="text-[10px] text-slate-400 italic">Ocupada — checkout desde Recepcion</span>
+                    <span className="text-[12px] text-slate-400 italic">Ocupada — checkout desde Recepcion</span>
                   </div>
                 )}
               </div>
@@ -322,18 +322,18 @@ export function HabitacionesView() {
             <div className="flex items-start justify-between p-4 border-b border-slate-200">
               <div>
                 <h2 className="text-sm font-bold text-slate-900">Nueva Habitacion</h2>
-                <p className="text-[11px] text-slate-500 mt-0.5">Se creara con estado Disponible</p>
+                <p className="text-xs text-slate-500 mt-0.5">Se creara con estado Disponible</p>
               </div>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 ml-4"><X size={16} /></button>
             </div>
             <div className="p-4 space-y-3">
-              {formError && <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded p-2">{formError}</p>}
+              {formError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">{formError}</p>}
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-700">Tipo de habitacion <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold text-slate-700">Tipo de habitacion <span className="text-red-500">*</span></label>
                 <select
                   value={form.idTipoHabitacion}
                   onChange={(e) => setForm((f) => ({ ...f, idTipoHabitacion: e.target.value }))}
-                  className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                  className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                 >
                   <option value="">-- Seleccionar --</option>
                   {tipos.map((t) => (
@@ -345,41 +345,41 @@ export function HabitacionesView() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-slate-700">N° habitacion <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold text-slate-700">N° habitacion <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={form.numero}
                     onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))}
                     placeholder="Ej: 101"
-                    className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                    className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-[11px] font-semibold text-slate-700">Piso <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold text-slate-700">Piso <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     min="1"
                     max="20"
                     value={form.piso}
                     onChange={(e) => setForm((f) => ({ ...f, piso: e.target.value }))}
-                    className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                    className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                   />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-700">Descripcion</label>
+                <label className="block text-xs font-semibold text-slate-700">Descripcion</label>
                 <input
                   type="text"
                   value={form.descripcion}
                   onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
                   placeholder="Ej: Vista al jardin, cama queen"
-                  className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                  className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 p-4 border-t border-slate-200">
               <button onClick={() => setShowModal(false)} disabled={saving} className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
-              <button onClick={crearHabitacion} disabled={saving} className="px-3 py-1.5 text-xs rounded-lg bg-[#1b4332] hover:bg-[#143427] text-white font-semibold disabled:opacity-50">
+              <button onClick={crearHabitacion} disabled={saving} className="px-3 py-1.5 text-xs rounded-lg bg-[#2D5A27] hover:bg-[#1E3F1A] text-white font-semibold disabled:opacity-50">
                 {saving ? "Guardando..." : "Crear Habitacion"}
               </button>
             </div>

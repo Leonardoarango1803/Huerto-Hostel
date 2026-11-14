@@ -38,7 +38,7 @@ export function ReservasTab({ periodo, version }: { periodo: Periodo; version: n
 
           <Seccion titulo="Reservas registradas por dia">
             <GraficoSerie datos={d.serie.map((p) => ({ x: p.fecha, reservas: p.valor }))}
-              series={[{ clave: "reservas", nombre: "Reservas", color: "#3b82f6" }]} formato={entero} />
+              series={[{ clave: "reservas", nombre: "Reservas", color: "#3B6FB6" }]} formato={entero} />
           </Seccion>
 
           <div className="grid grid-cols-3 gap-4">
@@ -49,7 +49,7 @@ export function ReservasTab({ periodo, version }: { periodo: Periodo; version: n
             <Seccion titulo="Por canal">
               <GraficoTorta datos={d.porCanal.map((x) => ({ nombre: etiqueta(x.clave), valor: x.cantidad }))} formato={entero} />
               <Desglose datos={d.porCanal} usar="cantidad" formato={entero} />
-              <p className="text-[10px] text-slate-400 mt-2">Alojamiento reservado: {soles(d.porCanal.reduce((s, c) => s + c.monto, 0))}</p>
+              <p className="text-[12px] text-slate-400 mt-2">Alojamiento reservado: {soles(d.porCanal.reduce((s, c) => s + c.monto, 0))}</p>
             </Seccion>
             <Seccion titulo="Nacionalidad de los huespedes" subtitulo="De quienes hicieron check-in en el periodo">
               <GraficoBarrasHorizontales datos={d.porNacionalidad.map((x) => ({ nombre: x.clave, valor: x.cantidad }))} />

@@ -338,4 +338,145 @@ class InventarioServiceTest {
 
         verify(recetaDetalleRepository, never()).deleteByProductoIdProducto(any());
     }
+
+    // ---------- Vender un insumo (atajo: producto + receta de un solo insumo) ----------
+
+    private Insumo gaseosa() {
+        Insumo i = insumo(27, "50", AreaInsumo.GENERAL);
+        i.setNombre("Gaseosa Inka Kola 500ml");
+        i.setUnidadMedida(UnidadMedida.UND);
+        when(insumoRepository.findById(27)).thenReturn(Optional.of(i));
+        return i;
+    }
+
+    private void productoSeGuarda() {
+        when(productoRepository.save(any(Producto.class))).thenAnswer(inv -> {
+            Producto p = inv.getArgument(0);
+            p.setIdProducto(40);
+            return p;
+        });
+    }
+
+    @Test
+    void venderUnInsumoCreaElProductoActivoYSuRecetaDeUnaUnidad() {
+        Insumo gaseosa = gaseosa();
+        productoSeGuarda();
+
+        Producto p = servicio.venderInsumo(27, null, pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, new BigDecimal("5"), null, null);
+
+        assertEquals("Gaseosa Inka Kola 500ml", p.getNombre(), "sin nombre propio usa el del insumo");
+        assertEquals(pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, p.getCategoria());
+        assertEquals(0, new BigDecimal("5.00").compareTo(p.getPrecioVenta()));
+        assertTrue(p.getEstado());
+        ArgumentCaptor<RecetaDetalle> c = ArgumentCaptor.forClass(RecetaDetalle.class);
+        verify(recetaDetalleRepository).save(c.capture());
+        assertEquals(new RecetaDetalleId(40, 27), c.getValue().getId());
+        assertEquals(gaseosa, c.getValue().getInsumo());
+        assertEquals(0, BigDecimal.ONE.compareTo(c.getValue().getCantidad()), "por defecto 1 por venta");
+    }
+
+    @Test
+    void laCantidadPorVentaSePuedeElegirParaInsumosAGranel() {
+        Insumo vino = insumo(30, "2000", AreaInsumo.BAR);
+        vino.setUnidadMedida(UnidadMedida.ML);
+        when(insumoRepository.findById(30)).thenReturn(Optional.of(vino));
+        productoSeGuarda();
+
+        servicio.venderInsumo(30, "  Copa de vino  ", pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, new BigDecimal("12.5"), new BigDecimal("150"), "Tinto");
+
+        ArgumentCaptor<RecetaDetalle> c = ArgumentCaptor.forClass(RecetaDetalle.class);
+        verify(recetaDetalleRepository).save(c.capture());
+        assertEquals(0, new BigDecimal("150").compareTo(c.getValue().getCantidad()));
+        ArgumentCaptor<Producto> p = ArgumentCaptor.forClass(Producto.class);
+        verify(productoRepository).save(p.capture());
+        assertEquals("Copa de vino", p.getValue().getNombre());
+        assertEquals("Tinto", p.getValue().getDescripcion());
+    }
+
+    @Test
+    void siElInsumoYaEstaEnLaRecetaDeUnProductoActivoSeRechazaYNoSeCreaNada() {
+        Insumo gaseosa = gaseosa();
+        Producto existente = producto(9);
+        existente.setNombre("Inka Kola 500ml");
+        existente.setEstado(true);
+        RecetaDetalle linea = new RecetaDetalle();
+        linea.setId(new RecetaDetalleId(9, 27));
+        linea.setProducto(existente);
+        linea.setInsumo(gaseosa);
+        linea.setCantidad(BigDecimal.ONE);
+        when(recetaDetalleRepository.findAllConInsumo()).thenReturn(List.of(linea));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, null,
+                pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, new BigDecimal("5"), null, null));
+
+        assertTrue(e.getMessage().contains("Inka Kola 500ml"));
+        verify(productoRepository, never()).save(any());
+        verify(recetaDetalleRepository, never()).save(any());
+    }
+
+    @Test
+    void unProductoDesactivadoNoCuentaComoUsoDelInsumo() {
+        Insumo gaseosa = gaseosa();
+        productoSeGuarda();
+        Producto viejo = producto(9);
+        viejo.setNombre("Inka vieja");
+        viejo.setEstado(false);
+        RecetaDetalle linea = new RecetaDetalle();
+        linea.setId(new RecetaDetalleId(9, 27));
+        linea.setProducto(viejo);
+        linea.setInsumo(gaseosa);
+        linea.setCantidad(BigDecimal.ONE);
+        when(recetaDetalleRepository.findAllConInsumo()).thenReturn(List.of(linea));
+
+        servicio.venderInsumo(27, null, pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, new BigDecimal("5"), null, null);
+
+        verify(recetaDetalleRepository).save(any(RecetaDetalle.class));
+    }
+
+    @Test
+    void noSePermiteUnNombreRepetidoNiPrecioCeroNiCantidadCeroNiCategoriaVacia() {
+        gaseosa();
+        Producto otro = producto(3);
+        otro.setNombre("INKA KOLA 500ML");
+        otro.setEstado(true);
+        when(productoRepository.findAll()).thenReturn(List.of(otro));
+        var bar = pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR;
+
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, "Inka Kola 500ml", bar, new BigDecimal("5"), null, null));
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, "Otra", bar, BigDecimal.ZERO, null, null));
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, "Otra", bar, null, null, null));
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, "Otra", bar, new BigDecimal("5"), BigDecimal.ZERO, null));
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, "Otra", null, new BigDecimal("5"), null, null));
+        verify(productoRepository, never()).save(any());
+    }
+
+    @Test
+    void unInsumoInactivoNoSePuedeVender() {
+        Insumo i = gaseosa();
+        i.setEstado(false);
+
+        assertThrows(IllegalStateException.class, () -> servicio.venderInsumo(27, null,
+                pe.edu.utp.huertohostel.entity.CategoriaProducto.BAR, new BigDecimal("5"), null, null));
+        verify(productoRepository, never()).save(any());
+    }
+
+    @Test
+    void elUsoPorInsumoListaSoloLosProductosActivosOrdenados() {
+        Insumo gaseosa = insumo(27, "50", AreaInsumo.GENERAL);
+        Producto b = producto(2); b.setNombre("Zumo"); b.setEstado(true);
+        Producto a = producto(1); a.setNombre("combo"); a.setEstado(true);
+        Producto off = producto(3); off.setNombre("Viejo"); off.setEstado(false);
+        List<RecetaDetalle> lineas = new java.util.ArrayList<>();
+        for (Producto p : List.of(b, a, off)) {
+            RecetaDetalle l = new RecetaDetalle();
+            l.setId(new RecetaDetalleId(p.getIdProducto(), 27));
+            l.setProducto(p);
+            l.setInsumo(gaseosa);
+            l.setCantidad(BigDecimal.ONE);
+            lineas.add(l);
+        }
+        when(recetaDetalleRepository.findAllConInsumo()).thenReturn(lineas);
+
+        assertEquals(List.of("combo", "Zumo"), servicio.productosPorInsumo().get(27));
+    }
 }

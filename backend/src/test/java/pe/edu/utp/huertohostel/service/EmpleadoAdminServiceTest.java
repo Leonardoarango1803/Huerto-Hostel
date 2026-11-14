@@ -19,6 +19,7 @@ import pe.edu.utp.huertohostel.repository.EmpleadoRepository;
 import pe.edu.utp.huertohostel.repository.RolRepository;
 import pe.edu.utp.huertohostel.repository.TurnoRepository;
 import pe.edu.utp.huertohostel.repository.UsuarioRepository;
+import pe.edu.utp.huertohostel.security.ProteccionLoginService;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -96,8 +97,10 @@ class EmpleadoAdminServiceTest {
 
     private EmpleadoAdminService servicio() {
         return new EmpleadoAdminService(empleadoRepository, rolRepository, areaRepository, turnoRepository,
-                usuarioRepository, encoder, cuentaService, auditoria, usuarioActualService);
+                usuarioRepository, encoder, cuentaService, auditoria, usuarioActualService, proteccionLogin);
     }
+
+    private final ProteccionLoginService proteccionLogin = new ProteccionLoginService(java.time.Clock.systemUTC());
 
     private EmpleadoRequest datosValidos(Integer idRol, Integer idArea, Boolean crearAcceso, String username) {
         return new EmpleadoRequest("Karla", "Flores Diaz", "DNI", "12345678", "karla@hostel.pe", "987654321",

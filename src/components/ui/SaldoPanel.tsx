@@ -14,8 +14,8 @@ export function SaldoPanel({ alojamiento, consumos, pagos, className = "" }: Sal
   const saldo = total - pagos;
 
   return (
-    <div className={`bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-2 text-xs ${className}`}>
-      <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">Resumen de Folio</p>
+    <div className={`bg-white rounded-2xl border border-[#EFE6D6] p-4 space-y-2 text-sm ${className}`}>
+      <p className="font-bold text-emerald-700 text-[12px] uppercase tracking-wider">Estado de cuenta</p>
 
       <div className="space-y-1.5">
         <div className="flex justify-between text-slate-600">

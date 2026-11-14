@@ -66,7 +66,7 @@ export function ProveedoresTab({ proveedores, puedeGestionar, onCambio }: Props)
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
       <div className="p-3 border-b border-slate-100 flex items-center justify-between">
         <span className="font-bold text-slate-700 text-xs">Proveedores ({proveedores.length})</span>
         {puedeGestionar && (
@@ -78,7 +78,7 @@ export function ProveedoresTab({ proveedores, puedeGestionar, onCambio }: Props)
       ) : (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="p-3">Proveedor</th>
               <th className="p-3">Contacto</th>
               <th className="p-3">Telefono</th>
@@ -124,7 +124,7 @@ export function ProveedoresTab({ proveedores, puedeGestionar, onCambio }: Props)
         onSubmit={guardar}
       >
         <div className="space-y-3">
-          {error && <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{error}</p>}
+          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{error}</p>}
           <FormField label="Nombre" required>
             <Input value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} />
           </FormField>

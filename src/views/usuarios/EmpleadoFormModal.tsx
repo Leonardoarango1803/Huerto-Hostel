@@ -126,7 +126,7 @@ export function EmpleadoFormModal({ editando, roles, turnos, onCerrar, onGuardad
           </label>
           {form.crearAcceso ? (
             <>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Se genera una clave temporal que verás una sola vez; la persona la cambia al entrar.
               </p>
               <FormField label="Usuario" hint="Déjalo vacío y se sugiere uno (por ejemplo kflores).">
@@ -134,7 +134,7 @@ export function EmpleadoFormModal({ editando, roles, turnos, onCerrar, onGuardad
               </FormField>
             </>
           ) : (
-            <p className="text-[11px] text-slate-500">Sin acceso no podrá entrar al sistema. Puedes dárselo después desde la lista.</p>
+            <p className="text-xs text-slate-500">Sin acceso no podrá entrar al sistema. Puedes dárselo después desde la lista.</p>
           )}
         </div>
       )}

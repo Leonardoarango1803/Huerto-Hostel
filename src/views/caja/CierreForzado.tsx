@@ -43,13 +43,13 @@ export function CierreForzado({ idTurno, horasAbierta, limiteHoras, abrio, onCer
       <h3 className="font-bold text-red-800 text-xs flex items-center gap-1.5">
         <AlertTriangle size={14} /> Esta caja lleva {horasAbierta} h abierta (limite: {limiteHoras} h)
       </h3>
-      <p className="text-[11px] text-red-900">
+      <p className="text-xs text-red-900">
         La abrio {abrio}. Si no esta quien la abrio o se olvido cerrarla, como administrador puedes forzar el cierre: cuentas
         el efectivo y explicas el motivo. Quedara una nota para el siguiente turno.
       </p>
       {!abierto ? (
         <button onClick={() => setAbierto(true)}
-          className="text-[11px] font-semibold bg-white border border-red-300 text-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100">
+          className="text-xs font-semibold bg-white border border-red-300 text-red-800 px-3 py-1.5 rounded-lg hover:bg-red-100">
           Forzar el cierre de esta caja
         </button>
       ) : (
@@ -62,10 +62,10 @@ export function CierreForzado({ idTurno, horasAbierta, limiteHoras, abrio, onCer
             className="w-full border border-red-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-400" />
           <div className="flex gap-2">
             <button onClick={forzar} disabled={!puede}
-              className="text-[11px] font-semibold bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg">
+              className="text-xs font-semibold bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg">
               {cerrando ? "Cerrando..." : "Cerrar la caja ahora"}
             </button>
-            <button onClick={() => setAbierto(false)} className="text-[11px] text-slate-600">Cancelar</button>
+            <button onClick={() => setAbierto(false)} className="text-xs text-slate-600">Cancelar</button>
           </div>
         </div>
       )}

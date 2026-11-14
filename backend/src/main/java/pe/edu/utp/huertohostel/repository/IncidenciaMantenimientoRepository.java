@@ -22,6 +22,14 @@ public interface IncidenciaMantenimientoRepository
     boolean existsByHabitacionIdHabitacionAndBloqueaHabitacionTrueAndEstadoIn(
             Integer idHabitacion, List<EstadoIncidencia> estados);
 
+    /** Habitaciones que hoy no se pueden usar por una incidencia abierta (una sola consulta para la web publica). */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT DISTINCT i.habitacion.idHabitacion FROM IncidenciaMantenimiento i
+            WHERE i.bloqueaHabitacion = true AND i.estado IN :estados AND i.habitacion IS NOT NULL
+            """)
+    List<Integer> findIdsHabitacionBloqueadas(
+            @org.springframework.data.repository.query.Param("estados") List<EstadoIncidencia> estados);
+
     /** Otras incidencias abiertas que tambien bloquean la habitacion (para no liberarla mientras queden). */
     long countByHabitacionIdHabitacionAndBloqueaHabitacionTrueAndEstadoInAndIdIncidenciaNot(
             Integer idHabitacion, List<EstadoIncidencia> estados, Integer idIncidencia);

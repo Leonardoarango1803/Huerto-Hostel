@@ -39,7 +39,7 @@ function Contenido({ r }: { r: ResumenTurno }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-x-6">
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Turno</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Turno</p>
           <Fila etiqueta="Abrio" valor={nombre(t.empleado)} />
           <Fila etiqueta="Apertura" valor={fechaLarga(t.fechaApertura)} />
           <Fila etiqueta="Fondo inicial" valor={dinero(t.fondoInicialEfectivo)} />
@@ -49,7 +49,7 @@ function Contenido({ r }: { r: ResumenTurno }) {
           {t.motivoDiferenciaApertura && <Fila etiqueta="Motivo de la diferencia al recibir" valor={t.motivoDiferenciaApertura} />}
         </div>
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Cierre</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Cierre</p>
           {cerrado ? (
             <>
               <Fila etiqueta="Cerro" valor={nombre(t.empleadoCierre)} />
@@ -72,19 +72,19 @@ function Contenido({ r }: { r: ResumenTurno }) {
       </div>
 
       <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Cobros por metodo</p>
+        <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Cobros por metodo</p>
         {Object.keys(r.totalPorMetodo ?? {}).length === 0 ? (
           <p className="text-xs text-slate-400">Sin cobros en este turno.</p>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {Object.entries(r.totalPorMetodo).map(([m, v]) => (
               <div key={m} className="border border-slate-200 rounded-lg p-2">
-                <p className="text-[10px] text-slate-500">{METODO[m] ?? m}</p>
+                <p className="text-[12px] text-slate-500">{METODO[m] ?? m}</p>
                 <p className="text-sm font-bold text-slate-900">{dinero(v)}</p>
               </div>
             ))}
             <div className="border border-emerald-300 bg-emerald-50 rounded-lg p-2">
-              <p className="text-[10px] text-emerald-800">Total cobrado</p>
+              <p className="text-[12px] text-emerald-800">Total cobrado</p>
               <p className="text-sm font-bold text-emerald-900">{dinero(r.totalCobrado)}</p>
             </div>
           </div>
@@ -93,10 +93,10 @@ function Contenido({ r }: { r: ResumenTurno }) {
 
       {r.pagos.length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Cobros ({r.pagos.length})</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Cobros ({r.pagos.length})</p>
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="py-1.5">Hora</th><th>Huesped</th><th>Habitacion</th><th>Concepto</th><th>Metodo</th><th>Comprobante</th><th className="text-right">Monto</th>
               </tr>
             </thead>
@@ -119,7 +119,7 @@ function Contenido({ r }: { r: ResumenTurno }) {
 
       {(r.movimientos ?? []).length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Retiros y gastos (− {dinero(efectivoMovs)})</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Retiros y gastos (− {dinero(efectivoMovs)})</p>
           <table className="w-full text-left text-xs border-collapse">
             <tbody className="divide-y divide-slate-100">
               {(r.movimientos ?? []).map((m) => (
@@ -138,7 +138,7 @@ function Contenido({ r }: { r: ResumenTurno }) {
 
       {(r.arqueos ?? []).length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Arqueos a mitad de turno ({(r.arqueos ?? []).length})</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Arqueos a mitad de turno ({(r.arqueos ?? []).length})</p>
           <table className="w-full text-left text-xs border-collapse">
             <tbody className="divide-y divide-slate-100">
               {(r.arqueos ?? []).map((a) => (
@@ -158,10 +158,10 @@ function Contenido({ r }: { r: ResumenTurno }) {
 
       {Object.keys(desglose).length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Billetes y monedas contados al cerrar</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Billetes y monedas contados al cerrar</p>
           <div className="flex flex-wrap gap-2">
             {DENOMINACIONES.filter((d) => desglose[d]).map((d) => (
-              <span key={d} className="text-[11px] border border-slate-200 rounded px-2 py-0.5">{etiquetaDenominacion(d)}: <strong>{desglose[d]}</strong></span>
+              <span key={d} className="text-xs border border-slate-200 rounded px-2 py-0.5">{etiquetaDenominacion(d)}: <strong>{desglose[d]}</strong></span>
             ))}
           </div>
         </div>
@@ -169,10 +169,10 @@ function Contenido({ r }: { r: ResumenTurno }) {
 
       {(r.notas ?? []).length > 0 && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Notas del turno</p>
+          <p className="text-[12px] font-bold text-slate-400 uppercase mb-1">Notas del turno</p>
           <ul className="space-y-1">
             {(r.notas ?? []).map((n) => (
-              <li key={n.idBitacora} className="text-[11px] text-slate-700 border-l-2 pl-2 border-slate-300">
+              <li key={n.idBitacora} className="text-xs text-slate-700 border-l-2 pl-2 border-slate-300">
                 <strong>{n.categoria}</strong> — {n.mensaje}{" "}
                 <span className={n.resuelto ? "text-emerald-700" : "text-red-700 font-semibold"}>
                   {n.resuelto
@@ -243,7 +243,7 @@ export function DetalleTurno({ idTurno, esAdmin, onCerrar, onAuditado }: Props) 
           <div className="flex items-start justify-between p-4 border-b border-slate-200">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Turno de caja #{idTurno}</h2>
-              <p className="text-[11px] text-slate-500">{resumen ? `Estado: ${resumen.turno.estado}` : "Cargando..."}</p>
+              <p className="text-xs text-slate-500">{resumen ? `Estado: ${resumen.turno.estado}` : "Cargando..."}</p>
             </div>
             <button onClick={onCerrar} aria-label="Cerrar detalle" className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
           </div>
@@ -260,7 +260,7 @@ export function DetalleTurno({ idTurno, esAdmin, onCerrar, onAuditado }: Props) 
                   <ShieldCheck size={13} /> Marcar como auditado
                 </button>
               )}
-              <button onClick={imprimir} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#1b4332] text-white hover:bg-[#143427]">
+              <button onClick={imprimir} className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#2D5A27] text-white hover:bg-[#1E3F1A]">
                 <Printer size={13} /> Imprimir acta
               </button>
             </div>

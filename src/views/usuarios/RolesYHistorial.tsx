@@ -37,14 +37,14 @@ export function RolesTab({ empleados }: { empleados: EmpleadoAdmin[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         El rol de cada empleado decide a qué pantallas entra y qué puede hacer en ellas. Se elige al crear o editar al
         empleado; si cambia, se aplica de inmediato.
       </p>
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="p-3 text-left">Pantalla</th>
               {ROLES.map((r) => (
                 <th key={r} className="p-3 text-center">
@@ -65,10 +65,10 @@ export function RolesTab({ empleados }: { empleados: EmpleadoAdmin[] }) {
         </table>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="p-3 text-left">Acción</th>
               {ROLES.map((r) => <th key={r} className="p-3 text-center">{ETIQUETA_ROL[r]}</th>)}
             </tr>
@@ -108,13 +108,13 @@ export function HistorialTab() {
   if (!entradas) return <LoadingState />;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
       {entradas.length === 0 ? (
         <p className="p-6 text-center text-slate-400 text-xs">Aún no hay movimientos registrados.</p>
       ) : (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="p-3">Cuándo</th>
               <th className="p-3">Quién lo hizo</th>
               <th className="p-3">Qué</th>

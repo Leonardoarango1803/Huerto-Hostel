@@ -3,6 +3,7 @@ services:
     name: huerto-hostel-backend
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     envVars:
       - key: DATABASE_URL
         sync: false

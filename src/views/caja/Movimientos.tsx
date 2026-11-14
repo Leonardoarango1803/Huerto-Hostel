@@ -38,15 +38,15 @@ export function Movimientos({ movimientos, total, onCambio, onError }: Props) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+    <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
       <h3 className="font-bold text-slate-800 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
         <ArrowUpFromLine size={13} className="text-slate-500" /> Retiros y gastos en efectivo
-        {total > 0 && <span className="ml-auto text-[10px] font-semibold text-slate-500">Total del turno: {dinero(total)}</span>}
+        {total > 0 && <span className="ml-auto text-[12px] font-semibold text-slate-500">Total del turno: {dinero(total)}</span>}
       </h3>
-      <p className="text-[11px] text-slate-500">
+      <p className="text-xs text-slate-500">
         Si sacas efectivo de la caja (a custodia o para un gasto menor), registralo aqui: asi el cuadre no marca un faltante.
       </p>
-      <div className="grid grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
         <select value={tipo} onChange={(e) => setTipo(e.target.value as "RETIRO" | "GASTO")} aria-label="Tipo de movimiento"
           className="col-span-2 border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400">
           <option value="RETIRO">Retiro a custodia</option>
@@ -66,7 +66,7 @@ export function Movimientos({ movimientos, total, onCambio, onError }: Props) {
       {movimientos.length > 0 && (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="py-1.5">Hora</th><th>Tipo</th><th>Motivo</th><th>Quien</th><th className="text-right">Monto</th>
             </tr>
           </thead>

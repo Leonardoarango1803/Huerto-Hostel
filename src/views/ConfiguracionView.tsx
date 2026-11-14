@@ -109,12 +109,12 @@ export function ConfiguracionView() {
   const activos = tipos.filter((t) => t.estado).length;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Configuración</p>
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Configuración</p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Configuración del Sistema</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">Tipos de habitación y parámetros del hostel.</p>
+          <p className="text-slate-500 text-xs mt-0.5">Tipos de habitación y parámetros del hostel.</p>
         </div>
         <Button icon={<Plus size={13} />} onClick={abrirNuevo}>Nuevo Tipo</Button>
       </div>
@@ -123,10 +123,10 @@ export function ConfiguracionView() {
       {error && <AlertBanner type="error" message={error} />}
 
       {/* Tipos de habitación */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] p-4">
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-bold text-sm text-slate-800">Tipos de Habitación</h2>
-          <span className="text-[10px] text-slate-400">{tipos.length} tipos registrados</span>
+          <span className="text-[12px] text-slate-400">{tipos.length} tipos registrados</span>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-4">
@@ -140,7 +140,7 @@ export function ConfiguracionView() {
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Tipo</th>
                 <th className="p-3">Capacidad</th>
                 <th className="p-3">Precio / Noche</th>
@@ -153,7 +153,7 @@ export function ConfiguracionView() {
                 <tr key={t.idTipoHabitacion} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-3">
                     <div className="font-semibold">{t.nombre}</div>
-                    {t.descripcion && <div className="text-[10px] text-slate-400">{t.descripcion}</div>}
+                    {t.descripcion && <div className="text-[12px] text-slate-400">{t.descripcion}</div>}
                   </td>
                   <td className="p-3">{t.capacidadPersonas ?? "—"} persona{(t.capacidadPersonas ?? 0) !== 1 ? "s" : ""}</td>
                   <td className="p-3 font-semibold">S/ {Number(t.precioNoche).toFixed(2)}</td>
@@ -174,9 +174,9 @@ export function ConfiguracionView() {
       </div>
 
       {/* Parámetros generales */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] p-4">
         <h2 className="font-bold text-sm text-slate-800 mb-3">Parámetros Generales</h2>
-        <div className="grid grid-cols-2 gap-4 text-[11px]">
+        <div className="grid grid-cols-2 gap-4 text-xs">
           <div className="space-y-2">
             <div className="flex justify-between border-b border-slate-100 pb-1">
               <span className="text-slate-500">Nombre del Hostel</span>
@@ -206,7 +206,7 @@ export function ConfiguracionView() {
             </div>
           </div>
         </div>
-        <p className="text-[10px] text-slate-400 mt-3 italic">
+        <p className="text-[12px] text-slate-400 mt-3 italic">
           Los parámetros adicionales se configurarán en una futura versión del sistema.
         </p>
       </div>

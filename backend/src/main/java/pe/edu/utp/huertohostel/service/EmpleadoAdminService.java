@@ -19,6 +19,7 @@ import pe.edu.utp.huertohostel.repository.RolRepository;
 import pe.edu.utp.huertohostel.repository.TurnoRepository;
 import pe.edu.utp.huertohostel.repository.UsuarioRepository;
 import pe.edu.utp.huertohostel.security.PoliticaClaves;
+import pe.edu.utp.huertohostel.security.ProteccionLoginService;
 import pe.edu.utp.huertohostel.security.Roles;
 
 import java.text.Normalizer;
@@ -73,13 +74,15 @@ public class EmpleadoAdminService {
     private final CuentaService cuentaService;
     private final AuditoriaGestionService auditoria;
     private final UsuarioActualService usuarioActualService;
+    private final ProteccionLoginService proteccionLogin;
     private final ConcurrentHashMap<String, ArrayDeque<Long>> fallosDeConfirmacion = new ConcurrentHashMap<>();
 
     public EmpleadoAdminService(EmpleadoRepository empleadoRepository, RolRepository rolRepository,
                                 AreaRepository areaRepository, TurnoRepository turnoRepository,
                                 UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder,
                                 CuentaService cuentaService, AuditoriaGestionService auditoria,
-                                UsuarioActualService usuarioActualService) {
+                                UsuarioActualService usuarioActualService, ProteccionLoginService proteccionLogin) {
+        this.proteccionLogin = proteccionLogin;
         this.empleadoRepository = empleadoRepository;
         this.rolRepository = rolRepository;
         this.areaRepository = areaRepository;
@@ -132,6 +135,8 @@ public class EmpleadoAdminService {
         acceso.put("activa", cuenta != null && Boolean.TRUE.equals(cuenta.getEstado()));
         acceso.put("debeCambiarPassword", cuenta != null && Boolean.TRUE.equals(cuenta.getDebeCambiarPassword()));
         acceso.put("ultimoAcceso", cuenta != null ? cuenta.getUltimoAcceso() : null);
+        // Bloqueo temporal por intentos fallidos en el login (se levanta solo, o al restablecer la clave).
+        acceso.put("bloqueadaHasta", cuenta != null ? proteccionLogin.bloqueadaHasta(cuenta.getUsername()).orElse(null) : null);
         m.put("acceso", acceso);
         return m;
     }
@@ -347,6 +352,7 @@ public class EmpleadoAdminService {
         cuenta.setPasswordActualizada(LocalDateTime.now());
         usuarioRepository.save(cuenta);
         cuentaService.invalidarCache(cuenta.getUsername());
+        proteccionLogin.desbloquear(cuenta.getUsername()); // si estaba bloqueada por intentos fallidos, ya puede entrar
         auditoria.registrar("PASSWORD_RESTABLECIDA", e, "Cuenta " + cuenta.getUsername() + ": clave temporal, sesiones cerradas");
 
         Map<String, Object> r = new LinkedHashMap<>();

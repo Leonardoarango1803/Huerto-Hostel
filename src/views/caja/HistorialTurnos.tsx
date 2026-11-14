@@ -24,11 +24,11 @@ export function HistorialTurnos({ historial, esAdmin, onCambio }: Props) {
   const visibles = soloDiferencias ? historial.filter((t) => Number(t.diferenciaCuadre ?? 0) !== 0) : historial;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
       <div className="p-3 border-b border-slate-100 flex items-center gap-1.5">
         <History size={13} className="text-slate-500" />
         <span className="font-bold text-slate-700 text-xs">Historial de cierres</span>
-        <label className="ml-auto flex items-center gap-1.5 text-[11px] text-slate-600">
+        <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-600">
           <input type="checkbox" checked={soloDiferencias} onChange={(e) => setSoloDiferencias(e.target.checked)} />
           Solo con diferencia
         </label>
@@ -40,7 +40,7 @@ export function HistorialTurnos({ historial, esAdmin, onCambio }: Props) {
       ) : (
         <table className="w-full text-left text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
               <th className="p-3">Turno</th>
               <th className="p-3">Abrio</th>
               <th className="p-3">Cerro</th>
@@ -69,11 +69,11 @@ export function HistorialTurnos({ historial, esAdmin, onCambio }: Props) {
                     {t.diferenciaCuadre != null ? dinero(dif) : "—"}
                   </td>
                   <td className="p-3 text-center">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${ESTILO_ESTADO[t.estado] ?? ""}`}>{t.estado}</span>
+                    <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${ESTILO_ESTADO[t.estado] ?? ""}`}>{t.estado}</span>
                   </td>
                   <td className="p-3 text-right">
                     <button onClick={() => setDetalle(t.idTurnoCaja)} aria-label={`Ver detalle del turno ${t.idTurnoCaja}`}
-                      className="text-[10px] font-semibold text-emerald-700 hover:text-emerald-900">
+                      className="text-[12px] font-semibold text-emerald-700 hover:text-emerald-900">
                       Ver detalle
                     </button>
                   </td>

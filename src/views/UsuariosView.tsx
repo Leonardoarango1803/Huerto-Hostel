@@ -51,11 +51,11 @@ export function UsuariosView() {
   }, [traer, aplicar]);
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="pt-1">
-        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Usuarios</p>
+        <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Admin &gt; Usuarios</p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">Empleados y accesos</h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           Quién trabaja en el hostel, qué rol tiene y si puede entrar al sistema. Desactivar a un empleado también bloquea su cuenta.
         </p>
       </div>
@@ -67,7 +67,7 @@ export function UsuariosView() {
         {PESTANAS.map((p) => (
           <button key={p.id} role="tab" aria-selected={pestana === p.id} onClick={() => setPestana(p.id)}
             className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-              pestana === p.id ? "border-[#1b4332] text-[#1b4332]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+              pestana === p.id ? "border-[#2D5A27] text-[#2D5A27]" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
             {p.texto}
           </button>
         ))}

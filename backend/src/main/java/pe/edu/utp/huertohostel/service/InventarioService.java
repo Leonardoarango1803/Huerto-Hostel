@@ -268,6 +268,76 @@ public class InventarioService {
         return aGuardar.isEmpty() ? List.of() : recetaDetalleRepository.saveAll(aGuardar);
     }
 
+    /**
+     * Productos activos que usan cada insumo en su receta (idInsumo -> nombres). Sirve para ver que insumos no estan en
+     * ningun producto: lo que no esta en una receta no se puede vender ni se descuenta al vender.
+     */
+    public Map<Integer, List<String>> productosPorInsumo() {
+        Map<Integer, List<String>> uso = new HashMap<>();
+        for (RecetaDetalle linea : recetaDetalleRepository.findAllConInsumo()) {
+            Producto p = linea.getProducto();
+            if (p == null || !Boolean.TRUE.equals(p.getEstado())) {
+                continue;
+            }
+            uso.computeIfAbsent(linea.getInsumo().getIdInsumo(), k -> new ArrayList<>()).add(p.getNombre());
+        }
+        uso.values().forEach(nombres -> nombres.sort(String.CASE_INSENSITIVE_ORDER));
+        return uso;
+    }
+
+    /**
+     * Atajo para lo que se compra y se revende tal cual (una gaseosa, una cerveza): crea el producto del catalogo de venta y su
+     * receta con ese unico insumo, en un solo paso. Cada venta descontara {@code cantidadPorVenta} del insumo. Si el insumo ya
+     * esta en la receta de algun producto activo se rechaza, para no dejar dos productos que descuentan lo mismo.
+     */
+    @Transactional
+    public Producto venderInsumo(@NonNull Integer idInsumo, String nombre, CategoriaProducto categoria,
+                                 BigDecimal precioVenta, BigDecimal cantidadPorVenta, String descripcion) {
+        Insumo insumo = obtenerInsumo(idInsumo);
+        if (!Boolean.TRUE.equals(insumo.getEstado())) {
+            throw new IllegalStateException("El insumo '" + insumo.getNombre() + "' esta inactivo: activalo antes de venderlo.");
+        }
+        List<String> yaUsado = productosPorInsumo().getOrDefault(idInsumo, List.of());
+        if (!yaUsado.isEmpty()) {
+            throw new IllegalStateException("'" + insumo.getNombre() + "' ya se vende en: " + String.join(", ", yaUsado)
+                    + ". Si necesitas otro producto, agregalo desde Recetas.");
+        }
+        String nombreProducto = nombre == null || nombre.isBlank() ? insumo.getNombre() : nombre.trim();
+        if (nombreProducto.length() > 100) {
+            throw new IllegalStateException("El nombre del producto no puede pasar de 100 caracteres.");
+        }
+        if (productoRepository.findAll().stream().anyMatch(p -> Boolean.TRUE.equals(p.getEstado())
+                && nombreProducto.equalsIgnoreCase(p.getNombre()))) {
+            throw new IllegalStateException("Ya existe un producto llamado '" + nombreProducto + "'.");
+        }
+        if (categoria == null) {
+            throw new IllegalStateException("Elige la categoria del producto (Cocina, Bar o Directo).");
+        }
+        if (precioVenta == null || precioVenta.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("El precio de venta debe ser mayor a cero.");
+        }
+        BigDecimal cantidad = cantidadPorVenta != null ? cantidadPorVenta : BigDecimal.ONE;
+        if (cantidad.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("La cantidad que se descuenta por venta debe ser mayor a cero.");
+        }
+
+        Producto producto = new Producto();
+        producto.setNombre(nombreProducto);
+        producto.setDescripcion(descripcion != null && !descripcion.isBlank() ? descripcion.trim() : null);
+        producto.setCategoria(categoria);
+        producto.setPrecioVenta(precioVenta.setScale(2, RoundingMode.HALF_UP));
+        producto.setEstado(true);
+        Producto guardado = productoRepository.save(producto);
+
+        RecetaDetalle detalle = new RecetaDetalle();
+        detalle.setId(new RecetaDetalleId(guardado.getIdProducto(), idInsumo));
+        detalle.setProducto(guardado);
+        detalle.setInsumo(insumo);
+        detalle.setCantidad(cantidad);
+        recetaDetalleRepository.save(detalle);
+        return guardado;
+    }
+
     // ---------- Movimientos ----------
 
     public List<MovimientoInventario> listarMovimientos(FiltroMovimientos filtro, AreaInsumo areaRestringida) {

@@ -262,15 +262,15 @@ export function ReservasView() {
   const kpiPendiente = reservas.filter((r) => r.estadoReserva === "PENDIENTE_ADELANTO").length;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">
             Recepción &gt; Reservas
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Gestión de Reservas</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Registro, seguimiento y gestión de reservas del hostel.
           </p>
         </div>
@@ -325,7 +325,7 @@ export function ReservasView() {
       </div>
 
       {/* Búsqueda y filtros */}
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
           <SearchBar
             value={searchTerm}
@@ -335,13 +335,13 @@ export function ReservasView() {
           />
           <FilterPills options={FILTER_OPTIONS} activeValues={activeFilters} onSelectMulti={setActiveFilters} />
         </div>
-        <span className="text-[10px] text-slate-400">{filtradas.length} registros</span>
+        <span className="text-[12px] text-slate-400">{filtradas.length} registros</span>
       </div>
 
       {/* Layout principal */}
       <div className="grid grid-cols-12 gap-4">
         {/* Tabla */}
-        <div className="col-span-7 bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="col-span-7 bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
           {loading ? (
             <LoadingState />
           ) : filtradas.length === 0 ? (
@@ -353,7 +353,7 @@ export function ReservasView() {
           ) : (
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+                <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                   <th className="p-3">Código</th>
                   <th className="p-3">Huésped</th>
                   <th className="p-3">Habitación</th>
@@ -371,17 +371,17 @@ export function ReservasView() {
                       selectedId === r.idReserva ? "bg-emerald-50" : "hover:bg-slate-50"
                     }`}
                   >
-                    <td className="p-3 font-mono font-semibold text-[11px] text-slate-700">
+                    <td className="p-3 font-mono font-semibold text-xs text-slate-700">
                       {formatCodigo(r.idReserva)}
-                      <div className="text-[9px] text-slate-400 font-normal">{canalLabel[r.canalReserva]}</div>
+                      <div className="text-[11px] text-slate-400 font-normal">{canalLabel[r.canalReserva]}</div>
                     </td>
                     <td className="p-3">
                       <div className="font-semibold">{r.cliente.nombres} {r.cliente.apellidos}</div>
-                      <div className="text-[10px] text-slate-400">{r.cliente.tipoDocumento} {r.cliente.numeroDocumento}</div>
+                      <div className="text-[12px] text-slate-400">{r.cliente.tipoDocumento} {r.cliente.numeroDocumento}</div>
                     </td>
                     <td className="p-3">
                       <div className="font-semibold">Hab. {r.habitacion.numero}</div>
-                      <div className="text-[10px] text-slate-400">{r.habitacion.tipoHabitacion.nombre}</div>
+                      <div className="text-[12px] text-slate-400">{r.habitacion.tipoHabitacion.nombre}</div>
                     </td>
                     <td className="p-3 text-slate-600">{formatFecha(r.fechaCheckinPrevisto)}</td>
                     <td className="p-3">
@@ -417,10 +417,10 @@ export function ReservasView() {
         {/* Panel de detalle */}
         <div className="col-span-5 space-y-3">
           {selectedReserva ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <div className="bg-white rounded-2xl border border-[#EFE6D6] p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Detalle de Reserva</p>
+                  <p className="text-[12px] text-slate-400 uppercase font-semibold">Detalle de Reserva</p>
                   <h2 className="text-sm font-bold text-slate-900">{formatCodigo(selectedReserva.idReserva)}</h2>
                 </div>
                 <Badge
@@ -429,7 +429,7 @@ export function ReservasView() {
                 />
               </div>
 
-              <div className="space-y-2 text-[11px]">
+              <div className="space-y-2 text-xs">
                 <div className="flex gap-2">
                   <span className="text-slate-400 w-24 flex-shrink-0">Huésped</span>
                   <span className="font-semibold">{selectedReserva.cliente.nombres} {selectedReserva.cliente.apellidos}</span>
@@ -484,7 +484,7 @@ export function ReservasView() {
                     const restante = Number(selectedReserva.montoAlojamientoTotal) - totalAdelanto;
                     return (
                       <>
-                        <div className="flex justify-between text-emerald-700 text-[11px]">
+                        <div className="flex justify-between text-emerald-700 text-xs">
                           <span>Adelanto pagado</span>
                           <span className="font-semibold">− S/ {totalAdelanto.toFixed(2)}</span>
                         </div>
@@ -496,7 +496,7 @@ export function ReservasView() {
                     );
                   })()}
                   {selectedReserva.estadoReserva === "CANCELADA" && (
-                    <p className="text-[10px] text-slate-400 italic mt-1">
+                    <p className="text-[12px] text-slate-400 italic mt-1">
                       ℹ Las reservas canceladas se eliminan del historial después de 1 día.
                     </p>
                   )}
@@ -511,12 +511,12 @@ export function ReservasView() {
 
                 {selectedReserva.estadoReserva === "PENDIENTE_ADELANTO" && (
                   <>
-                    <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                    <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
                       Sin adelanto, esta reserva se libera sola el {formatFecha(selectedReserva.fechaCheckinPrevisto)}.
                     </p>
                     {showAdelanto ? (
                       <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 space-y-2">
-                        <p className="text-[10px] font-bold text-amber-700 uppercase">Registrar Adelanto</p>
+                        <p className="text-[12px] font-bold text-amber-700 uppercase">Registrar Adelanto</p>
                         {adelantoError && <AlertBanner type="error" message={adelantoError} dismissible={false} />}
                         <div className="flex gap-2">
                           <select
@@ -597,7 +597,7 @@ export function ReservasView() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 p-6 text-center">
+            <div className="bg-white rounded-2xl border border-[#EFE6D6] p-6 text-center">
               <p className="text-xs text-slate-400">Selecciona una reserva para ver el detalle</p>
             </div>
           )}

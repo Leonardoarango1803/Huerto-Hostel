@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tema Huerto: fondo arena, texto tinta y titulos de pagina en serif (Playfair Display). */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-arena text-tinta font-sans;
+  }
+
+  main h1 {
+    @apply font-display font-semibold tracking-tight;
+  }
+
+  :focus-visible {
+    outline: 2px solid #2d5a27;
+    outline-offset: 2px;
+  }
+}
+
+/* Titulo de cada pantalla del sistema (las vistas usan h1.text-xl): mas presencia, como en el diseño. */
+main h1.text-xl {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+}
+
 /* Al imprimir o guardar como PDF un reporte: solo el contenido, sin menu, avisos ni controles. */
 @media print {
   aside,

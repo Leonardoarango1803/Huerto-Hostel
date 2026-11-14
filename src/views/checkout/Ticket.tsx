@@ -69,7 +69,7 @@ export const TicketTermico = forwardRef<HTMLDivElement, Props>(function TicketTe
       </div>
       {separador}
       <div className="text-center">
-        <p className="font-bold text-xs">{titulo(c)}</p>
+        <p className="font-bold text-[12px]">{titulo(c)}</p>
         <p className="text-[10px]">{subtitulo(c)}</p>
         <p className="font-bold">N.° {c.numero}</p>
       </div>
@@ -125,7 +125,7 @@ export const TicketTermico = forwardRef<HTMLDivElement, Props>(function TicketTe
       )}
       {separador}
       <div className="text-center my-1">
-        <p className="font-bold text-xs">{saldo.texto}</p>
+        <p className="font-bold text-[12px]">{saldo.texto}</p>
         {saldo.valor > 0 && <p className="font-bold text-sm">{soles(saldo.valor)}</p>}
       </div>
       {separador}
@@ -144,15 +144,15 @@ export const HojaA4 = forwardRef<HTMLDivElement, Props>(function HojaA4({ datos:
       style={{ width: ANCHO_PX.A4, minHeight: 1000, padding: "44px 48px", fontFamily: "system-ui, 'Segoe UI', sans-serif", fontSize: 12 }}>
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-2xl font-bold text-[#1b4332]">{c.hotel.nombre}</p>
+          <p className="text-2xl font-bold text-[#2D5A27]">{c.hotel.nombre}</p>
           <div className="text-[11px] text-slate-600 mt-1 space-y-0.5">
             {c.hotel.ruc && <p>RUC {c.hotel.ruc}</p>}
             {c.hotel.direccion && <p>{c.hotel.direccion}</p>}
             {(c.hotel.telefono || c.hotel.correo) && <p>{[c.hotel.telefono && `Tel. ${c.hotel.telefono}`, c.hotel.correo].filter(Boolean).join("  ·  ")}</p>}
           </div>
         </div>
-        <div className="border-2 border-[#1b4332] rounded-lg px-5 py-3 text-center">
-          <p className="font-bold text-sm text-[#1b4332]">{titulo(c)}</p>
+        <div className="border-2 border-[#2D5A27] rounded-lg px-5 py-3 text-center">
+          <p className="font-bold text-sm text-[#2D5A27]">{titulo(c)}</p>
           <p className="text-[10px] text-slate-500">{subtitulo(c)}</p>
           <p className="font-bold text-base mt-1">N.° {c.numero}</p>
         </div>
@@ -247,7 +247,7 @@ export const HojaA4 = forwardRef<HTMLDivElement, Props>(function HojaA4({ datos:
         <p>Emitido el {fecha(c.emitidoEn)}{c.atendidoPor ? ` · Atendió: ${c.atendidoPor}` : ""}</p>
         <p>{AVISO}</p>
       </div>
-      {c.hotel.mensajePie && <p className="text-center font-semibold mt-6 text-[#1b4332]">{c.hotel.mensajePie}</p>}
+      {c.hotel.mensajePie && <p className="text-center font-semibold mt-6 text-[#2D5A27]">{c.hotel.mensajePie}</p>}
     </div>
   );
 });

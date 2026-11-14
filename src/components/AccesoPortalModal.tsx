@@ -76,7 +76,7 @@ export function AccesoPortalModal({ cliente, onClose }: Props) {
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
               <KeyRound size={14} className="text-emerald-700" /> Acceso al Portal
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               {cliente.nombres} {cliente.apellidos} · {cliente.tipoDocumento}{" "}
               {cliente.numeroDocumento}
             </p>
@@ -121,7 +121,7 @@ export function AccesoPortalModal({ cliente, onClose }: Props) {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Estado</span>
                   <span
-                    className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                    className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${
                       acceso.activo
                         ? "bg-emerald-100 text-emerald-800"
                         : "bg-slate-200 text-slate-600"
@@ -150,7 +150,7 @@ export function AccesoPortalModal({ cliente, onClose }: Props) {
                       {copiado ? "Copiado" : "Copiar"}
                     </Button>
                   </div>
-                  <p className="text-[10px] text-amber-700">
+                  <p className="text-[12px] text-amber-700">
                     Anotala o copiala ahora: al cerrar esta ventana no volvera a mostrarse.
                   </p>
                 </div>

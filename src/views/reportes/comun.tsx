@@ -14,11 +14,11 @@ export function Seccion({ titulo, subtitulo, accion, children, className = "" }:
   titulo: string; subtitulo?: string; accion?: ReactNode; children: ReactNode; className?: string;
 }) {
   return (
-    <section className={`bg-white rounded-xl border border-slate-200 shadow-sm break-inside-avoid ${className}`}>
+    <section className={`bg-white rounded-2xl border border-[#EFE6D6] break-inside-avoid ${className}`}>
       <div className="flex items-start justify-between gap-3 p-3 border-b border-slate-100">
         <div>
           <h2 className="font-bold text-slate-800 text-xs">{titulo}</h2>
-          {subtitulo && <p className="text-[10px] text-slate-400 mt-0.5">{subtitulo}</p>}
+          {subtitulo && <p className="text-[12px] text-slate-400 mt-0.5">{subtitulo}</p>}
         </div>
         {accion}
       </div>
@@ -30,15 +30,15 @@ export function Seccion({ titulo, subtitulo, accion, children, className = "" }:
 /** {@code contra} dice con que se compara: el periodo anterior en los reportes, ayer en el panel. */
 export function Variacion({ pct, contra = "periodo anterior" }: { pct: number | null | undefined; contra?: string }) {
   if (pct === null || pct === undefined) {
-    return <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Minus size={11} /> sin comparacion</span>;
+    return <span className="text-[12px] text-slate-400 flex items-center gap-0.5"><Minus size={11} /> sin comparacion</span>;
   }
   if (pct === 0) {
-    return <span className="text-[10px] text-slate-500 flex items-center gap-0.5"><Minus size={11} /> igual que antes</span>;
+    return <span className="text-[12px] text-slate-500 flex items-center gap-0.5"><Minus size={11} /> igual que antes</span>;
   }
   const sube = pct > 0;
   const Icono = sube ? ArrowUpRight : ArrowDownRight;
   return (
-    <span className={`text-[10px] font-semibold flex items-center gap-0.5 ${sube ? "text-emerald-600" : "text-red-600"}`}>
+    <span className={`text-[12px] font-semibold flex items-center gap-0.5 ${sube ? "text-emerald-600" : "text-red-600"}`}>
       <Icono size={12} /> {sube ? "+" : ""}{decimal(pct)} % vs {contra}
     </span>
   );
@@ -52,17 +52,17 @@ export function Tarjeta({ titulo, valor, detalle, variacion, tono = "gris" }: {
   titulo: string; valor: string; detalle?: string; variacion?: number | null; tono?: keyof typeof TONO;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 break-inside-avoid">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{titulo}</p>
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] p-3 break-inside-avoid">
+      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">{titulo}</p>
       <p className={`text-xl font-bold mt-1 leading-tight ${TONO[tono]}`}>{valor}</p>
       {variacion !== undefined && <div className="mt-1"><Variacion pct={variacion} /></div>}
-      {detalle && <p className="text-[10px] text-slate-400 mt-1">{detalle}</p>}
+      {detalle && <p className="text-[12px] text-slate-400 mt-1">{detalle}</p>}
     </div>
   );
 }
 
 export function Vacio({ texto = "Sin datos en este periodo." }: { texto?: string }) {
-  return <p className="text-center text-slate-400 text-[11px] py-8">{texto}</p>;
+  return <p className="text-center text-slate-400 text-xs py-8">{texto}</p>;
 }
 
 export function Tabla({ columnas, filas, vacio, derecha = [] }: {
@@ -73,7 +73,7 @@ export function Tabla({ columnas, filas, vacio, derecha = [] }: {
     <div className="overflow-x-auto">
       <table className="w-full text-left text-xs border-collapse">
         <thead>
-          <tr className="border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+          <tr className="border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
             {columnas.map((c, i) => <th key={c} className={`py-2 px-2 ${derecha.includes(i) ? "text-right" : ""}`}>{c}</th>)}
           </tr>
         </thead>
@@ -89,7 +89,7 @@ export function Tabla({ columnas, filas, vacio, derecha = [] }: {
   );
 }
 
-export function Barra({ pct, color = "#10b981" }: { pct: number; color?: string }) {
+export function Barra({ pct, color = "#4F8A45" }: { pct: number; color?: string }) {
   return (
     <div className="h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
       <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
@@ -155,7 +155,7 @@ export function GraficoSerie({ datos, series, formato = soles, alto = 230, esFec
   return (
     <ResponsiveContainer width="100%" height={alto}>
       <Contenedor data={datos} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#F1EADD" />
         <XAxis dataKey="x" tick={EJE} tickFormatter={etiquetaX} interval="preserveStartEnd" minTickGap={18} />
         <YAxis tick={EJE} tickFormatter={(v) => (formatoEje ?? formato)(Number(v)).replace("S/ ", "")} width={52} />
         <Tooltip labelFormatter={etiquetaX} formatter={(v, nombre) => [formato(Number(v)), nombre]} />
@@ -177,7 +177,7 @@ export function GraficoBarrasHorizontales({ datos, formato = entero, alto }: { d
   return (
     <ResponsiveContainer width="100%" height={alto ?? Math.max(120, datos.length * 34)}>
       <BarChart data={datos} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#F1EADD" horizontal={false} />
         <XAxis type="number" tick={EJE} tickFormatter={(v) => formato(Number(v))} />
         <YAxis type="category" dataKey="nombre" tick={EJE} width={110} />
         <Tooltip formatter={(v) => formato(Number(v))} />
@@ -191,7 +191,7 @@ export function GraficoBarrasHorizontales({ datos, formato = entero, alto }: { d
 
 /** Cuadricula de tarjetas que reparte el ancho segun cuantas hay. */
 export function Cuadricula({ columnas = 4, children }: { columnas?: 2 | 3 | 4 | 5; children: ReactNode }) {
-  const clase = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5" }[columnas];
+  const clase = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-2 md:grid-cols-4", 5: "grid-cols-2 md:grid-cols-3 xl:grid-cols-5" }[columnas];
   return <div className={`grid gap-3 ${clase}`}>{children}</div>;
 }
 
@@ -207,8 +207,8 @@ export function Bloque({ className = "", alto }: { className?: string; alto?: nu
 /** Tarjeta con su titulo real y solo el valor cargando: asi la pantalla ya "tiene forma" desde el primer instante. */
 export function TarjetaEsqueleto({ titulo }: { titulo: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{titulo}</p>
+    <div className="bg-white rounded-2xl border border-[#EFE6D6] p-3">
+      <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">{titulo}</p>
       <Bloque className="h-6 w-28 mt-2" />
       <Bloque className="h-2.5 w-36 mt-2.5" />
     </div>
@@ -262,7 +262,7 @@ export function Estado<T>({ r, esqueleto, children }: {
 /** Hora de generacion y exportacion del reporte que se esta viendo. */
 export function BarraAcciones({ generadoEn, onCsv, nota }: { generadoEn: string; onCsv?: () => void; nota?: string }) {
   return (
-    <div className="flex items-center justify-between text-[10px] text-slate-400">
+    <div className="flex items-center justify-between text-[12px] text-slate-400">
       <span>
         Datos de las {generadoEn.slice(11, 16)}{nota ? ` · ${nota}` : ""}. Se guardan unos segundos en memoria; usa Actualizar para recalcular.
       </span>

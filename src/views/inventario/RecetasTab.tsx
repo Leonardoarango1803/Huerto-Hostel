@@ -98,7 +98,7 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
 
   return (
     <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-7 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-fit">
+      <div className="col-span-7 bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden h-fit">
         <div className="p-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
           <span className="font-bold text-slate-700 text-xs">Productos ({visibles.length})</span>
           {sinReceta > 0 && (
@@ -109,8 +109,8 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
               <button
                 key={id}
                 onClick={() => setFiltro(id)}
-                className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border ${
-                  filtro === id ? "bg-[#1b4332] text-white border-[#1b4332]" : "bg-white text-slate-600 border-slate-300"
+                className={`px-2.5 py-1 rounded-full text-[12px] font-semibold border ${
+                  filtro === id ? "bg-[#2D5A27] text-white border-[#2D5A27]" : "bg-white text-slate-600 border-slate-300"
                 }`}
               >
                 {label}
@@ -125,7 +125,7 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Producto</th>
                 <th className="p-3">Area</th>
                 <th className="p-3 text-right">Precio</th>
@@ -165,14 +165,14 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
           </table>
         )}
         {puedeGestionar && (
-          <p className="p-3 text-[10px] text-slate-400 border-t border-slate-100">
+          <p className="p-3 text-[12px] text-slate-400 border-t border-slate-100">
             Para crear un producto nuevo o cambiar su precio, ve a{" "}
             <Link to="/servicios" className="text-emerald-700 font-semibold hover:underline">Productos y servicios</Link>.
           </p>
         )}
       </div>
 
-      <div className="col-span-5 bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 h-fit">
+      <div className="col-span-5 bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3 h-fit">
         {!seleccionado ? (
           <p className="p-6 text-center text-slate-400 text-xs">
             Selecciona un producto para ver o definir que insumos consume cada unidad vendida.
@@ -181,17 +181,17 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
           <>
             <div className="border-b border-slate-100 pb-2">
               <h3 className="font-bold text-slate-800 text-sm">{seleccionado.nombre}</h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Cantidad de insumo que consume <strong>una unidad</strong>. Se descuenta al entregar la comanda o al
                 cargar el consumo a la habitacion.
               </p>
             </div>
             {errorReceta && (
-              <p className="text-[11px] text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorReceta}</p>
+              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">{errorReceta}</p>
             )}
             <div className="space-y-2">
               {lineas.length === 0 && (
-                <p className="text-[11px] text-slate-400">Este producto no descuenta nada del almacen.</p>
+                <p className="text-xs text-slate-400">Este producto no descuenta nada del almacen.</p>
               )}
               {lineas.map((l, idx) => {
                 const insumo = porId.get(l.idInsumo);
@@ -202,7 +202,7 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
                       value={l.idInsumo}
                       disabled={!puedeGestionar}
                       onChange={(e) => actualizarLinea(idx, { idInsumo: e.target.value })}
-                      className="col-span-6 border border-slate-300 rounded-lg px-2 py-1.5 text-xs disabled:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                      className="col-span-6 border border-slate-300 rounded-lg px-2 py-1.5 text-xs disabled:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                     >
                       <option value="">Insumo...</option>
                       {insumos
@@ -219,9 +219,9 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
                       value={l.cantidad}
                       disabled={!puedeGestionar}
                       onChange={(e) => actualizarLinea(idx, { cantidad: e.target.value })}
-                      className="col-span-3 border border-slate-300 rounded-lg px-2 py-1.5 text-xs disabled:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#1b4332]"
+                      className="col-span-3 border border-slate-300 rounded-lg px-2 py-1.5 text-xs disabled:bg-slate-50 focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
                     />
-                    <span className="col-span-2 text-[10px] text-slate-500">
+                    <span className="col-span-2 text-[12px] text-slate-500">
                       {insumo ? `${insumo.unidadMedida} · ${soles(Number(l.cantidad || 0) * Number(insumo.costoUnitario ?? 0))}` : ""}
                     </span>
                     {puedeGestionar && (
@@ -240,14 +240,14 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
               {puedeGestionar && (
                 <button
                   onClick={() => setLineas((ls) => [...ls, { idInsumo: "", cantidad: "" }])}
-                  className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1 hover:text-emerald-900"
+                  className="text-emerald-700 font-semibold text-xs flex items-center gap-1 hover:text-emerald-900"
                 >
                   <Plus size={11} /> Agregar insumo
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 rounded-lg p-2 text-[11px]">
+            <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 rounded-lg p-2 text-xs">
               <div><p className="text-slate-400">Precio</p><p className="font-bold">{soles(seleccionado.precioVenta)}</p></div>
               <div><p className="text-slate-400">Costo</p><p className="font-bold">{soles(costoActual)}</p></div>
               <div>
@@ -256,7 +256,7 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
               </div>
             </div>
             {lineas.some((l) => Number(porId.get(l.idInsumo)?.costoUnitario ?? 0) === 0 && l.idInsumo) && (
-              <p className="text-[10px] text-amber-700">
+              <p className="text-[12px] text-amber-700">
                 Algun insumo no tiene costo registrado; el costo y el margen salen incompletos.
               </p>
             )}
@@ -264,7 +264,7 @@ export function RecetasTab({ insumos, puedeGestionar, onCambio }: Props) {
             {puedeGestionar && (
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
                 <Button onClick={guardar} loading={guardando}>Guardar receta</Button>
-                <span className="text-[10px] text-slate-400">{num(seleccionado.lineas)} insumo(s) guardados</span>
+                <span className="text-[12px] text-slate-400">{num(seleccionado.lineas)} insumo(s) guardados</span>
               </div>
             )}
           </>

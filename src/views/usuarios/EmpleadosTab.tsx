@@ -5,7 +5,7 @@ import { mensajeDeError } from "../../api/errores";
 import { usuariosApi, type Catalogo, type EmpleadoAdmin, type ResultadoCuenta } from "../../api/usuarios";
 import { AccesoModalsHost } from "./AccesoHost";
 import { EmpleadoFormModal } from "./EmpleadoFormModal";
-import { ETIQUETA_ROL, TEXTO_ACCESO, estadoDeAcceso, fechaHora, nombreCompleto, type EstadoAcceso } from "./comun";
+import { ETIQUETA_ROL, TEXTO_ACCESO, estadoDeAcceso, fechaHora, horaCorta, nombreCompleto, type EstadoAcceso } from "./comun";
 
 interface Props {
   empleados: EmpleadoAdmin[];
@@ -81,14 +81,14 @@ export function EmpleadosTab({ empleados, roles, turnos, onCambio, onError }: Pr
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="Empleados activos" value={activos.length} subtitle={`de ${empleados.length} registrados`} color="slate" />
         <KpiCard title="Con acceso activo" value={conCuentaActiva} subtitle="pueden entrar al sistema" color="emerald" />
         <KpiCard title="Sin cuenta" value={sinCuenta} subtitle="activos que no pueden entrar" color={sinCuenta ? "amber" : "slate"} />
         <KpiCard title="Clave temporal" value={temporales} subtitle="aún no la cambian" color={temporales ? "amber" : "slate"} />
       </div>
 
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center gap-2">
+      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex flex-wrap items-center gap-2">
         <SearchBar value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, usuario o documento" className="flex-1 min-w-52 max-w-xs" />
         <Select value={filtroRol} onChange={(e) => setFiltroRol(e.target.value)} aria-label="Filtrar por rol" className="!w-auto">
           <option value="">Todos los roles</option>
@@ -106,17 +106,17 @@ export function EmpleadosTab({ empleados, roles, turnos, onCambio, onError }: Pr
           <option value="activos">Solo activos</option>
           <option value="inactivos">Solo inactivos</option>
         </Select>
-        <span className="text-[10px] text-slate-400 ml-auto">{filtrados.length} registros</span>
+        <span className="text-[12px] text-slate-400 ml-auto">{filtrados.length} registros</span>
         <Button icon={<Plus size={13} />} onClick={() => setModal({ tipo: "form", editando: null })}>Nuevo empleado</Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         {filtrados.length === 0 ? (
           <EmptyState title="Sin resultados" description="Ningún empleado coincide con los filtros." />
         ) : (
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 font-bold uppercase">
+              <tr className="bg-slate-50 border-b border-slate-200 text-[12px] text-slate-500 font-bold uppercase">
                 <th className="p-3">Empleado</th>
                 <th className="p-3">Rol</th>
                 <th className="p-3">Turno</th>
@@ -133,20 +133,25 @@ export function EmpleadosTab({ empleados, roles, turnos, onCambio, onError }: Pr
                   <tr key={e.idEmpleado} className="border-b border-slate-100 hover:bg-slate-50 align-top">
                     <td className="p-3">
                       <div className="font-semibold">{nombreCompleto(e)}</div>
-                      <div className="text-[10px] text-slate-400">{e.tipoDocumento} {e.numeroDocumento}{e.correo ? ` · ${e.correo}` : ""}</div>
+                      <div className="text-[12px] text-slate-400">{e.tipoDocumento} {e.numeroDocumento}{e.correo ? ` · ${e.correo}` : ""}</div>
                     </td>
                     <td className="p-3">
                       {e.rol ? ETIQUETA_ROL[e.rol.nombre] ?? e.rol.nombre : <span className="text-slate-400">—</span>}
-                      {e.area && <div className="text-[10px] text-slate-400">{e.area.nombre}</div>}
+                      {e.area && <div className="text-[12px] text-slate-400">{e.area.nombre}</div>}
                     </td>
                     <td className="p-3">{e.turno?.nombre ?? <span className="text-slate-400">—</span>}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {e.acceso.username && <span className="font-mono text-[11px] text-slate-700">{e.acceso.username}</span>}
+                        {e.acceso.username && <span className="font-mono text-xs text-slate-700">{e.acceso.username}</span>}
                         <Badge variant={t.variante} label={t.texto} />
                       </div>
                       {e.acceso.tieneCuenta && (
-                        <div className="text-[10px] text-slate-400 mt-0.5">Último ingreso: {fechaHora(e.acceso.ultimoAcceso)}</div>
+                        <div className="text-[12px] text-slate-400 mt-0.5">Último ingreso: {fechaHora(e.acceso.ultimoAcceso)}</div>
+                      )}
+                      {e.acceso.bloqueadaHasta && (
+                        <div className="text-[12px] font-semibold text-red-800 mt-1">
+                          Bloqueada por intentos fallidos hasta las {horaCorta(e.acceso.bloqueadaHasta)}. Restablecer la clave la desbloquea.
+                        </div>
                       )}
                     </td>
                     <td className="p-3"><Badge variant={e.estado ? "emerald" : "slate"} label={e.estado ? "Activo" : "Inactivo"} /></td>

@@ -190,14 +190,14 @@ export function ComandasView() {
   };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[10px] text-slate-400 uppercase font-semibold">
+          <p className="text-[12px] text-slate-400 uppercase font-semibold">
             Operacion › Comandas
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Comandas de Cocina y Bar</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Tablero en tiempo real. Al entregar, la comanda se carga al folio de la estadia y
             descuenta los insumos segun receta.
           </p>
@@ -222,7 +222,7 @@ export function ComandasView() {
           </button>
           <button
             onClick={() => setMostrarForm((v) => !v)}
-            className="bg-[#1b4332] hover:bg-[#143427] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
+            className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center gap-1.5"
           >
             <Plus size={13} /> Nueva comanda
           </button>
@@ -243,14 +243,14 @@ export function ComandasView() {
       )}
 
       {mostrarForm && (
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
           <h3 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2">
             Nueva comanda
           </h3>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Estadia
               </label>
               <select
@@ -268,7 +268,7 @@ export function ComandasView() {
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Area destino
               </label>
               <select
@@ -285,7 +285,7 @@ export function ComandasView() {
             </div>
 
             <div>
-              <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">
+              <label className="text-[12px] text-slate-500 font-bold uppercase block mb-1">
                 Observaciones
               </label>
               <input
@@ -299,7 +299,7 @@ export function ComandasView() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] text-slate-500 font-bold uppercase block">Items</label>
+            <label className="text-[12px] text-slate-500 font-bold uppercase block">Items</label>
             {form.items.map((item, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-center">
                 <select
@@ -370,7 +370,7 @@ export function ComandasView() {
                   items: [...f.items, { idProducto: "", cantidad: "1", notas: "" }],
                 }))
               }
-              className="text-emerald-700 font-semibold text-[11px] flex items-center gap-1 hover:text-emerald-900"
+              className="text-emerald-700 font-semibold text-xs flex items-center gap-1 hover:text-emerald-900"
             >
               <Plus size={11} /> Agregar item
             </button>
@@ -379,7 +379,7 @@ export function ComandasView() {
           <button
             onClick={crearComanda}
             disabled={guardando}
-            className="bg-[#1b4332] hover:bg-[#143427] disabled:bg-slate-300 text-white text-xs font-semibold px-4 py-2 rounded-lg"
+            className="bg-[#2D5A27] hover:bg-[#1E3F1A] disabled:bg-slate-300 text-white text-xs font-semibold px-4 py-2 rounded-lg"
           >
             {guardando ? "Enviando..." : "Enviar comanda"}
           </button>
@@ -398,7 +398,7 @@ export function ComandasView() {
                   <h3 className="font-bold text-slate-700 text-xs uppercase tracking-wide">
                     {col.titulo}
                   </h3>
-                  <span className="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold">
+                  <span className="text-[12px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-bold">
                     {lista.length}
                   </span>
                 </div>
@@ -406,7 +406,7 @@ export function ComandasView() {
                 {lista.length === 0 ? (
                   <div className="bg-white rounded-xl border border-dashed border-slate-200 p-6 text-center text-slate-400">
                     <ChefHat size={22} className="mx-auto mb-1 opacity-30" />
-                    <p className="text-[11px]">Sin comandas</p>
+                    <p className="text-xs">Sin comandas</p>
                   </div>
                 ) : (
                   lista.map((c) => {
@@ -420,11 +420,11 @@ export function ComandasView() {
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-800 text-[11px]">
+                          <span className="font-bold text-emerald-800 text-xs">
                             #{c.idComanda} — Hab. {c.numeroHabitacion ?? "—"}
                           </span>
                           <span
-                            className={`text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            className={`text-[11px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
                               demorada
                                 ? "bg-red-100 text-red-700"
                                 : "bg-slate-100 text-slate-600"
@@ -434,13 +434,13 @@ export function ComandasView() {
                           </span>
                         </div>
 
-                        <span className="inline-block text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
+                        <span className="inline-block text-[11px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">
                           {c.areaDestino}
                         </span>
 
                         <ul className="space-y-1">
                           {c.items.map((i) => (
-                            <li key={i.idDetalle} className="text-[11px] text-slate-700">
+                            <li key={i.idDetalle} className="text-xs text-slate-700">
                               <strong>{i.cantidad}x</strong> {i.nombreProducto}
                               {i.notas && (
                                 <span className="text-slate-400 italic"> — {i.notas}</span>
@@ -450,25 +450,25 @@ export function ComandasView() {
                         </ul>
 
                         {c.observaciones && (
-                          <p className="text-[10px] text-amber-700 bg-amber-50 rounded px-1.5 py-1">
+                          <p className="text-[12px] text-amber-700 bg-amber-50 rounded px-1.5 py-1">
                             {c.observaciones}
                           </p>
                         )}
 
                         <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                          <span className="text-[11px] font-bold text-slate-900">
+                          <span className="text-xs font-bold text-slate-900">
                             S/ {c.total?.toFixed(2)}
                           </span>
                           <div className="flex gap-1.5">
                             <button
                               onClick={() => cancelar(c)}
-                              className="text-[10px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-1"
+                              className="text-[12px] text-red-500 hover:text-red-700 font-semibold px-1.5 py-1"
                             >
                               Cancelar
                             </button>
                             <button
                               onClick={() => avanzar(c, col.siguiente)}
-                              className="bg-[#1b4332] hover:bg-[#143427] text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                              className="bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-[12px] font-semibold px-2.5 py-1 rounded-lg"
                             >
                               {col.accion}
                             </button>

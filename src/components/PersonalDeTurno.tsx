@@ -18,7 +18,7 @@ export function PersonalDeTurno({ rol, titulo }: { rol: string; titulo: string }
 
   if (gente === null) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[11px]" aria-label={titulo}>
+    <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs" aria-label={titulo}>
       <Clock size={13} className="text-slate-500" />
       <span className="font-semibold text-slate-700">{titulo}:</span>
       {gente.length === 0 ? (

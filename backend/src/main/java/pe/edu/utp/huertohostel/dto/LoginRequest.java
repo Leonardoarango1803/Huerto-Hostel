@@ -10,7 +10,18 @@ public class LoginRequest {
     @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 
+    /** "admin" (portal administrativo, solo personal) o "web" (solo huespedes). Opcional. */
+    private String sitio;
+
     public LoginRequest() {
+    }
+
+    public String getSitio() {
+        return sitio;
+    }
+
+    public void setSitio(String sitio) {
+        this.sitio = sitio;
     }
 
     public LoginRequest(String username, String password) {

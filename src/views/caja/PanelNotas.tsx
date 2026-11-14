@@ -37,9 +37,9 @@ export function PanelNotas({ pendientes, turnoActualId, esAdmin, onResolver }: P
     <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 space-y-2" aria-label="Notas pendientes de turno">
       <h3 className="font-bold text-amber-900 text-xs flex items-center gap-1.5">
         <AlertTriangle size={14} /> Notas pendientes de resolver ({pendientes.length})
-        {deDinero.length > 0 && <span className="ml-2 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded">{deDinero.length} de dinero</span>}
+        {deDinero.length > 0 && <span className="ml-2 text-[12px] bg-red-600 text-white px-1.5 py-0.5 rounded">{deDinero.length} de dinero</span>}
       </h3>
-      <p className="text-[11px] text-amber-800">
+      <p className="text-xs text-amber-800">
         Novedades que dejaron los turnos de caja y nadie ha marcado como resueltas.
         {deDinero.length > 0 && " Las diferencias de dinero son efectivo que falta o sobra en la caja: no se deben dejar pasar."}
       </p>
@@ -52,18 +52,18 @@ export function PanelNotas({ pendientes, turnoActualId, esAdmin, onResolver }: P
             <div key={n.idBitacora}
               className={`rounded-lg p-2.5 border ${esDinero ? "bg-red-50 border-red-300" : "bg-white border-amber-200"}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className={`text-[9px] font-bold uppercase ${esDinero ? "text-red-700" : "text-slate-500"}`}>
+                <span className={`text-[11px] font-bold uppercase ${esDinero ? "text-red-700" : "text-slate-500"}`}>
                   {esDinero ? (n.categoria === "APERTURA" ? "Diferencia al recibir la caja" : "Diferencia al cerrar la caja") : n.categoria}
                 </span>
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
+                <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${
                   n.prioridad === "ALTA" ? "bg-red-100 text-red-700" : n.prioridad === "BAJA" ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-800"
                 }`}>{n.prioridad}</span>
               </div>
               {esDinero && n.monto != null && (
                 <p className="text-sm font-bold text-red-700 mt-1">{n.monto < 0 ? "Faltante" : "Sobrante"} {dinero(Math.abs(n.monto))}</p>
               )}
-              <p className="text-[11px] text-slate-800 mt-1">{n.mensaje}</p>
-              <p className="text-[10px] text-slate-400 mt-1.5">
+              <p className="text-xs text-slate-800 mt-1">{n.mensaje}</p>
+              <p className="text-[12px] text-slate-400 mt-1.5">
                 {esDeEsteTurno ? "Turno actual" : `Turno #${n.turnoCaja?.idTurnoCaja ?? "?"}`}
                 {n.turnoCaja?.empleado ? ` · ${nombre(n.turnoCaja.empleado)}` : ""} · {fechaCorta(n.fechaHora)}
               </p>
@@ -75,17 +75,17 @@ export function PanelNotas({ pendientes, turnoActualId, esAdmin, onResolver }: P
                     className="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
                   <div className="flex gap-2">
                     <button onClick={() => confirmar(n)} disabled={guardando || (esDinero && !comentario.trim())}
-                      className="text-[11px] font-semibold bg-[#1b4332] text-white px-2.5 py-1 rounded-lg disabled:opacity-50">
+                      className="text-xs font-semibold bg-[#2D5A27] text-white px-2.5 py-1 rounded-lg disabled:opacity-50">
                       Confirmar resuelto
                     </button>
-                    <button onClick={() => { setResolviendo(null); setComentario(""); }} className="text-[11px] text-slate-500">Cancelar</button>
+                    <button onClick={() => { setResolviendo(null); setComentario(""); }} className="text-xs text-slate-500">Cancelar</button>
                   </div>
                 </div>
               ) : esDinero && !esAdmin ? (
-                <p className="text-[10px] text-red-700 mt-2 font-semibold">La resuelve el administrador.</p>
+                <p className="text-[12px] text-red-700 mt-2 font-semibold">La resuelve el administrador.</p>
               ) : (
                 <button onClick={() => (esDinero ? setResolviendo(n.idBitacora) : confirmar(n))} disabled={guardando}
-                  className="text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 mt-2 disabled:opacity-40">
+                  className="text-[12px] font-semibold text-emerald-700 hover:text-emerald-900 mt-2 disabled:opacity-40">
                   {esDinero ? "Resolver diferencia" : "Marcar resuelto"}
                 </button>
               )}

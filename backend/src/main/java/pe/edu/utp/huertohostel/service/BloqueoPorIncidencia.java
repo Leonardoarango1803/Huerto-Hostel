@@ -27,6 +27,11 @@ public class BloqueoPorIncidencia {
                 .existsByHabitacionIdHabitacionAndBloqueaHabitacionTrueAndEstadoIn(idHabitacion, EstadoIncidencia.ABIERTAS);
     }
 
+    /** Todas las habitaciones bloqueadas por una incidencia abierta, en una sola consulta. */
+    public java.util.Set<Integer> habitacionesBloqueadas() {
+        return new java.util.HashSet<>(incidenciaRepository.findIdsHabitacionBloqueadas(EstadoIncidencia.ABIERTAS));
+    }
+
     /** MANTENIMIENTO si una incidencia abierta bloquea la habitacion; si no, el estado normal que le tocaba. */
     public EstadoOperativoHab estadoAlLiberar(Habitacion habitacion, EstadoOperativoHab normal) {
         return hayBloqueo(habitacion.getIdHabitacion()) ? EstadoOperativoHab.MANTENIMIENTO : normal;

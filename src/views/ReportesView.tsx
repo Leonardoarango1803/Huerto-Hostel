@@ -86,12 +86,12 @@ export function ReportesView() {
   const props = { periodo, version };
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div className="flex justify-between items-start gap-4">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Administracion › Reportes</p>
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">Administracion › Reportes</p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Reportes y estadisticas</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             {diaLargo(periodo.desde)} — {diaLargo(periodo.hasta)}. Cada cifra se compara con el periodo anterior de la misma duracion.
           </p>
         </div>
@@ -99,21 +99,21 @@ export function ReportesView() {
           <button onClick={actualizar} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold hover:bg-slate-50">
             <RefreshCw size={12} /> Actualizar
           </button>
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1b4332] text-white font-semibold hover:bg-[#143427]">
+          <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2D5A27] text-white font-semibold hover:bg-[#1E3F1A]">
             <Printer size={12} /> Imprimir o guardar PDF
           </button>
         </div>
       </div>
 
       {pestana !== "inventario" && (
-        <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-xl border border-slate-200 no-imprimir">
+        <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-2xl border border-[#EFE6D6] no-imprimir">
           <div className="flex gap-1">
             {PRESETS.map((p) => (
               <button
                 key={p.id}
                 onClick={() => elegir(p.id)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                  preset === p.id ? "bg-[#1b4332] text-white border-[#1b4332]" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                  preset === p.id ? "bg-[#2D5A27] text-white border-[#2D5A27]" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"
                 }`}
               >
                 {p.label}
@@ -128,7 +128,7 @@ export function ReportesView() {
             <input type="date" value={periodo.hasta} min={periodo.desde} max={hoyISO()} onChange={(e) => cambiarFecha("hasta", e.target.value)}
               className="border border-slate-300 rounded-lg px-2 py-1 text-xs" aria-label="Fecha final" />
           </div>
-          {aviso && <p className="w-full text-[11px] text-red-600">{aviso}</p>}
+          {aviso && <p className="w-full text-xs text-red-600">{aviso}</p>}
         </div>
       )}
 

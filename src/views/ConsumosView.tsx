@@ -139,11 +139,11 @@ export function ConsumosView() {
   }, [estadias, busqueda]);
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       <div>
-        <p className="text-[10px] text-slate-400 uppercase font-semibold">Recepción › Consumos y servicios</p>
+        <p className="text-[12px] text-slate-400 uppercase font-semibold">Recepción › Consumos y servicios</p>
         <h1 className="text-xl font-bold text-slate-900 mt-0.5">Consumos y servicios</h1>
-        <p className="text-slate-500 text-[11px] mt-0.5">
+        <p className="text-slate-500 text-xs mt-0.5">
           Carga servicios (late check-out, lavandería, transfer...) y consumos al folio de una estadía en curso. Si te equivocas,
           anula con motivo. Los pedidos de cocina y bar se hacen desde Comandas.
         </p>
@@ -154,7 +154,7 @@ export function ConsumosView() {
           mensaje.tipo === "ok" ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "bg-red-50 border-red-300 text-red-800"}`}>
           {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
           <span className="flex-1">{mensaje.texto}</span>
-          <button onClick={() => setMensaje(null)} className="text-[10px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
+          <button onClick={() => setMensaje(null)} className="text-[12px] font-semibold opacity-70 hover:opacity-100">Cerrar</button>
         </div>
       )}
       {avisosStock.length > 0 && (
@@ -170,12 +170,12 @@ export function ConsumosView() {
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-3 space-y-3">
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+          <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex items-center gap-2">
             <Search size={13} className="text-slate-400" />
             <input type="text" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar estadía..."
               aria-label="Buscar estadía" className="flex-1 text-xs focus:outline-none" />
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
             <div className="p-2.5 border-b border-slate-100">
               <span className="font-bold text-slate-700 text-xs">Estadías activas</span>
             </div>
@@ -189,14 +189,14 @@ export function ConsumosView() {
                   <button key={e.idEstadia} onClick={() => seleccionar(e)}
                     className={`w-full text-left p-3 hover:bg-slate-50 transition-colors ${seleccionada?.idEstadia === e.idEstadia ? "bg-emerald-50/60" : ""}`}>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-emerald-800 text-[11px]">Estadía #{e.idEstadia}</span>
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">EN CURSO</span>
+                      <span className="font-bold text-emerald-800 text-xs">Estadía #{e.idEstadia}</span>
+                      <span className="text-[11px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">EN CURSO</span>
                     </div>
                     <p className="text-slate-600 mt-0.5">Hab. {e.habitacion?.numero ?? "—"}</p>
-                    <p className="text-slate-400 text-[10px]">
+                    <p className="text-slate-400 text-[12px]">
                       {e.reserva?.cliente ? `${e.reserva.cliente.nombres} ${e.reserva.cliente.apellidos}` : "—"}
                     </p>
-                    <p className="text-slate-400 text-[10px]">Check-in: {e.fechaCheckinReal ? e.fechaCheckinReal.slice(0, 10) : "—"}</p>
+                    <p className="text-slate-400 text-[12px]">Check-in: {e.fechaCheckinReal ? e.fechaCheckinReal.slice(0, 10) : "—"}</p>
                   </button>
                 ))}
               </div>
@@ -206,7 +206,7 @@ export function ConsumosView() {
 
         <div className="col-span-9 space-y-4">
           {!seleccionada ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
+            <div className="bg-white rounded-2xl border border-[#EFE6D6] p-12 text-center text-slate-400">
               <Coffee size={32} className="mx-auto mb-2 opacity-30" />
               <p className="text-xs">Selecciona una estadía de la lista para ver y registrar consumos.</p>
             </div>

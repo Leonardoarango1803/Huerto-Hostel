@@ -40,7 +40,7 @@ export function OcupacionTab({ periodo, version }: { periodo: Periodo; version: 
           <Seccion titulo="Ocupacion por dia (%)" subtitulo="Habitaciones con una estadia en curso cada noche, sobre el total de habitaciones">
             <GraficoSerie
               datos={d.serie.map((p) => ({ x: p.fecha, ocupacion: p.ocupacionPct }))}
-              series={[{ clave: "ocupacion", nombre: "Ocupacion", color: "#3b82f6", tipo: "linea" }]}
+              series={[{ clave: "ocupacion", nombre: "Ocupacion", color: "#3B6FB6", tipo: "linea" }]}
               formato={porcentaje} formatoEje={(v) => `${decimal(v, 0)}%`} alto={250}
             />
           </Seccion>
@@ -50,7 +50,7 @@ export function OcupacionTab({ periodo, version }: { periodo: Periodo; version: 
               <Tabla columnas={["Tipo", "Habitaciones", "Noches", "Ocupacion", "Ingreso"]} derecha={[1, 2, 4]}
                 filas={d.porTipo.map((t) => [
                   t.tipo, entero(t.habitaciones), entero(t.noches),
-                  <span key="o" className="flex items-center gap-2"><span className="w-24"><Barra pct={t.ocupacionPct} color="#3b82f6" /></span>{porcentaje(t.ocupacionPct)}</span>,
+                  <span key="o" className="flex items-center gap-2"><span className="w-24"><Barra pct={t.ocupacionPct} color="#3B6FB6" /></span>{porcentaje(t.ocupacionPct)}</span>,
                   soles(t.ingreso),
                 ])} />
             </Seccion>
@@ -58,7 +58,7 @@ export function OcupacionTab({ periodo, version }: { periodo: Periodo; version: 
               <div className="space-y-2">
                 {d.estadoActual.map((e) => (
                   <div key={e.clave} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLOR_ESTADO_HAB[e.clave] ?? "#64748b" }} />
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: COLOR_ESTADO_HAB[e.clave] ?? "#8C8073" }} />
                     <span className="flex-1 text-slate-600">{etiqueta(e.clave)}</span>
                     <strong>{e.cantidad}</strong>
                   </div>

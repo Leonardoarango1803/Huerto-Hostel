@@ -7,8 +7,10 @@ import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.AreaInsumo;
+import pe.edu.utp.huertohostel.entity.CategoriaProducto;
 import pe.edu.utp.huertohostel.entity.Insumo;
 import pe.edu.utp.huertohostel.entity.MovimientoInventario;
+import pe.edu.utp.huertohostel.entity.Producto;
 import pe.edu.utp.huertohostel.entity.Proveedor;
 import pe.edu.utp.huertohostel.entity.RecetaDetalle;
 import pe.edu.utp.huertohostel.entity.TipoMovInventario;
@@ -69,6 +71,35 @@ public class InventarioController {
     public ResponseEntity<Insumo> actualizarInsumo(@PathVariable @NonNull Integer id,
                                                    @RequestBody Insumo datos) {
         return ResponseEntity.ok(inventarioService.actualizarInsumo(id, datos));
+    }
+
+    /** Para cada insumo, los productos activos que lo usan en su receta (los que faltan no se venden). */
+    @GetMapping("/insumos/uso")
+    @PreAuthorize(Roles.INVENTARIO)
+    public ResponseEntity<Map<Integer, List<String>>> usoDeInsumos() {
+        return ResponseEntity.ok(inventarioService.productosPorInsumo());
+    }
+
+    /**
+     * Crea el producto de venta y su receta (este insumo, tantas unidades por venta) en un solo paso.
+     * Cuerpo: nombre (opcional), categoria (COCINA, BAR o DIRECTO), precioVenta, cantidad (por venta, 1 por defecto).
+     */
+    @PostMapping("/insumos/{id}/vender")
+    @PreAuthorize(Roles.SOLO_ADMIN)
+    public ResponseEntity<Producto> venderInsumo(@PathVariable @NonNull Integer id,
+                                                 @RequestBody Map<String, Object> body) {
+        CategoriaProducto categoria = null;
+        Object crudo = body.get("categoria");
+        if (crudo != null && !String.valueOf(crudo).isBlank()) {
+            try {
+                categoria = CategoriaProducto.valueOf(String.valueOf(crudo).trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalStateException("La categoria debe ser COCINA, BAR o DIRECTO.");
+            }
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(inventarioService.venderInsumo(
+                id, texto(body.get("nombre")), categoria, decimal(body.get("precioVenta")),
+                decimal(body.get("cantidad")), texto(body.get("descripcion"))));
     }
 
     // ---------- Recetas ----------

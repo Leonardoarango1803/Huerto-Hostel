@@ -227,15 +227,15 @@ export function HuespedesView() {
   }, [clientes, activeFilter, searchTerm]);
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#f5f6f8] -m-8 p-6 min-h-screen">
+    <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
       {/* Header */}
       <div className="flex justify-between items-start pt-1">
         <div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          <p className="text-[12px] text-slate-400 font-bold uppercase tracking-wider">
             Recepción &gt; Huéspedes
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Directorio de Huéspedes</h1>
-          <p className="text-slate-500 text-[11px] mt-0.5">
+          <p className="text-slate-500 text-xs mt-0.5">
             Registro y gestión de clientes del hostel.
           </p>
         </div>
@@ -300,7 +300,7 @@ export function HuespedesView() {
       </div>
 
       {/* Búsqueda y filtros */}
-      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-1">
           <SearchBar
             value={searchTerm}
@@ -310,11 +310,11 @@ export function HuespedesView() {
           />
           <FilterPills options={FILTER_OPTIONS} active={activeFilter} onSelect={setActiveFilter} />
         </div>
-        <span className="text-[10px] text-slate-400">{filtrados.length} registros</span>
+        <span className="text-[12px] text-slate-400">{filtrados.length} registros</span>
       </div>
 
       {/* Lista de huéspedes */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
         {loading ? (
           <LoadingState />
         ) : filtrados.length === 0 ? (
@@ -341,10 +341,10 @@ export function HuespedesView() {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-slate-900">{c.nombres} {c.apellidos}</span>
                     {c.estado === false && (
-                      <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold">INACTIVO</span>
+                      <span className="text-[11px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold">INACTIVO</span>
                     )}
                   </div>
-                  <div className="text-[10px] text-slate-500 flex items-center gap-3 mt-0.5 flex-wrap">
+                  <div className="text-[12px] text-slate-500 flex items-center gap-3 mt-0.5 flex-wrap">
                     <span>{c.tipoDocumento} {c.numeroDocumento}</span>
                     {c.correo && <span className="truncate max-w-[160px]">{c.correo}</span>}
                     {c.telefono && <span>{c.telefono}</span>}
@@ -425,7 +425,7 @@ export function HuespedesView() {
                 maxLength={form.tipoDocumento === "DNI" ? 8 : 20}
               />
               {dniLoading && (
-                <Loader2 size={13} className="absolute right-2.5 top-2 text-[#1b4332] animate-spin" />
+                <Loader2 size={13} className="absolute right-2.5 top-2 text-[#2D5A27] animate-spin" />
               )}
             </div>
           </FormField>

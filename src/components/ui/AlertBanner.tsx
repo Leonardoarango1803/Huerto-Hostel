@@ -10,10 +10,10 @@ interface AlertBannerProps {
 }
 
 const config: Record<AlertType, { icon: typeof CheckCircle; classes: string }> = {
-  success: { icon: CheckCircle, classes: "bg-emerald-50 border-emerald-300 text-emerald-800" },
-  error: { icon: XCircle, classes: "bg-red-50 border-red-300 text-red-800" },
-  warning: { icon: AlertCircle, classes: "bg-amber-50 border-amber-300 text-amber-800" },
-  info: { icon: Info, classes: "bg-blue-50 border-blue-300 text-blue-800" },
+  success: { icon: CheckCircle, classes: "bg-emerald-50 border-emerald-200 text-emerald-900" },
+  error: { icon: XCircle, classes: "bg-red-50 border-red-200 text-red-900" },
+  warning: { icon: AlertCircle, classes: "bg-amber-50 border-amber-200 text-amber-900" },
+  info: { icon: Info, classes: "bg-blue-50 border-blue-200 text-blue-900" },
 };
 
 export function AlertBanner({ type, message, dismissible = true }: AlertBannerProps) {
@@ -23,12 +23,15 @@ export function AlertBanner({ type, message, dismissible = true }: AlertBannerPr
   const { icon: Icon, classes } = config[type];
 
   return (
-    <div className={`flex items-start gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${classes}`}>
-      <Icon size={14} className="flex-shrink-0 mt-0.5" />
+    <div
+      role={type === "error" || type === "warning" ? "alert" : "status"}
+      className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-[13px] font-medium leading-snug ${classes}`}
+    >
+      <Icon size={16} className="flex-shrink-0 mt-0.5" />
       <span className="flex-1">{message}</span>
       {dismissible && (
-        <button onClick={() => setVisible(false)} className="flex-shrink-0 opacity-60 hover:opacity-100">
-          <X size={13} />
+        <button onClick={() => setVisible(false)} aria-label="Cerrar aviso" className="flex-shrink-0 opacity-70 hover:opacity-100">
+          <X size={15} />
         </button>
       )}
     </div>
