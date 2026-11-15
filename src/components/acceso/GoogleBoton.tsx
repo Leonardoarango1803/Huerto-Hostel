@@ -8,7 +8,12 @@ const SCRIPT = "https://accounts.google.com/gsi/client";
 export const googleDisponible = !!CLIENT_ID;
 
 interface GoogleId {
-  initialize: (opciones: { client_id: string; callback: (r: { credential: string }) => void; ux_mode?: string }) => void;
+  initialize: (opciones: {
+    client_id: string;
+    callback: (r: { credential: string }) => void;
+    ux_mode?: string;
+    use_fedcm_for_button?: boolean;
+  }) => void;
   renderButton: (contenedor: HTMLElement, opciones: Record<string, string | number>) => void;
 }
 type ConGoogle = Window & { google?: { accounts?: { id?: GoogleId } } };
@@ -38,7 +43,8 @@ export function GoogleBoton({ onCredencial, texto = "continue_with", ancho = 320
       .then(() => {
         const id = (window as ConGoogle).google?.accounts?.id;
         if (!vigente || !contenedor.current || !id) return;
-        id.initialize({ client_id: CLIENT_ID, callback: (r) => avisar.current(r.credential) });
+        // FedCM evita la ventana emergente (y su aviso de COOP) en Chrome; otros navegadores siguen con la emergente.
+        id.initialize({ client_id: CLIENT_ID, callback: (r) => avisar.current(r.credential), use_fedcm_for_button: true });
         id.renderButton(contenedor.current, { theme: "outline", size: "large", shape: "pill", text: texto, locale: "es", width: ancho });
       })
       .catch(() => vigente && setFallo(true));
