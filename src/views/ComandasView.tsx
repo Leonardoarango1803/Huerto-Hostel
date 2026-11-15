@@ -62,6 +62,9 @@ export function ComandasView() {
     items: [{ idProducto: "", cantidad: "1", notas: "" }],
   });
 
+  /** Reloj del tablero ("hace N min"): se actualiza con cada refresco, no en cada render. */
+  const [ahora, setAhora] = useState(() => Date.now());
+
   const cargarComandas = useCallback(async () => {
     try {
       const data = await comandasApi.listar(area || undefined);
@@ -75,7 +78,10 @@ export function ComandasView() {
 
   useEffect(() => {
     cargarComandas();
-    const id = setInterval(cargarComandas, INTERVALO_REFRESCO_MS);
+    const id = setInterval(() => {
+      cargarComandas();
+      setAhora(Date.now());
+    }, INTERVALO_REFRESCO_MS);
     return () => clearInterval(id);
   }, [cargarComandas]);
 
@@ -185,7 +191,7 @@ export function ComandasView() {
     comandas.filter((c) => c.estadoComanda === estado);
 
   const minutosDesde = (fecha: string) => {
-    const diff = Date.now() - new Date(fecha).getTime();
+    const diff = ahora - new Date(fecha).getTime();
     return Math.max(0, Math.floor(diff / 60000));
   };
 

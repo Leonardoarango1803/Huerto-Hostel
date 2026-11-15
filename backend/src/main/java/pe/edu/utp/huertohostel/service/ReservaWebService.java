@@ -386,7 +386,7 @@ public class ReservaWebService {
             pago.setMetodoPago(MetodoPago.PASARELA_ONLINE);
             pago.setNumTransaccionComprobante(codigoOperacion);
         } else {
-            pago.setMetodoPago(MetodoPago.TRANSFERENCIA);
+            pago.setMetodoPago(MetodoPago.YAPE_PLIN);
             pago.setNumTransaccionComprobante("YAPE-" + req.getCodigoOperacion().trim());
         }
         pagoService.registrarPagoWeb(pago);

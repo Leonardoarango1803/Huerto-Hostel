@@ -4,6 +4,7 @@ import api from "../api/axiosConfig";
 import { pasarelaApi } from "../api/caja";
 import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
 import { esCajaCerrada, mensajeDeError } from "../api/errores";
+import { ETIQUETA } from "./reportes/formatos";
 
 interface Estadia {
   idEstadia: number;
@@ -30,7 +31,7 @@ interface Pago {
   numTransaccionComprobante?: string;
 }
 
-const METODOS_PAGO = ["EFECTIVO", "TARJETA_POS", "PASARELA_ONLINE", "TRANSFERENCIA"];
+const METODOS_PAGO = ["EFECTIVO", "YAPE_PLIN", "TARJETA_POS", "PASARELA_ONLINE", "TRANSFERENCIA"];
 const CONCEPTOS_PAGO = ["ADELANTO_RESERVA", "PAGO_PARCIAL_ESTADIA", "LIQUIDACION_CHECKOUT"];
 
 export function PagosView() {
@@ -97,7 +98,7 @@ export function PagosView() {
       };
       const res = await api.post<Pago>("/api/v1/pagos", payload);
       setPagos((prev) => [...prev, res.data]);
-      setMensaje({ tipo: "ok", texto: `Pago registrado: S/ ${parseFloat(form.monto).toFixed(2)} en ${form.metodoPago}` });
+      setMensaje({ tipo: "ok", texto: `Pago registrado: S/ ${parseFloat(form.monto).toFixed(2)} en ${ETIQUETA[form.metodoPago] ?? form.metodoPago}` });
       setForm((f) => ({ ...f, monto: "", numTransaccionComprobante: "" }));
       // Actualizar saldo
       const saldoRes = await api.get<SaldoResponse>(`/api/v1/estadias/${selectedEstadia.idEstadia}/saldo`);
@@ -308,7 +309,7 @@ export function PagosView() {
                       className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                     >
                       {METODOS_PAGO.map((m) => (
-                        <option key={m} value={m}>{m.replace("_", " ")}</option>
+                        <option key={m} value={m}>{ETIQUETA[m] ?? m}</option>
                       ))}
                     </select>
                   </div>
@@ -438,7 +439,7 @@ export function PagosView() {
                             </span>
                           </td>
                           <td className="p-3 text-slate-600">
-                            {p.metodoPago?.replace("_", " ")}
+                            {ETIQUETA[p.metodoPago ?? ""] ?? p.metodoPago}
                           </td>
                           <td className="p-3 text-slate-400">
                             {p.numTransaccionComprobante ?? "—"}

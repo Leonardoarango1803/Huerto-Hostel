@@ -1,0 +1,56 @@
+# Integracion continua: en cada push y pull request se comprueba que el backend y el frontend compilan y pasan sus
+# pruebas. No toca ninguna base de datos (las pruebas del backend son unitarias, con Mockito) ni despliega nada:
+# Render y Vercel siguen desplegando por su cuenta.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Spring Boot)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Pruebas unitarias
+        run: mvn -B test
+      - name: Empaquetar (como en el Dockerfile)
+        run: mvn -B -DskipTests package
+
+  frontend:
+    name: Frontend (React + Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci --legacy-peer-deps
+      - name: Lint
+        run: npm run lint
+      - name: Pruebas
+        run: npm test
+      - name: Build sitio web
+        run: npm run build
+        env:
+          VITE_SITIO: web
+      - name: Build portal administrativo
+        run: npm run build
+        env:
+          VITE_SITIO: admin

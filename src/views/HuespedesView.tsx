@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Download, Users, Home, Award, LogIn, Edit3, Loader2, AlertTriangle, KeyRound } from "lucide-react";
+import { Plus, Download, Users, Home, Award, LogIn, Edit3, Loader2, AlertTriangle, KeyRound, History } from "lucide-react";
 import { AccesoPortalModal } from "../components/AccesoPortalModal";
+import { HistorialHuespedModal } from "../components/HistorialHuespedModal";
 import { useAuth } from "../context/AuthContext";
 import { puede } from "../auth/permisos";
 import { clientesApi } from "../api/clientes";
@@ -98,6 +99,7 @@ export function HuespedesView() {
   const [dniLoading, setDniLoading] = useState(false);
   const [checkinWarning, setCheckinWarning] = useState<string | null>(null);
   const [accesoCliente, setAccesoCliente] = useState<Cliente | null>(null);
+  const [historialCliente, setHistorialCliente] = useState<Cliente | null>(null);
   const [filtroOrigen, setFiltroOrigen] = useState("");
   // idCliente -> su cuenta del portal (si tiene). Si falla, la lista se ve igual sin las etiquetas.
   const [cuentas, setCuentas] = useState<Map<number, CuentaPortal>>(new Map());
@@ -409,6 +411,15 @@ export function HuespedesView() {
 
                 {/* Acciones */}
                 <div className="flex gap-1.5 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<History size={12} />}
+                    title="Estadías, consumos y pagos de este huésped"
+                    onClick={() => setHistorialCliente(c)}
+                  >
+                    Historial
+                  </Button>
                   {puedeEditar && (
                     <>
                       <Button
@@ -539,6 +550,7 @@ export function HuespedesView() {
       </FormModal>
 
       <AccesoPortalModal cliente={accesoCliente} onClose={() => setAccesoCliente(null)} />
+      {historialCliente && <HistorialHuespedModal cliente={historialCliente} onClose={() => setHistorialCliente(null)} />}
     </div>
   );
 }

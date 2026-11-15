@@ -31,7 +31,11 @@ interface Habitacion {
   descripcion: string;
   estadoOperativo: string;
   tipoHabitacion: TipoHabitacion;
+  /** false = dada de baja: no se ofrece al reservar, en la web ni en el calendario. */
+  estado?: boolean;
 }
+
+const activa = (h: Habitacion) => h.estado !== false;
 
 const statusConfig: Record<string, { badge: string; dot: string; label: string }> = {
   DISPONIBLE:         { badge: "bg-emerald-100 text-emerald-800 border-emerald-300", dot: "bg-emerald-500",  label: "Disponible"      },
@@ -68,6 +72,11 @@ const EMPTY_FORM = { idTipoHabitacion: "", numero: "", piso: "1", descripcion: "
 export function HabitacionesView() {
   const { user } = useAuth();
   const puedeGestionar = puede(user?.role, "gestionarHabitaciones");
+  const puedeEditarCatalogo = puede(user?.role, "editarHabitacion");
+  /** Habitacion que se esta editando (null = el formulario crea una nueva). */
+  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [verDeBaja, setVerDeBaja] = useState(false);
+  const [confirmarBaja, setConfirmarBaja] = useState<Habitacion | null>(null);
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>([]);
   const [tipos, setTipos] = useState<TipoHabitacion[]>([]);
   const [activeStatusFilter, setActiveStatusFilter] = useState("Todas");
@@ -116,25 +125,49 @@ export function HabitacionesView() {
     }
     setSaving(true);
     setFormError(null);
+    const datos = {
+      idTipoHabitacion: Number(form.idTipoHabitacion),
+      numero: form.numero.trim(),
+      piso: Number(form.piso),
+      descripcion: form.descripcion.trim(),
+    };
     try {
-      const res = await api.post<Habitacion>("/api/v1/habitaciones", {
-        idTipoHabitacion: Number(form.idTipoHabitacion),
-        numero: form.numero.trim(),
-        piso: Number(form.piso),
-        descripcion: form.descripcion.trim() || null,
-      });
-      setHabitaciones((prev) => [...prev, res.data]);
+      if (editandoId) {
+        const res = await api.put<Habitacion>(`/api/v1/habitaciones/${editandoId}`, datos);
+        setHabitaciones((prev) => prev.map((h) => (h.idHabitacion === editandoId ? res.data : h)));
+      } else {
+        const res = await api.post<Habitacion>("/api/v1/habitaciones", { ...datos, descripcion: datos.descripcion || null });
+        setHabitaciones((prev) => [...prev, res.data]);
+      }
       setShowModal(false);
       setForm(EMPTY_FORM);
+      setEditandoId(null);
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setFormError(msg ?? "Error al crear la habitacion.");
+      setFormError(mensajeDeError(e, editandoId ? "No se pudo guardar la habitación." : "Error al crear la habitacion."));
     } finally {
       setSaving(false);
     }
   };
 
+  const abrirEdicion = (h: Habitacion) => {
+    setEditandoId(h.idHabitacion);
+    setForm({ idTipoHabitacion: String(h.tipoHabitacion.idTipoHabitacion), numero: h.numero, piso: String(h.piso), descripcion: h.descripcion ?? "" });
+    setFormError(null);
+    setShowModal(true);
+  };
+
+  const cambiarActiva = (h: Habitacion, nueva: boolean) => {
+    setErrorEstado(null);
+    api.patch<Habitacion>(`/api/v1/habitaciones/${h.idHabitacion}/activa`, { activa: nueva })
+      .then((res) => setHabitaciones((prev) => prev.map((x) => (x.idHabitacion === h.idHabitacion ? res.data : x))))
+      .catch((e) => setErrorEstado(mensajeDeError(e, nueva ? "No se pudo reactivar la habitación." : "No se pudo dar de baja la habitación.")))
+      .finally(() => setConfirmarBaja(null));
+  };
+
+  const deBaja = habitaciones.filter((h) => !activa(h));
   const filtered = habitaciones.filter((h) => {
+    if (verDeBaja) return !activa(h);
+    if (!activa(h)) return false;
     if (activeStatusFilter !== "Todas") {
       if (activeStatusFilter === "Aprob. Limpieza" && h.estadoOperativo !== "PENDIENTE_LIMPIEZA") return false;
       else if (activeStatusFilter !== "Aprob. Limpieza") {
@@ -147,7 +180,7 @@ export function HabitacionesView() {
     return true;
   });
 
-  const countByStatus = (status: string) => habitaciones.filter((h) => h.estadoOperativo === status).length;
+  const countByStatus = (status: string) => habitaciones.filter((h) => activa(h) && h.estadoOperativo === status).length;
   const tiposUnicos = [...new Set(habitaciones.map((h) => h.tipoHabitacion.nombre))];
 
   return (
@@ -159,7 +192,7 @@ export function HabitacionesView() {
         </div>
         {puedeGestionar && (
           <button
-            onClick={() => { setShowModal(true); setFormError(null); setForm(EMPTY_FORM); }}
+            onClick={() => { setEditandoId(null); setShowModal(true); setFormError(null); setForm(EMPTY_FORM); }}
             className="bg-emerald-800 hover:bg-emerald-900 text-white font-semibold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm text-xs"
           >
             <Plus size={15} /> Nueva Habitacion
@@ -177,7 +210,7 @@ export function HabitacionesView() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5">
         {[
-          { label: "Total",        value: habitaciones.length,                                          color: "text-slate-900"   },
+          { label: "Total",        value: habitaciones.length - deBaja.length,                                        color: "text-slate-900"   },
           { label: "Disponibles",  value: countByStatus("DISPONIBLE"),                                  color: "text-emerald-800" },
           { label: "Ocupadas",     value: countByStatus("OCUPADA"),                                     color: "text-amber-900"   },
           { label: "En Limpieza",  value: countByStatus("PENDIENTE_LIMPIEZA") + countByStatus("EN_LIMPIEZA"), color: "text-amber-600"   },
@@ -206,6 +239,14 @@ export function HabitacionesView() {
                 {st}
               </button>
             ))}
+            {deBaja.length > 0 && (
+              <button
+                onClick={() => setVerDeBaja((v) => !v)}
+                className={`px-2.5 py-1 rounded-full font-medium text-xs transition-colors ${verDeBaja ? "bg-slate-800 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-600"}`}
+              >
+                De baja ({deBaja.length})
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="relative w-48">
@@ -245,7 +286,7 @@ export function HabitacionesView() {
         <div className={viewMode === "grid" ? "grid grid-cols-3 gap-4" : "space-y-2"}>
           {filtered.map((room) => {
             const cfg = statusConfig[room.estadoOperativo] ?? statusConfig.DISPONIBLE;
-            const acciones = puedeGestionar ? (ESTADOS_CAMBIO[room.estadoOperativo] ?? []) : [];
+            const acciones = puedeGestionar && activa(room) ? (ESTADOS_CAMBIO[room.estadoOperativo] ?? []) : [];
             return (
               <div key={room.idHabitacion} className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden flex flex-col justify-between">
                 <div>
@@ -257,10 +298,14 @@ export function HabitacionesView() {
                         <p className="text-[12px] text-slate-400">Piso {room.piso}{room.descripcion ? ` - ${room.descripcion}` : ""}</p>
                       </div>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold border flex items-center gap-1.5 ${cfg.badge}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                      {cfg.label}
-                    </span>
+                    {activa(room) ? (
+                      <span className={`px-2.5 py-0.5 rounded-full text-[12px] font-bold border flex items-center gap-1.5 ${cfg.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        {cfg.label}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[12px] font-bold border bg-slate-200 text-slate-700 border-slate-300">De baja</span>
+                    )}
                   </div>
                   <div className="p-3 space-y-2 text-xs">
                     <div className="flex justify-between items-baseline border-b border-slate-100 pb-2">
@@ -303,9 +348,25 @@ export function HabitacionesView() {
                     ))}
                   </div>
                 )}
-                {room.estadoOperativo === "OCUPADA" && (
+                {room.estadoOperativo === "OCUPADA" && activa(room) && (
                   <div className="p-2.5 bg-slate-50 border-t border-slate-100">
                     <span className="text-[12px] text-slate-400 italic">Ocupada — checkout desde Recepcion</span>
+                  </div>
+                )}
+                {puedeEditarCatalogo && (
+                  <div className="px-2.5 py-2 border-t border-slate-100 flex items-center gap-1.5">
+                    <button onClick={() => abrirEdicion(room)} className="flex-1 border border-slate-300 hover:bg-slate-50 py-1 rounded text-[12px] font-semibold text-slate-700">
+                      Editar
+                    </button>
+                    {activa(room) ? (
+                      <button onClick={() => setConfirmarBaja(room)} className="flex-1 border border-red-200 hover:bg-red-50 py-1 rounded text-[12px] font-semibold text-red-700">
+                        Dar de baja
+                      </button>
+                    ) : (
+                      <button onClick={() => cambiarActiva(room, true)} className="flex-1 bg-emerald-800 hover:bg-emerald-900 text-white py-1 rounded text-[12px] font-semibold">
+                        Reactivar
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -321,8 +382,12 @@ export function HabitacionesView() {
           <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm flex flex-col">
             <div className="flex items-start justify-between p-4 border-b border-slate-200">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Nueva Habitacion</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Se creara con estado Disponible</p>
+                <h2 className="text-sm font-bold text-slate-900">{editandoId ? `Editar habitación ${form.numero}` : "Nueva Habitacion"}</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {editandoId
+                    ? "Las reservas ya hechas conservan su precio; la tarifa nueva rige desde ahora."
+                    : "Se creara con estado Disponible"}
+                </p>
               </div>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 ml-4"><X size={16} /></button>
             </div>
@@ -380,8 +445,25 @@ export function HabitacionesView() {
             <div className="flex justify-end gap-2 p-4 border-t border-slate-200">
               <button onClick={() => setShowModal(false)} disabled={saving} className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancelar</button>
               <button onClick={crearHabitacion} disabled={saving} className="px-3 py-1.5 text-xs rounded-lg bg-[#2D5A27] hover:bg-[#1E3F1A] text-white font-semibold disabled:opacity-50">
-                {saving ? "Guardando..." : "Crear Habitacion"}
+                {saving ? "Guardando..." : editandoId ? "Guardar cambios" : "Crear Habitacion"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmarBaja && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmarBaja(null)} />
+          <div role="dialog" aria-modal="true" className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-4 space-y-3">
+            <h2 className="text-sm font-bold text-slate-900">Dar de baja la habitación {confirmarBaja.numero}</h2>
+            <p className="text-xs text-slate-600">
+              Dejará de ofrecerse al reservar, en la web y en el calendario. Solo se puede si no hay nadie adentro ni reservas
+              vigentes. Puedes reactivarla cuando quieras.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setConfirmarBaja(null)} className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => cambiarActiva(confirmarBaja, false)} className="px-3 py-1.5 text-xs rounded-lg bg-red-700 hover:bg-red-800 text-white font-semibold">Dar de baja</button>
             </div>
           </div>
         </div>

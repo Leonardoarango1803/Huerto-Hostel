@@ -6,7 +6,7 @@ import { mensajeDeError } from "../../api/errores";
 import type { PagoReserva, ResumenTurno } from "../../api/types";
 import { dinero, etiquetaDenominacion, fechaLarga, leerDesglose, nombre, DENOMINACIONES } from "./comun";
 
-const METODO: Record<string, string> = { EFECTIVO: "Efectivo", TARJETA_POS: "Tarjeta POS", PASARELA_ONLINE: "Pasarela online", TRANSFERENCIA: "Transferencia" };
+const METODO: Record<string, string> = { EFECTIVO: "Efectivo", TARJETA_POS: "Tarjeta POS", PASARELA_ONLINE: "Pasarela online", TRANSFERENCIA: "Transferencia", YAPE_PLIN: "Yape / Plin" };
 
 function huespedDe(p: PagoReserva): string {
   const c = p.reserva?.cliente ?? p.estadia?.reserva?.cliente;

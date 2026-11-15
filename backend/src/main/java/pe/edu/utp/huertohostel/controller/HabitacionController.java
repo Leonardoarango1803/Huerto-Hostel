@@ -27,11 +27,32 @@ public class HabitacionController {
 
     private final HabitacionService habitacionService;
     private final LiberacionReservasService liberacionReservasService;
+    private final pe.edu.utp.huertohostel.service.GestionHabitacionesService gestionHabitacionesService;
 
     public HabitacionController(HabitacionService habitacionService,
-                                LiberacionReservasService liberacionReservasService) {
+                                LiberacionReservasService liberacionReservasService,
+                                pe.edu.utp.huertohostel.service.GestionHabitacionesService gestionHabitacionesService) {
         this.habitacionService = habitacionService;
         this.liberacionReservasService = liberacionReservasService;
+        this.gestionHabitacionesService = gestionHabitacionesService;
+    }
+
+    /** Editar numero, piso, tipo o descripcion (RF13). La tarifa y la capacidad se editan en el tipo. */
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    @PreAuthorize(Roles.SOLO_ADMIN)
+    public ResponseEntity<Habitacion> editar(@PathVariable Integer id, @RequestBody NuevaHabitacionRequest req) {
+        return ResponseEntity.ok(gestionHabitacionesService.editar(id, req));
+    }
+
+    /** Dar de baja ({"activa": false}) o de alta una habitacion. De baja no se ofrece en ningun lado. */
+    @PatchMapping("/{id}/activa")
+    @PreAuthorize(Roles.SOLO_ADMIN)
+    public ResponseEntity<Habitacion> cambiarActiva(@PathVariable Integer id, @RequestBody Map<String, Boolean> body) {
+        Boolean activa = body.get("activa");
+        if (activa == null) {
+            throw new IllegalArgumentException("Indica si la habitación queda activa (true) o de baja (false).");
+        }
+        return ResponseEntity.ok(gestionHabitacionesService.cambiarActiva(id, activa));
     }
 
     @GetMapping

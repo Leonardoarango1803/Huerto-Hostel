@@ -25,6 +25,25 @@ export interface ProductoParaPedir {
   precioVenta: number;
 }
 
+export interface PagoPortalRequest {
+  /** Sin reserva: saldo de la estadia en curso. */
+  idReserva?: number;
+  monto?: number;
+  metodo: "TARJETA" | "YAPE";
+  codigoOperacion?: string;
+  simularRechazo?: boolean;
+}
+
+export interface ResultadoPagoPortal {
+  aprobado: boolean;
+  idPago: number;
+  codigoOperacion: string;
+  monto: number;
+  metodo: string;
+  pendienteRestante: number;
+  reservaConfirmada: boolean;
+}
+
 /** Autoservicio del huesped: el backend resuelve su estadia activa. */
 export const portalApi = {
   perfil: () => api.get<PerfilHuesped>("/api/v1/portal/perfil").then((r) => r.data),
@@ -35,6 +54,10 @@ export const portalApi = {
 
   /** Lo que puede pedir a su habitacion (el catalogo /productos es solo del personal). */
   productos: () => api.get<ProductoParaPedir[]>("/api/v1/portal/productos").then((r) => r.data),
+
+  /** Pasarela de demostracion. 402 si "el banco" rechaza: no queda nada registrado. */
+  pagar: (data: PagoPortalRequest) =>
+    api.post<ResultadoPagoPortal>("/api/v1/portal/pagos", data).then((r) => r.data),
 
   misConsumos: () =>
     api.get<ConsumoEstadia[]>("/api/v1/portal/consumos").then((r) => r.data),

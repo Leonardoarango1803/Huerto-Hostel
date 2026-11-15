@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, Info } from "lucide-react";
+import { CalendarPlus, Info, Lock } from "lucide-react";
 import { DetalleReservaModal } from "./DetalleReservaModal";
+import { PagarEnLineaModal } from "./PagarEnLineaModal";
 import { misReservasApi, type MiReserva } from "../../api/publico";
 import { fechaCorta, fotoDeTipo, soles } from "./utils";
 
@@ -16,15 +17,25 @@ const ESTADO: Record<MiReserva["estado"], { texto: string; clase: string }> = {
 type Filtro = "proximas" | "pasadas" | "canceladas";
 
 /** Reservas del huesped en su portal: proximas, pasadas y canceladas. */
-export function MisReservasPortal() {
+export function MisReservasPortal({ version = 0, onPagado }: { version?: number; onPagado?: () => void }) {
   const [lista, setLista] = useState<MiReserva[] | null>(null);
   const [error, setError] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>("proximas");
   const [detalle, setDetalle] = useState<MiReserva | null>(null);
+  const [pagar, setPagar] = useState<MiReserva | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
-    misReservasApi.listar().then(setLista).catch(() => setError(true));
-  }, []);
+    let vigente = true;
+    misReservasApi.listar().then((l) => vigente && setLista(l)).catch(() => vigente && setError(true));
+    return () => {
+      vigente = false;
+    };
+  }, [version]);
+
+  /** Antes de ingresar se puede pagar lo que falta del alojamiento (una pendiente queda confirmada). */
+  const sePuedePagar = (r: MiReserva) =>
+    (r.estado === "PENDIENTE_ADELANTO" || r.estado === "CONFIRMADA") && Number(r.saldo) > 0;
 
   const grupo = (r: MiReserva): Filtro =>
     r.estado === "CANCELADA" ? "canceladas" : r.estado === "COMPLETADA" ? "pasadas" : "proximas";
@@ -52,6 +63,7 @@ export function MisReservasPortal() {
           </button>
         ))}
       </div>
+      {aviso && <p role="status" className="m-0 rounded-2xl bg-emerald-100 text-emerald-900 px-4 py-3 text-sm font-semibold">{aviso}</p>}
       {error && <p className="text-sm text-red-800">No pudimos cargar tus reservas.</p>}
       {lista === null && !error && <div className="h-40 rounded-2xl bg-slate-100 animate-pulse" />}
       {lista !== null && visibles.length === 0 && (
@@ -78,8 +90,14 @@ export function MisReservasPortal() {
               <span>Total <strong className="text-tinta">{soles(r.total)}</strong></span>
               <span>Pagado <strong className="text-emerald-800">{soles(r.pagado)}</strong></span>
               {r.estado !== "CANCELADA" && <span>Saldo <strong className="text-tinta">{soles(r.saldo)}</strong></span>}
+              {sePuedePagar(r) && (
+                <button type="button" onClick={() => { setAviso(null); setPagar(r); }}
+                  className="ml-auto inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full bg-terracota hover:bg-terracota-oscuro text-white text-[13px] font-bold">
+                  <Lock size={15} /> Pagar {soles(r.saldo)}
+                </button>
+              )}
               <button type="button" onClick={() => setDetalle(r)}
-                className="ml-auto inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-slate-300 bg-white text-[13px] font-bold text-tinta hover:border-huerto">
+                className={`${sePuedePagar(r) ? "" : "ml-auto "}inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-slate-300 bg-white text-[13px] font-bold text-tinta hover:border-huerto`}>
                 <Info size={15} /> Ver detalles
               </button>
             </div>
@@ -87,6 +105,19 @@ export function MisReservasPortal() {
         </article>
       ))}
       {detalle && <DetalleReservaModal reserva={detalle} onCerrar={() => setDetalle(null)} />}
+      {pagar && (
+        <PagarEnLineaModal
+          titulo={`Pagar ${pagar.codigo}`}
+          pendiente={Number(pagar.saldo)}
+          idReserva={pagar.idReserva}
+          onCerrar={() => setPagar(null)}
+          onPagado={(res) => {
+            setPagar(null);
+            setAviso(`Pago aprobado: ${soles(res.monto)} (operación ${res.codigoOperacion})${res.reservaConfirmada ? ". Tu reserva quedó confirmada" : ""}. Es un pago de demostración, no se cobró dinero real.`);
+            onPagado?.();
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -35,7 +35,7 @@ export function minutos(v: number | null | undefined): string {
 
 export const ETIQUETA: Record<string, string> = {
   // metodos y conceptos de pago
-  EFECTIVO: "Efectivo", TARJETA_POS: "Tarjeta POS", PASARELA_ONLINE: "Pasarela online", TRANSFERENCIA: "Transferencia",
+  EFECTIVO: "Efectivo", TARJETA_POS: "Tarjeta POS", PASARELA_ONLINE: "Pasarela online", TRANSFERENCIA: "Transferencia", YAPE_PLIN: "Yape / Plin",
   ADELANTO_RESERVA: "Adelanto de reserva", PAGO_PARCIAL_ESTADIA: "Pago parcial", LIQUIDACION_CHECKOUT: "Liquidacion en check-out",
   // canales y areas
   ONLINE: "Online", PRESENCIAL: "Presencial", SIN_RESERVA: "Sin reserva",

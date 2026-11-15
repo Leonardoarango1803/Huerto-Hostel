@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import pe.edu.utp.huertohostel.entity.ConsumoEstadia;
 import pe.edu.utp.huertohostel.entity.SolicitudServicio;
 import pe.edu.utp.huertohostel.dto.ReservaWebRequest;
+import pe.edu.utp.huertohostel.dto.PagoPortalRequest;
+import pe.edu.utp.huertohostel.service.PagoPortalService;
 import pe.edu.utp.huertohostel.service.PortalService;
 import pe.edu.utp.huertohostel.service.ReservaWebService;
 
@@ -22,12 +24,15 @@ public class PortalController {
 
     private final PortalService portalService;
     private final ReservaWebService reservaWebService;
+    private final PagoPortalService pagoPortalService;
     private final pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService;
 
     public PortalController(PortalService portalService, ReservaWebService reservaWebService,
+                            PagoPortalService pagoPortalService,
                             pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService) {
         this.portalService = portalService;
         this.reservaWebService = reservaWebService;
+        this.pagoPortalService = pagoPortalService;
         this.usuarioActualService = usuarioActualService;
     }
 
@@ -45,6 +50,15 @@ public class PortalController {
         // Sin documento (cuenta creada con Google): la primera reserva lo pide como titular.
         r.put("tieneDocumento", c.getNumeroDocumento() != null && !c.getNumeroDocumento().isBlank());
         return ResponseEntity.ok(r);
+    }
+
+    /**
+     * Pagar con la pasarela simulada (RF24): el saldo de la estadia en curso o, con idReserva, lo pendiente de una
+     * reserva propia que aun no ingreso. 402 PAGO_RECHAZADO si la pasarela no aprueba (no queda nada registrado).
+     */
+    @PostMapping("/pagos")
+    public ResponseEntity<Map<String, Object>> pagar(@RequestBody PagoPortalRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(pagoPortalService.pagar(req));
     }
 
     /** Todas las reservas del huesped (proximas, pasadas y canceladas) con lo pagado y el saldo. */

@@ -7,8 +7,62 @@ import type {
   NuevoClienteRequest,
 } from "./types";
 
+/** Una fila del historial: reserva con su estadia (si llego), lo consumido y lo pagado. Nombres tal cual la base. */
+export interface ReservaHistorial {
+  id_reserva: number;
+  estado: string;
+  canal: string;
+  fecha_checkin_previsto: string;
+  fecha_checkout_previsto: string;
+  num_noches: number;
+  monto_alojamiento_total: number;
+  habitacion: string;
+  tipo: string | null;
+  id_estadia: number | null;
+  fecha_checkin_real: string | null;
+  fecha_checkout_real: string | null;
+  estado_estadia: string | null;
+  salida_forzada: boolean | null;
+  saldo_al_salir: number | null;
+  consumos: number;
+  pagado: number;
+}
+
+export interface ConsumoHistorial {
+  id_consumo: number;
+  id_estadia: number;
+  fecha_registro: string;
+  producto: string;
+  categoria: string;
+  cantidad: number;
+  total_consumo: number;
+  habitacion: string;
+}
+
+export interface HistorialHuesped {
+  idCliente: number;
+  resumen: {
+    reservas: number;
+    visitas: number;
+    noches: number;
+    canceladas: number;
+    totalAlojamiento: number;
+    totalConsumos: number;
+    totalPagado: number;
+    deudaPendiente: number;
+    ultimaVisita: string | null;
+    favoritos: { producto: string; cantidad: number }[];
+  };
+  reservas: ReservaHistorial[];
+  consumos: ConsumoHistorial[];
+  consumosOmitidos: number;
+}
+
 export const clientesApi = {
   listar: () => api.get<Cliente[]>("/api/v1/clientes").then((r) => r.data),
+
+  /** Estadias, consumos y pagos del huesped (RF11). */
+  historial: (id: number) => api.get<HistorialHuesped>(`/api/v1/clientes/${id}/historial`).then((r) => r.data),
 
   obtener: (id: number) => api.get<Cliente>(`/api/v1/clientes/${id}`).then((r) => r.data),
 

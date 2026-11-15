@@ -13,6 +13,7 @@ const METODO: Record<string, string> = {
   EFECTIVO: "Efectivo",
   TARJETA_POS: "Tarjeta",
   TRANSFERENCIA: "Transferencia",
+  YAPE_PLIN: "Yape / Plin",
   PASARELA_ONLINE: "Pago en línea",
 };
 
@@ -130,7 +131,7 @@ export function DetalleReservaModal({ reserva: r, onCerrar }: { reserva: MiReser
               )}
             </dl>
             {r.estado !== "CANCELADA" && Number(r.saldo) > 0 && (
-              <p className="m-0 text-[13px] text-slate-600">El saldo se paga en recepción, en efectivo, tarjeta o Yape.</p>
+              <p className="m-0 text-[13px] text-slate-600">El saldo se paga en recepción (efectivo, tarjeta o Yape) o en línea desde Mis reservas.</p>
             )}
           </section>
 

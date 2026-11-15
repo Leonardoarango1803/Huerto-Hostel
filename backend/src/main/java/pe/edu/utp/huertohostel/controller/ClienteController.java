@@ -29,11 +29,21 @@ public class ClienteController {
 
     private final ClienteService clienteService;
     private final AccesoPortalService accesoPortalService;
+    private final pe.edu.utp.huertohostel.service.HistorialHuespedService historialHuespedService;
 
     public ClienteController(ClienteService clienteService,
-                             AccesoPortalService accesoPortalService) {
+                             AccesoPortalService accesoPortalService,
+                             pe.edu.utp.huertohostel.service.HistorialHuespedService historialHuespedService) {
         this.clienteService = clienteService;
         this.accesoPortalService = accesoPortalService;
+        this.historialHuespedService = historialHuespedService;
+    }
+
+    /** Historial de estadias y consumos del huesped (RF11): reservas, visitas, lo consumido y lo pagado. */
+    @PreAuthorize(Roles.CONSULTA_COBRO)
+    @GetMapping("/{id}/historial")
+    public ResponseEntity<java.util.Map<String, Object>> historial(@PathVariable Integer id) {
+        return ResponseEntity.ok(historialHuespedService.historial(id));
     }
 
     // ---------- Acceso al Portal del Huesped (RF32) ----------

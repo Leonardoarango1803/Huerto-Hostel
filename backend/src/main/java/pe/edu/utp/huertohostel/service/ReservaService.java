@@ -87,6 +87,9 @@ public class ReservaService {
         // misma habitacion (recepcion, web o ambas) hacen fila, y la segunda ya ve la primera al revisar el cruce.
         Habitacion habitacion = habitacionRepository.findByIdParaActualizar(req.getIdHabitacion())
                 .orElseThrow(() -> new EntityNotFoundException("Habitacion no encontrada: " + req.getIdHabitacion()));
+        if (Boolean.FALSE.equals(habitacion.getEstado())) {
+            throw new IllegalStateException("La habitación " + habitacion.getNumero() + " está dada de baja.");
+        }
 
         LocalDate checkin = req.getFechaCheckinPrevisto();
         LocalDate checkout = req.getFechaCheckoutPrevisto();

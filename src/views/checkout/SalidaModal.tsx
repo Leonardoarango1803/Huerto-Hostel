@@ -172,6 +172,7 @@ export function SalidaModal({ estadia, folio, habitacionBloqueada, cajaCerrada, 
           <FormField label="Método de pago" required>
             <Select value={metodoPago} onChange={(e) => setMetodoPago(e.target.value)} aria-label="Método de pago">
               <option value="EFECTIVO">Efectivo</option>
+              <option value="YAPE_PLIN">Yape / Plin</option>
               <option value="TARJETA_POS">Tarjeta POS</option>
               <option value="TRANSFERENCIA">Transferencia</option>
               <option value="PASARELA_ONLINE">Pasarela Online</option>

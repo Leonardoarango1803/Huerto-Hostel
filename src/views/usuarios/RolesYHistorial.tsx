@@ -9,12 +9,14 @@ const ROLES: Rol[] = ["ADMINISTRADOR", "RECEPCIONISTA", "CAJERO", "COCINA", "BAR
 
 const ETIQUETA_ACCION_SISTEMA: Record<Accion, string> = {
   crearReserva: "Crear reservas",
+  editarReserva: "Modificar reservas antes del check-in",
   cancelarReserva: "Cancelar reservas",
   registrarAdelanto: "Registrar adelantos",
   hacerCheckin: "Hacer check-in",
   ingresoDirecto: "Ingreso directo (walk-in)",
   editarHuesped: "Crear y editar huéspedes",
   gestionarHabitaciones: "Cambiar el estado de habitaciones",
+  editarHabitacion: "Editar y dar de baja habitaciones",
   registrarConsumo: "Cargar consumos al folio",
   registrarPago: "Registrar pagos",
   hacerCheckout: "Hacer check-out y cobrar",

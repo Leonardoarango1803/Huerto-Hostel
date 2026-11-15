@@ -27,6 +27,7 @@ const METODO: Record<string, string> = {
   EFECTIVO: "Efectivo",
   TARJETA_POS: "Tarjeta POS",
   TRANSFERENCIA: "Transferencia",
+  YAPE_PLIN: "Yape / Plin",
   PASARELA_ONLINE: "Pasarela online",
 };
 

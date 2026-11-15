@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Download, Plus, LogIn, CreditCard, Trash2 } from "lucide-react";
+import { Download, Plus, LogIn, CreditCard, Trash2, Pencil, CalendarDays, List } from "lucide-react";
 import { NuevoIngresoModal } from "../components/NuevoIngresoModal";
+import { EditarReservaModal } from "./reservas/EditarReservaModal";
+import { CalendarioReservas } from "./reservas/CalendarioReservas";
+import { useDisponibilidad } from "./reservas/useDisponibilidad";
 import { reservasApi } from "../api/reservas";
 import { habitacionesApi } from "../api/habitaciones";
 import { AvisoIncidencia } from "../components/AvisoIncidencia";
@@ -11,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { AVISO_CAJA_CERRADA, useCaja } from "../context/CajaContext";
 import { puede } from "../auth/permisos";
 import { esCajaCerrada, mensajeDeError } from "../api/errores";
-import { fechaDMA } from "../utils/fechas";
+import { fechaDMA, hoyISO, sumarDias } from "../utils/fechas";
 import type { Reserva, Habitacion, Cliente, NuevaReservaRequest, PagoReserva } from "../api/types";
 import {
   Button,
@@ -68,6 +71,13 @@ export function ReservasView() {
   const incidencias = useIncidenciasPorHabitacion();
   const puedeAdelanto = puede(user?.role, "registrarAdelanto");
   const puedeCheckin = puede(user?.role, "hacerCheckin");
+  const puedeEditar = puede(user?.role, "editarReserva");
+
+  /** Lista con detalle, o calendario habitacion x noche (RF04). */
+  const [vista, setVista] = useState<"lista" | "calendario">("lista");
+  const [editando, setEditando] = useState(false);
+  /** Sube tras crear/modificar para que el calendario se vuelva a pedir. */
+  const [versionCal, setVersionCal] = useState(0);
 
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,18 +140,24 @@ export function ReservasView() {
       .catch(() => setPagosReserva([]));
   }, [selectedId]);
 
-  async function cargarReservas() {
+  /** @param mantener reserva que debe quedar seleccionada (por ejemplo la recien modificada). */
+  async function cargarReservas(mantener?: number) {
     setLoading(true);
     setError(null);
+    setVersionCal((v) => v + 1);
     try {
       const data = await reservasApi.listar();
-    setReservas(data);
-    const primera = (activeFilters.length > 0
-        ? data.find((r) => activeFilters.includes(r.estadoReserva))
-        : null)
-      ?? data.find((r) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva))
-      ?? data[0] ?? null;
-    setSelectedId(primera?.idReserva ?? null);
+      setReservas(data);
+      if (mantener && data.some((r) => r.idReserva === mantener)) {
+        setSelectedId(mantener);
+        return;
+      }
+      const primera = (activeFilters.length > 0
+          ? data.find((r) => activeFilters.includes(r.estadoReserva))
+          : null)
+        ?? data.find((r) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva))
+        ?? data[0] ?? null;
+      setSelectedId(primera?.idReserva ?? null);
     } catch {
       setError("No se pudieron cargar las reservas. Verifica la conexión con el servidor.");
     } finally {
@@ -149,10 +165,18 @@ export function ReservasView() {
     }
   }
 
-  async function abrirNuevaReserva() {
+  /** Desde el calendario llega con habitacion y noche ya elegidas (una noche por defecto). */
+  async function abrirNuevaReserva(desde?: { idHabitacion: number; fecha: string }) {
     setShowNuevaReserva(true);
     setFormError(null);
-    setForm({ idCliente: 0, idHabitacion: 0, fechaCheckinPrevisto: "", fechaCheckoutPrevisto: "", canalReserva: "PRESENCIAL", observaciones: "" });
+    setForm({
+      idCliente: 0,
+      idHabitacion: desde?.idHabitacion ?? 0,
+      fechaCheckinPrevisto: desde?.fecha ?? "",
+      fechaCheckoutPrevisto: desde ? sumarDias(desde.fecha, 1) : "",
+      canalReserva: "PRESENCIAL",
+      observaciones: "",
+    });
     const [habs, clts] = await Promise.all([
       habitacionesApi.listar("DISPONIBLE").catch(() => []),
       clientesApi.listar().catch(() => []),
@@ -166,13 +190,21 @@ export function ReservasView() {
       setFormError("Completa todos los campos requeridos.");
       return;
     }
+    if (form.fechaCheckoutPrevisto <= form.fechaCheckinPrevisto) {
+      setFormError("La salida debe ser posterior a la llegada.");
+      return;
+    }
+    if (dispNueva.ocupadas.has(form.idHabitacion)) {
+      setFormError("Esa habitación ya está reservada en esas noches. Elige otra o cambia las fechas.");
+      return;
+    }
     setFormLoading(true);
     setFormError(null);
     try {
-      await reservasApi.crear(form);
+      const creada = await reservasApi.crear(form);
       setShowNuevaReserva(false);
       setSuccessMsg("Reserva creada correctamente.");
-      await cargarReservas();
+      await cargarReservas(creada.idReserva);
     } catch (err) {
       setFormError(mensajeDeError(err, "Error al crear la reserva. Verifica los datos e intenta nuevamente."));
     } finally {
@@ -259,6 +291,25 @@ export function ReservasView() {
   }, [reservas, activeFilters, searchTerm, hiddenCanceladas, filtroCanal]);
 
   const selectedReserva = reservas.find((r) => r.idReserva === selectedId);
+  const pagadoSeleccionada = pagosReserva.reduce((s, p) => s + Number(p.monto), 0);
+
+  // Habitaciones libres en las noches elegidas del formulario (no solo las DISPONIBLE de hoy).
+  const dispNueva = useDisponibilidad(
+    showNuevaReserva ? form.fechaCheckinPrevisto : "",
+    showNuevaReserva ? form.fechaCheckoutPrevisto : "",
+  );
+  const habitacionesNueva = dispNueva.habitaciones
+    ?? habitaciones.map((h) => ({ idHabitacion: h.idHabitacion, numero: h.numero, tipo: h.tipoHabitacion.nombre, precioNoche: h.tipoHabitacion.precioNoche }));
+
+  /** Desde el calendario: muestra la reserva en la lista con su detalle. */
+  function verEnLista(idReserva: number) {
+    const r = reservas.find((x) => x.idReserva === idReserva);
+    if (r && activeFilters.length > 0 && !activeFilters.includes(r.estadoReserva)) setActiveFilters([r.estadoReserva]);
+    setSearchTerm("");
+    setFiltroCanal("");
+    setSelectedId(idReserva);
+    setVista("lista");
+  }
 
   const kpiTotal = reservas.filter((r) => !["CANCELADA", "COMPLETADA"].includes(r.estadoReserva)).length;
   const kpiConfirmadas = reservas.filter((r) => r.estadoReserva === "CONFIRMADA").length;
@@ -278,6 +329,26 @@ export function ReservasView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <div className="flex rounded-xl border border-slate-300 bg-white p-0.5" role="tablist" aria-label="Vista de reservas">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={vista === "lista"}
+              onClick={() => setVista("lista")}
+              className={`flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold min-h-[34px] ${vista === "lista" ? "bg-huerto text-white" : "text-slate-700 hover:bg-slate-50"}`}
+            >
+              <List size={13} /> Lista
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={vista === "calendario"}
+              onClick={() => setVista("calendario")}
+              className={`flex items-center gap-1.5 px-3 rounded-lg text-xs font-semibold min-h-[34px] ${vista === "calendario" ? "bg-huerto text-white" : "text-slate-700 hover:bg-slate-50"}`}
+            >
+              <CalendarDays size={13} /> Calendario
+            </button>
+          </div>
           <Button
             variant="secondary"
             icon={<Download size={13} />}
@@ -310,7 +381,7 @@ export function ReservasView() {
             Exportar CSV
           </Button>
           {puedeCrear && (
-            <Button icon={<Plus size={13} />} onClick={abrirNuevaReserva}>
+            <Button icon={<Plus size={13} />} onClick={() => abrirNuevaReserva()}>
               Nueva Reserva
             </Button>
           )}
@@ -327,8 +398,16 @@ export function ReservasView() {
         <KpiCard title="Pendiente de Adelanto" value={kpiPendiente} subtitle="requieren pago de adelanto para confirmar" color="amber" />
       </div>
 
+      {vista === "calendario" && (
+        <CalendarioReservas
+          version={versionCal}
+          onSeleccionar={verEnLista}
+          onNueva={puedeCrear ? (idHabitacion, fecha) => abrirNuevaReserva({ idHabitacion, fecha }) : null}
+        />
+      )}
+
       {/* Búsqueda y filtros */}
-      <div className="bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex flex-wrap items-center justify-between gap-2">
+      <div className={`bg-white p-2.5 rounded-2xl border border-[#EFE6D6] flex flex-wrap items-center justify-between gap-2 ${vista === "calendario" ? "hidden" : ""}`}>
         <div className="flex items-center gap-2 flex-1">
           <SearchBar
             value={searchTerm}
@@ -352,7 +431,7 @@ export function ReservasView() {
       </div>
 
       {/* Layout principal */}
-      <div className="grid grid-cols-12 gap-4">
+      <div className={`grid grid-cols-12 gap-4 ${vista === "calendario" ? "hidden" : ""}`}>
         {/* Tabla */}
         <div className="col-span-7 bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
           {loading ? (
@@ -361,7 +440,7 @@ export function ReservasView() {
             <EmptyState
               title="Sin reservas"
               description={searchTerm || activeFilters.includes("TODAS") === false ? "Cambia los filtros para ver resultados." : "Aún no hay reservas registradas."}
-              action={puedeCrear ? <Button onClick={abrirNuevaReserva} icon={<Plus size={13} />}>Nueva Reserva</Button> : undefined}
+              action={puedeCrear ? <Button onClick={() => abrirNuevaReserva()} icon={<Plus size={13} />}>Nueva Reserva</Button> : undefined}
             />
           ) : (
             <table className="w-full text-left text-xs border-collapse">
@@ -515,6 +594,17 @@ export function ReservasView() {
                   )}
                 </div>
 
+                {puedeEditar && ["PENDIENTE_ADELANTO", "CONFIRMADA"].includes(selectedReserva.estadoReserva) && (
+                  <Button
+                    variant="secondary"
+                    icon={<Pencil size={13} />}
+                    className="w-full justify-center"
+                    onClick={() => setEditando(true)}
+                  >
+                    Modificar reserva
+                  </Button>
+                )}
+
                 {selectedReserva.observaciones && (
                   <div className="border-t border-slate-100 pt-2">
                     <span className="text-slate-400 block mb-1">Observaciones</span>
@@ -538,6 +628,7 @@ export function ReservasView() {
                             onChange={(e) => setAdelantoMetodo(e.target.value)}
                           >
                             <option value="EFECTIVO">Efectivo</option>
+                            <option value="YAPE_PLIN">Yape / Plin</option>
                             <option value="TARJETA_POS">Tarjeta POS</option>
                             <option value="TRANSFERENCIA">Transferencia</option>
                             <option value="PASARELA_ONLINE">Pasarela Online</option>
@@ -644,26 +735,12 @@ export function ReservasView() {
           </Select>
         </FormField>
 
-        <FormField label="Habitación disponible" required>
-          <Select
-            value={form.idHabitacion || ""}
-            onChange={(e) => setForm({ ...form, idHabitacion: Number(e.target.value) })}
-          >
-            <option value="">— Seleccionar habitación —</option>
-            {habitaciones.map((h) => (
-              <option key={h.idHabitacion} value={h.idHabitacion}>
-                Hab. {h.numero} — {h.tipoHabitacion.nombre} (S/ {h.tipoHabitacion.precioNoche}/noche){incidencias.has(h.idHabitacion) ? " ⚠ incidencia" : ""}
-              </option>
-            ))}
-          </Select>
-          <AvisoIncidencia inc={incidencias.get(form.idHabitacion)} className="mt-1.5" />
-        </FormField>
-
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Fecha Check-in" required>
             <Input
               type="date"
               value={form.fechaCheckinPrevisto}
+              min={hoyISO()}
               onChange={(e) => setForm({ ...form, fechaCheckinPrevisto: e.target.value })}
             />
           </FormField>
@@ -671,10 +748,37 @@ export function ReservasView() {
             <Input
               type="date"
               value={form.fechaCheckoutPrevisto}
+              min={form.fechaCheckinPrevisto || undefined}
               onChange={(e) => setForm({ ...form, fechaCheckoutPrevisto: e.target.value })}
             />
           </FormField>
         </div>
+
+        <FormField label={dispNueva.habitaciones ? "Habitación (libres en esas noches)" : "Habitación disponible"} required>
+          <Select
+            value={form.idHabitacion || ""}
+            onChange={(e) => setForm({ ...form, idHabitacion: Number(e.target.value) })}
+          >
+            <option value="">— Seleccionar habitación —</option>
+            {habitacionesNueva.map((h) => {
+              const ocupada = dispNueva.ocupadas.get(h.idHabitacion);
+              return (
+                <option key={h.idHabitacion} value={h.idHabitacion} disabled={!!ocupada}>
+                  Hab. {h.numero} — {h.tipo} (S/ {h.precioNoche}/noche){ocupada ? " · ocupada esas noches" : ""}{incidencias.has(h.idHabitacion) ? " ⚠ incidencia" : ""}
+                </option>
+              );
+            })}
+          </Select>
+          {!dispNueva.habitaciones && !dispNueva.error && (
+            <p className="text-[12px] text-slate-500 mt-1">Elige las fechas para ver todas las habitaciones libres en esas noches.</p>
+          )}
+          {dispNueva.cargando && <p className="text-[12px] text-slate-500 mt-1">Revisando disponibilidad…</p>}
+          {dispNueva.error && <p className="text-[12px] text-amber-700 mt-1">{dispNueva.error}</p>}
+          {dispNueva.ocupadas.has(form.idHabitacion) && (
+            <p className="text-[12px] text-red-700 mt-1">Esa habitación ya está reservada en esas noches.</p>
+          )}
+          <AvisoIncidencia inc={incidencias.get(form.idHabitacion)} className="mt-1.5" />
+        </FormField>
 
         <FormField label="Canal">
           <Select
@@ -695,6 +799,19 @@ export function ReservasView() {
           />
         </FormField>
       </FormModal>
+
+      {editando && selectedReserva && (
+        <EditarReservaModal
+          reserva={selectedReserva}
+          pagado={pagadoSeleccionada}
+          onClose={() => setEditando(false)}
+          onGuardada={async (r) => {
+            setEditando(false);
+            setSuccessMsg(`Reserva ${formatCodigo(r.idReserva)} modificada.`);
+            await cargarReservas(r.idReserva);
+          }}
+        />
+      )}
 
       {/* Modal Confirmar Cancelación */}
       <ConfirmModal

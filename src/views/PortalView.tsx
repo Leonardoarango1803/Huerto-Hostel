@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Receipt, Coffee, ConciergeBell, CheckCircle, AlertCircle, Send, CalendarPlus, BedDouble, Sparkles } from "lucide-react";
+import { Receipt, Coffee, ConciergeBell, CheckCircle, AlertCircle, Send, CalendarPlus, BedDouble, Sparkles, Lock } from "lucide-react";
 import { MisReservasPortal } from "./web/MisReservasPortal";
+import { PagarEnLineaModal } from "./web/PagarEnLineaModal";
 import { portalApi, type PerfilHuesped, type ProductoParaPedir } from "../api/portal";
 import { fechaDMA } from "../utils/fechas";
 import type { ConsumoEstadia, MiFolio, SolicitudServicio } from "../api/types";
@@ -45,6 +46,9 @@ export function PortalView() {
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
   const [form, setForm] = useState({ descripcion: "", idProducto: "", cantidad: "1" });
+  const [pagando, setPagando] = useState(false);
+  /** Sube tras un pago para que "Mis reservas" vuelva a pedir lo pagado. */
+  const [versionReservas, setVersionReservas] = useState(0);
 
   useEffect(() => {
     let vigente = true;
@@ -146,7 +150,7 @@ export function PortalView() {
                 <strong className="text-lg">{fechaDMA(folio.fechaCheckoutPrevisto)} · hasta las 12:00</strong>
               </div>
               <div className={`rounded-[22px] border p-5 flex flex-col ${debe ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200"}`}>
-                <span className="text-[13px] text-slate-600">{debe ? "Por pagar al salir" : "Tu cuenta"}</span>
+                <span className="text-[13px] text-slate-600">{debe ? "Por pagar" : "Tu cuenta"}</span>
                 <strong className={`font-display text-2xl ${debe ? "text-amber-800" : "text-emerald-800"}`}>{debe ? soles(folio.saldoPendiente) : "Al día"}</strong>
               </div>
             </div>
@@ -191,7 +195,16 @@ export function PortalView() {
                   <dt className="pt-3 border-t border-[#F1EADD] font-bold">{debe ? "Saldo por pagar" : Number(folio.saldoPendiente) < 0 ? "Saldo a tu favor" : "Saldo"}</dt>
                   <dd className="m-0 pt-3 border-t border-[#F1EADD] font-bold">{soles(folio.saldoPendiente)}</dd>
                 </dl>
-                <p className="m-0 mt-4 text-[13px] text-slate-600">El saldo se paga en recepción al salir. Si ves algo que no reconoces, avísanos.</p>
+                {debe && (
+                  <button
+                    type="button"
+                    onClick={() => setPagando(true)}
+                    className="mt-5 w-full min-h-[50px] rounded-full bg-terracota hover:bg-terracota-oscuro text-white font-bold inline-flex items-center justify-center gap-2"
+                  >
+                    <Lock size={17} /> Pagar en línea {soles(folio.saldoPendiente)}
+                  </button>
+                )}
+                <p className="m-0 mt-4 text-[13px] text-slate-600">Puedes pagar aquí con tarjeta o Yape/Plin, o en recepción al salir. Si ves algo que no reconoces, avísanos.</p>
               </div>
             )}
 
@@ -285,7 +298,22 @@ export function PortalView() {
           </section>
         )}
 
-        {!cargando && <MisReservasPortal />}
+        {!cargando && <MisReservasPortal version={versionReservas} onPagado={() => setVersionReservas((v) => v + 1)} />}
+        {pagando && folio && (
+          <PagarEnLineaModal
+            titulo="Pagar mi cuenta"
+            pendiente={Number(folio.saldoPendiente)}
+            onCerrar={() => setPagando(false)}
+            onPagado={async (r) => {
+              setPagando(false);
+              setTab("folio");
+              setMensaje({ tipo: "ok", texto: `Pago aprobado: ${soles(r.monto)} (operación ${r.codigoOperacion}). Es un pago de demostración, no se cobró dinero real.` });
+              setVersionReservas((v) => v + 1);
+              const nuevo = await portalApi.miFolio().catch(() => null);
+              if (nuevo) setFolio(nuevo);
+            }}
+          />
+        )}
       </div>
     </main>
   );

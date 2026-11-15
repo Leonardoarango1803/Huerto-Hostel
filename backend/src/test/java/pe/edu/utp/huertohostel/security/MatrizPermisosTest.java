@@ -110,6 +110,7 @@ class MatrizPermisosTest {
         m.put("GET /api/v1/clientes/cuentas-portal", COBRO);
         m.put("POST /api/v1/clientes", RECEPCION);
         m.put("PUT /api/v1/clientes/{id}", RECEPCION);
+        m.put("GET /api/v1/clientes/{id}/historial", COBRO);
         m.put("GET /api/v1/clientes/consultar-dni", RECEPCION);
         m.put("GET /api/v1/clientes/consultar-ruc", RECEPCION);
         m.put("GET /api/v1/clientes/{id}/acceso", RECEPCION);
@@ -121,6 +122,8 @@ class MatrizPermisosTest {
         m.put("GET /api/v1/reservas", COBRO);
         m.put("GET /api/v1/reservas/{id}", COBRO);
         m.put("POST /api/v1/reservas", RECEPCION);
+        m.put("PUT /api/v1/reservas/{id}", RECEPCION);
+        m.put("GET /api/v1/reservas/calendario", COBRO);
         m.put("POST /api/v1/reservas/{id}/checkin", RECEPCION);
         m.put("POST /api/v1/reservas/{id}/adelanto", COBRO);
         m.put("PATCH /api/v1/reservas/{id}/estado", RECEPCION);
@@ -145,6 +148,8 @@ class MatrizPermisosTest {
         m.put("POST /api/v1/habitaciones", RECEPCION);
         m.put("GET /api/v1/habitaciones/{id}", HAB_DETALLE);
         m.put("PATCH /api/v1/habitaciones/{id}/estado", RECEPCION);
+        m.put("PUT /api/v1/habitaciones/{id}", SOLO_ADMIN);
+        m.put("PATCH /api/v1/habitaciones/{id}/activa", SOLO_ADMIN);
         m.put("GET /api/v1/habitaciones/resumen", RECEPCION);
         m.put("GET /api/v1/tipos-habitacion", COBRO);
         m.put("POST /api/v1/tipos-habitacion", SOLO_ADMIN);
@@ -199,7 +204,7 @@ class MatrizPermisosTest {
         for (String ruta : List.of("GET /api/v1/portal/folio", "GET /api/v1/portal/consumos",
                 "GET /api/v1/portal/solicitudes", "POST /api/v1/portal/solicitudes",
                 "GET /api/v1/portal/reservas", "POST /api/v1/portal/reservas", "GET /api/v1/portal/perfil",
-                "GET /api/v1/portal/productos")) {
+                "GET /api/v1/portal/productos", "POST /api/v1/portal/pagos")) {
             m.put(ruta, SOLO_CLIENTE);
         }
 

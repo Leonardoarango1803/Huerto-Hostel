@@ -90,12 +90,14 @@ export const ETIQUETA_MODULO: Record<Modulo, string> = {
 
 export type Accion =
   | "crearReserva"
+  | "editarReserva"
   | "cancelarReserva"
   | "registrarAdelanto"
   | "hacerCheckin"
   | "ingresoDirecto"
   | "editarHuesped"
   | "gestionarHabitaciones"
+  | "editarHabitacion"
   | "registrarConsumo"
   | "registrarPago"
   | "hacerCheckout"
@@ -109,12 +111,15 @@ const COBRO: Rol[] = ["ADMINISTRADOR", "RECEPCIONISTA", "CAJERO"];
 /** Quien puede ejecutar cada accion (no solo ver la pantalla). */
 export const ACCIONES: Record<Accion, Rol[]> = {
   crearReserva: RECEPCION,
+  editarReserva: RECEPCION,
   cancelarReserva: RECEPCION,
   registrarAdelanto: COBRO,
   hacerCheckin: RECEPCION,
   ingresoDirecto: RECEPCION,
   editarHuesped: RECEPCION,
   gestionarHabitaciones: RECEPCION,
+  // Catalogo: editar numero, piso, tipo y dar de baja (RF13). La tarifa se edita en el tipo (Configuracion).
+  editarHabitacion: ["ADMINISTRADOR"],
   registrarConsumo: RECEPCION,
   registrarPago: COBRO,
   hacerCheckout: COBRO,
