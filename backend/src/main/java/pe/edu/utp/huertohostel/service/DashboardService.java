@@ -482,6 +482,20 @@ public class DashboardService {
             if (n > 0) {
                 avisos.add(new Aviso("aviso", n + " solicitud(es) del huesped sin atender", "Pedidos desde el portal.", "/solicitudes"));
             }
+            // Equipaje: pedidos de subida/bajada por atender y maletas guardadas en custodia (una sola consulta).
+            Map<String, Object> eq = jdbc.queryForMap("""
+                    SELECT COUNT(*) FILTER (WHERE tipo_solicitud <> 'CUSTODIA' AND estado IN ('PENDIENTE','ASIGNADA','EN_ATENCION')) AS por_atender,
+                           COUNT(*) FILTER (WHERE tipo_solicitud = 'CUSTODIA' AND estado = 'EN_ATENCION') AS en_custodia
+                    FROM solicitud_equipaje
+                    """);
+            long porAtender = ((Number) eq.get("por_atender")).longValue();
+            long enCustodia = ((Number) eq.get("en_custodia")).longValue();
+            if (porAtender > 0) {
+                avisos.add(new Aviso("aviso", porAtender + " pedido(s) de equipaje por atender", "Subir o bajar maletas.", "/solicitudes?tab=equipaje"));
+            }
+            if (enCustodia > 0) {
+                avisos.add(new Aviso("aviso", enCustodia + " equipaje(s) en custodia", "Maletas guardadas en recepción por entregar.", "/solicitudes?tab=equipaje"));
+            }
         }
     }
 

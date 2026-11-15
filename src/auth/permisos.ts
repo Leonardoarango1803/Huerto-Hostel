@@ -103,6 +103,7 @@ export type Accion =
   | "hacerCheckout"
   | "operarCaja"
   | "cargarSolicitudAlFolio"
+  | "registrarEquipaje"
   | "gestionarInventario";
 
 const RECEPCION: Rol[] = ["ADMINISTRADOR", "RECEPCIONISTA"];
@@ -125,6 +126,8 @@ export const ACCIONES: Record<Accion, Rol[]> = {
   hacerCheckout: COBRO,
   operarCaja: COBRO,
   cargarSolicitudAlFolio: RECEPCION,
+  // Recibir y entregar maletas en custodia, o registrar pedidos en el mostrador. Limpieza solo atiende subidas/bajadas.
+  registrarEquipaje: RECEPCION,
   // Alta y edicion de insumos, recetas y proveedores. Cocina, bar y housekeeping solo mueven stock.
   gestionarInventario: ["ADMINISTRADOR"],
 };

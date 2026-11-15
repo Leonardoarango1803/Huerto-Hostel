@@ -6,9 +6,11 @@ import {
   RefreshCw,
   Receipt,
 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { solicitudesApi } from "../api/portal";
 import { useAuth } from "../context/AuthContext";
 import { puede } from "../auth/permisos";
+import { EquipajePanel } from "./solicitudes/EquipajePanel";
 import type { EstadoSolicitud, SolicitudServicio } from "../api/types";
 
 const BADGE: Record<string, string> = {
@@ -22,6 +24,10 @@ const BADGE: Record<string, string> = {
 export function SolicitudesView() {
   const { user } = useAuth();
   const puedeCargar = puede(user?.role, "cargarSolicitudAlFolio");
+  const puedeRecibirEquipaje = puede(user?.role, "registrarEquipaje");
+  // ?tab=equipaje: el aviso del panel lleva directo a la pestana de equipaje.
+  const [params, setParams] = useSearchParams();
+  const pestana = params.get("tab") === "equipaje" ? "equipaje" : "servicios";
   const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
   const [filtro, setFiltro] = useState<EstadoSolicitud | "">("");
   const [cargando, setCargando] = useState(true);
@@ -77,10 +83,12 @@ export function SolicitudesView() {
           </p>
           <h1 className="text-xl font-bold text-slate-900 mt-0.5">Solicitudes del Huesped</h1>
           <p className="text-slate-500 text-xs mt-0.5">
-            Pedidos enviados desde el portal. Los cobrables se cargan al folio de la estadia.
+            {pestana === "equipaje"
+              ? "Maletas en custodia y pedidos para subir o bajar equipaje."
+              : "Pedidos enviados desde el portal. Los cobrables se cargan al folio de la estadia."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${pestana === "equipaje" ? "hidden" : ""}`}>
           <select
             value={filtro}
             onChange={(e) => setFiltro(e.target.value as EstadoSolicitud | "")}
@@ -102,7 +110,23 @@ export function SolicitudesView() {
         </div>
       </div>
 
-      {mensaje && (
+      <div role="tablist" aria-label="Tipo de solicitud" className="flex gap-1 border-b border-slate-200">
+        {([["servicios", "Servicios"], ["equipaje", "Equipaje"]] as const).map(([id, texto]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={pestana === id}
+            onClick={() => setParams(id === "equipaje" ? { tab: "equipaje" } : {}, { replace: true })}
+            className={`min-h-[38px] px-4 -mb-px border-b-2 text-xs font-bold ${pestana === id ? "border-[#2D5A27] text-[#2D5A27]" : "border-transparent text-slate-500"}`}
+          >
+            {texto}
+          </button>
+        ))}
+      </div>
+
+      {pestana === "equipaje" && <EquipajePanel puedeRecibir={puedeRecibirEquipaje} />}
+
+      {pestana === "servicios" && mensaje && (
         <div
           className={`flex items-start gap-2 p-3 rounded-lg border text-xs ${
             mensaje.tipo === "ok"
@@ -115,7 +139,7 @@ export function SolicitudesView() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
+      <div className={`bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden ${pestana === "equipaje" ? "hidden" : ""}`}>
         {cargando ? (
           <p className="p-4 text-center text-slate-400 text-xs">Cargando...</p>
         ) : solicitudes.length === 0 ? (

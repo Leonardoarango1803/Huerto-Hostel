@@ -25,15 +25,31 @@ public class PortalController {
     private final PortalService portalService;
     private final ReservaWebService reservaWebService;
     private final PagoPortalService pagoPortalService;
+    private final pe.edu.utp.huertohostel.service.EquipajeService equipajeService;
     private final pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService;
 
     public PortalController(PortalService portalService, ReservaWebService reservaWebService,
                             PagoPortalService pagoPortalService,
+                            pe.edu.utp.huertohostel.service.EquipajeService equipajeService,
                             pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService) {
         this.portalService = portalService;
         this.reservaWebService = reservaWebService;
         this.pagoPortalService = pagoPortalService;
+        this.equipajeService = equipajeService;
         this.usuarioActualService = usuarioActualService;
+    }
+
+    /** Su equipaje: pedidos de subida/bajada y lo que tiene en custodia (tambien despues de salir). */
+    @GetMapping("/equipaje")
+    public ResponseEntity<List<Map<String, Object>>> miEquipaje() {
+        return ResponseEntity.ok(equipajeService.deHuesped());
+    }
+
+    /** Pedir que suban o bajen sus maletas ({tipo: SUBIDA|BAJADA, descripcion?}). La custodia se pide en recepcion. */
+    @PostMapping("/equipaje")
+    public ResponseEntity<Map<String, Object>> pedirEquipaje(@RequestBody Map<String, String> body) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(equipajeService.pedirDesdePortal(body.get("tipo"), body.get("descripcion")));
     }
 
     /** Con quien hablamos: nombre para saludarlo en su portal y si entra con Google. */

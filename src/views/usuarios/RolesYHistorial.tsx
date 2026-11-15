@@ -22,6 +22,7 @@ const ETIQUETA_ACCION_SISTEMA: Record<Accion, string> = {
   hacerCheckout: "Hacer check-out y cobrar",
   operarCaja: "Abrir, arquear y cerrar la caja",
   cargarSolicitudAlFolio: "Cargar solicitudes al folio",
+  registrarEquipaje: "Recibir y entregar equipaje en custodia",
   gestionarInventario: "Crear y editar insumos y recetas",
 };
 

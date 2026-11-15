@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Receipt, Coffee, ConciergeBell, CheckCircle, AlertCircle, Send, CalendarPlus, BedDouble, Sparkles, Lock } from "lucide-react";
 import { MisReservasPortal } from "./web/MisReservasPortal";
 import { PagarEnLineaModal } from "./web/PagarEnLineaModal";
+import { MiEquipaje } from "./web/MiEquipaje";
 import { portalApi, type PerfilHuesped, type ProductoParaPedir } from "../api/portal";
 import { fechaDMA } from "../utils/fechas";
 import type { ConsumoEstadia, MiFolio, SolicitudServicio } from "../api/types";
@@ -293,10 +294,14 @@ export function PortalView() {
                     </ul>
                   )}
                 </div>
+                <MiEquipaje puedePedir />
               </div>
             )}
           </section>
         )}
+
+        {/* Despues del check-out: si dejo maletas en custodia, que vea su codigo para recogerlas. */}
+        {!cargando && sinEstadia && <MiEquipaje puedePedir={false} />}
 
         {!cargando && <MisReservasPortal version={versionReservas} onPagado={() => setVersionReservas((v) => v + 1)} />}
         {pagando && folio && (

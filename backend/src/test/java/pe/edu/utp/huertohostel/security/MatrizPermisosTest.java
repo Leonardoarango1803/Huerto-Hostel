@@ -200,11 +200,18 @@ class MatrizPermisosTest {
         }
         m.put("POST /api/v1/solicitudes/{id}/cargar-folio", RECEPCION); // housekeeping atiende pero no carga al folio
 
+        // Equipaje: limpieza atiende subidas/bajadas; recibir y registrar en el mostrador es de recepcion
+        m.put("GET /api/v1/equipaje", LIMPIEZA);
+        m.put("PATCH /api/v1/equipaje/{id}/estado", LIMPIEZA);
+        m.put("GET /api/v1/equipaje/estadias", RECEPCION);
+        m.put("POST /api/v1/equipaje", RECEPCION);
+
         // Portal del huesped
         for (String ruta : List.of("GET /api/v1/portal/folio", "GET /api/v1/portal/consumos",
                 "GET /api/v1/portal/solicitudes", "POST /api/v1/portal/solicitudes",
                 "GET /api/v1/portal/reservas", "POST /api/v1/portal/reservas", "GET /api/v1/portal/perfil",
-                "GET /api/v1/portal/productos", "POST /api/v1/portal/pagos")) {
+                "GET /api/v1/portal/productos", "POST /api/v1/portal/pagos",
+                "GET /api/v1/portal/equipaje", "POST /api/v1/portal/equipaje")) {
             m.put(ruta, SOLO_CLIENTE);
         }
 
