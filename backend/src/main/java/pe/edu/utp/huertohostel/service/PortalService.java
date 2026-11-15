@@ -61,7 +61,36 @@ public class PortalService {
 
     /** Folio del huesped: alojamiento, consumos, pagos y saldo pendiente. */
     public Map<String, Object> miFolio() {
-        Estadia estadia = estadiaActiva();
+        return folioDe(estadiaActiva());
+    }
+
+    /**
+     * El folio si el huesped esta alojado ahora; vacio antes de llegar o despues de salir. No es un error: en ese caso
+     * el portal solo muestra sus reservas (antes respondia 404 y ensuciaba la consola del navegador).
+     */
+    public java.util.Optional<Map<String, Object>> miFolioSiHay() {
+        Cliente cliente = usuarioActualService.obtenerCliente();
+        List<Estadia> activas = estadiaRepository.findByClienteAndEstado(cliente.getIdCliente(), EstadoEstadia.EN_CURSO);
+        return activas.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(folioDe(activas.get(0)));
+    }
+
+    /** Lo que el huesped puede pedir a su habitacion: productos activos, solo con lo que necesita ver. */
+    public List<Map<String, Object>> productosParaPedir() {
+        return productoRepository.findAll().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getEstado()))
+                .sorted(java.util.Comparator.comparing(pe.edu.utp.huertohostel.entity.Producto::getNombre))
+                .map(p -> {
+                    Map<String, Object> m = new java.util.LinkedHashMap<>();
+                    m.put("idProducto", p.getIdProducto());
+                    m.put("nombre", p.getNombre());
+                    m.put("categoria", p.getCategoria());
+                    m.put("precioVenta", p.getPrecioVenta());
+                    return m;
+                })
+                .toList();
+    }
+
+    private Map<String, Object> folioDe(Estadia estadia) {
         Integer idEstadia = Objects.requireNonNull(estadia.getIdEstadia());
 
         Map<String, Object> folio = new HashMap<>(estadiaService.obtenerSaldoDetallado(idEstadia));

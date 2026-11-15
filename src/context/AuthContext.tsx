@@ -3,7 +3,7 @@ import api from "../api/axiosConfig";
 import { SITIO_LOGIN } from "../sitio";
 import { borrarAvisoDeInactividad, marcarActividad, olvidarActividad } from "../hooks/useCierrePorInactividad";
 
-interface AuthUser {
+export interface AuthUser {
   username: string;
   role: string;
   userId: number;
@@ -15,7 +15,11 @@ interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   /** Inicia sesion y devuelve el usuario (para llevarlo a la pantalla de inicio de su rol). */
-  login: (username: string, password: string) => Promise<AuthUser>;
+  login: (username: string, password: string, captcha?: string | null) => Promise<AuthUser>;
+  /** Abre la sesion con una respuesta del backend que ya trae el token (la reserva web que crea la cuenta). */
+  iniciarConSesion: (datos: { token: string; username: string; role: string; userId: number; debeCambiarPassword?: boolean }) => AuthUser;
+  /** "Continuar con Google" (solo huespedes): la primera vez crea la cuenta; siempre abre la sesion. */
+  loginConGoogle: (credencial: string) => Promise<AuthUser>;
   /** Cambia la clave propia; la sesion se renueva (la anterior deja de valer). */
   cambiarPassword: (passwordActual: string, passwordNueva: string) => Promise<void>;
   logout: () => void;
@@ -60,10 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authUser;
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, captcha?: string | null) => {
     // El backend acepta en cada sitio solo sus cuentas: personal en el admin, huespedes en la web.
-    const response = await api.post("/api/v1/auth/login", { username, password, sitio: SITIO_LOGIN });
+    const response = await api.post("/api/v1/auth/login", { username, password, sitio: SITIO_LOGIN, captcha: captcha ?? undefined });
     marcarActividad(); // la sesion nueva empieza a contar su inactividad desde ahora
+    borrarAvisoDeInactividad();
+    return guardarSesion(response.data);
+  };
+
+  const loginConGoogle = async (credencial: string) => {
+    const response = await api.post("/api/v1/auth/google", { credential: credencial, sitio: SITIO_LOGIN });
+    marcarActividad();
     borrarAvisoDeInactividad();
     return guardarSesion(response.data);
   };
@@ -82,7 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, cambiarPassword, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{
+      user, token, login, loginConGoogle, cambiarPassword, logout, isAuthenticated: !!token,
+      iniciarConSesion: (datos) => { marcarActividad(); borrarAvisoDeInactividad(); return guardarSesion(datos); },
+    }}>
       {children}
     </AuthContext.Provider>
   );

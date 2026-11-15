@@ -93,6 +93,51 @@ public class AccesoPortalService {
         return AccesoPortalResponse.de(user, true, generada ? plano : null);
     }
 
+    /**
+     * Cuenta del portal para quien entra con Google: el usuario es su correo y queda ligada a su cuenta de Google. La
+     * clave es aleatoria y nadie la conoce (entra con Google); si algun dia la necesita, recepcion puede restablecerla.
+     */
+    @Transactional
+    public Usuario crearConGoogle(@NonNull Integer idCliente, String correo, String googleSub) {
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado con id: " + idCliente));
+        if (usuarioRepository.findByClienteIdCliente(idCliente).isPresent()) {
+            throw new IllegalStateException("Este huesped ya tiene un acceso al portal.");
+        }
+        String user = correo.trim().toLowerCase(Locale.ROOT);
+        if (usuarioRepository.existsByUsername(user)) {
+            throw new IllegalStateException("El usuario '" + user + "' ya esta en uso.");
+        }
+        Usuario usuario = new Usuario();
+        usuario.setCliente(cliente);
+        usuario.setEmpleado(null);
+        usuario.setUsername(user);
+        usuario.setPasswordHash(passwordEncoder.encode(generarPassword() + generarPassword()));
+        usuario.setTipoUsuario(TipoUsuarioEnum.CLIENTE);
+        usuario.setEstado(true);
+        usuario.setFechaCreacion(LocalDateTime.now());
+        usuario.setGoogleSub(googleSub);
+        return usuarioRepository.save(usuario);
+    }
+
+    /**
+     * Que huespedes tienen cuenta del portal (idCliente -> usuario, si esta activa y si entra con Google), en una sola
+     * consulta: la lista de Huespedes lo muestra como etiqueta "Cuenta web".
+     */
+    public java.util.List<java.util.Map<String, Object>> cuentasPorCliente() {
+        java.util.List<java.util.Map<String, Object>> lista = new java.util.ArrayList<>();
+        for (Usuario u : usuarioRepository.findByClienteIsNotNull()) {
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("idCliente", u.getCliente().getIdCliente());
+            m.put("usuario", u.getUsername());
+            m.put("activa", Boolean.TRUE.equals(u.getEstado()));
+            m.put("google", u.getGoogleSub() != null);
+            m.put("ultimoAcceso", u.getUltimoAcceso());
+            lista.add(m);
+        }
+        return lista;
+    }
+
     @Transactional
     public AccesoPortalResponse cambiarEstado(@NonNull Integer idCliente, boolean activo) {
         Usuario usuario = buscarAcceso(idCliente);

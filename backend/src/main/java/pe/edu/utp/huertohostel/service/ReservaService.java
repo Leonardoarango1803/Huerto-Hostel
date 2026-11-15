@@ -83,7 +83,9 @@ public class ReservaService {
     public Reserva registrar(NuevaReservaRequest req) {
         Cliente cliente = clienteRepository.findById(req.getIdCliente())
                 .orElseThrow(() -> new EntityNotFoundException("Cliente no encontrado: " + req.getIdCliente()));
-        Habitacion habitacion = habitacionRepository.findById(req.getIdHabitacion())
+        // Con la fila de la habitacion bloqueada hasta el fin de la transaccion: dos reservas simultaneas de la
+        // misma habitacion (recepcion, web o ambas) hacen fila, y la segunda ya ve la primera al revisar el cruce.
+        Habitacion habitacion = habitacionRepository.findByIdParaActualizar(req.getIdHabitacion())
                 .orElseThrow(() -> new EntityNotFoundException("Habitacion no encontrada: " + req.getIdHabitacion()));
 
         LocalDate checkin = req.getFechaCheckinPrevisto();
@@ -205,6 +207,11 @@ public class ReservaService {
         estadiaRepository.findByReservaIdReserva(idReserva).ifPresent(e -> {
             throw new IllegalStateException("Esta reserva ya tiene un check-in registrado (Estadía #" + e.getIdEstadia() + ").");
         });
+
+        if (reserva.getCliente() != null && (reserva.getCliente().getNumeroDocumento() == null
+                || reserva.getCliente().getNumeroDocumento().isBlank())) {
+            throw new IllegalStateException("El huésped aún no tiene documento registrado: complétalo en Huéspedes antes del check-in.");
+        }
 
         Habitacion habitacionCheckin = Objects.requireNonNull(reserva.getHabitacion());
 

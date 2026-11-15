@@ -1,63 +1,68 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  Receipt,
-  Coffee,
-  ConciergeBell,
-  CheckCircle,
-  AlertCircle,
-  Plus,
-  CalendarDays,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Receipt, Coffee, ConciergeBell, CheckCircle, AlertCircle, Send, CalendarPlus, BedDouble, Sparkles } from "lucide-react";
 import { MisReservasPortal } from "./web/MisReservasPortal";
-import api from "../api/axiosConfig";
-import { portalApi } from "../api/portal";
-import type {
-  ConsumoEstadia,
-  MiFolio,
-  Producto,
-  SolicitudServicio,
-} from "../api/types";
+import { portalApi, type PerfilHuesped, type ProductoParaPedir } from "../api/portal";
+import { fechaDMA } from "../utils/fechas";
+import type { ConsumoEstadia, MiFolio, SolicitudServicio } from "../api/types";
 
-type Tab = "folio" | "consumos" | "solicitudes" | "reservas";
+type Tab = "folio" | "consumos" | "solicitudes";
 
-const ESTADO_BADGE: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-800",
-  ASIGNADA: "bg-blue-100 text-blue-800",
-  EN_ATENCION: "bg-blue-100 text-blue-800",
-  ATENDIDA: "bg-emerald-100 text-emerald-800",
-  CANCELADA: "bg-slate-200 text-slate-600",
+const ESTADO_SOLICITUD: Record<string, { texto: string; clase: string }> = {
+  PENDIENTE: { texto: "Recibida", clase: "bg-amber-100 text-amber-800" },
+  ASIGNADA: { texto: "En camino", clase: "bg-blue-100 text-blue-800" },
+  EN_ATENCION: { texto: "Atendiéndola", clase: "bg-blue-100 text-blue-800" },
+  ATENDIDA: { texto: "Lista", clase: "bg-emerald-100 text-emerald-800" },
+  CANCELADA: { texto: "Cancelada", clase: "bg-slate-200 text-slate-600" },
 };
 
+/** Pedidos de un toque: llenan el texto (el huesped puede cambiarlo antes de enviar). */
+const PEDIDOS_RAPIDOS = ["Toallas extra", "Limpieza de la habitación", "Más papel higiénico", "Una almohada extra"];
+
+const tarjeta = "bg-white border border-[#EFE6D6] rounded-[22px]";
+const soles = (n: number | string | undefined) => `S/ ${Math.abs(Number(n ?? 0)).toFixed(2)}`;
+/** "14/11/2026 · 14:10" (la fecha como dia local, sin correrla por la zona horaria). */
+const fechaHora = (iso?: string) => (iso ? `${fechaDMA(iso.slice(0, 10))} · ${iso.slice(11, 16)}` : "—");
+
+function saludo(): string {
+  const h = new Date().getHours();
+  return h < 12 ? "Buenos días" : h < 19 ? "Buenas tardes" : "Buenas noches";
+}
+
+/**
+ * Portal del huesped, dentro de la web del hotel (con su cabecera y su pie): saluda por su nombre, muestra su estadia
+ * (cuenta, consumos y servicios) y sus reservas. Antes de llegar o despues de salir, solo sus reservas.
+ */
 export function PortalView() {
   const [tab, setTab] = useState<Tab>("folio");
+  const [perfil, setPerfil] = useState<PerfilHuesped | null>(null);
   const [folio, setFolio] = useState<MiFolio | null>(null);
   const [consumos, setConsumos] = useState<ConsumoEstadia[]>([]);
   const [solicitudes, setSolicitudes] = useState<SolicitudServicio[]>([]);
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [productos, setProductos] = useState<ProductoParaPedir[]>([]);
   const [cargando, setCargando] = useState(true);
   const [sinEstadia, setSinEstadia] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
   const [form, setForm] = useState({ descripcion: "", idProducto: "", cantidad: "1" });
 
-  const cargar = useCallback(async () => {
-    try {
-      const data = await portalApi.miFolio();
-      setFolio(data);
-      setSinEstadia(false);
-    } catch {
-      setSinEstadia(true);
-    } finally {
-      setCargando(false);
-    }
-  }, []);
-
   useEffect(() => {
-    cargar();
-    api
-      .get<Producto[]>("/api/v1/productos")
-      .then((r) => setProductos(r.data))
-      .catch(() => undefined);
-  }, [cargar]);
+    let vigente = true;
+    // Sin estadia en curso el folio llega vacio (204): entonces se muestran solo sus reservas y no se pide el catalogo.
+    portalApi.miFolio()
+      .then((data) => {
+        if (!vigente) return;
+        setFolio(data);
+        setSinEstadia(data === null);
+        if (data !== null) {
+          portalApi.productos().then((p) => vigente && setProductos(p)).catch(() => undefined);
+        }
+      })
+      .catch(() => vigente && setSinEstadia(true))
+      .finally(() => vigente && setCargando(false));
+    portalApi.perfil().then((p) => vigente && setPerfil(p)).catch(() => undefined);
+    return () => { vigente = false; };
+  }, []);
 
   useEffect(() => {
     if (sinEstadia) return;
@@ -70,255 +75,218 @@ export function PortalView() {
 
   const enviarSolicitud = async () => {
     if (!form.descripcion.trim()) {
-      setMensaje({ tipo: "error", texto: "Cuentanos que necesitas." });
+      setMensaje({ tipo: "error", texto: "Cuéntanos qué necesitas." });
       return;
     }
+    setEnviando(true);
     try {
       await portalApi.solicitar({
         descripcion: form.descripcion,
         idProducto: form.idProducto ? Number(form.idProducto) : undefined,
         cantidad: Number(form.cantidad || "1"),
       });
-      setMensaje({ tipo: "ok", texto: "Tu solicitud fue enviada a recepcion." });
+      setMensaje({ tipo: "ok", texto: "Listo, recepción ya recibió tu pedido." });
       setForm({ descripcion: "", idProducto: "", cantidad: "1" });
       setSolicitudes(await portalApi.misSolicitudes());
     } catch {
-      setMensaje({ tipo: "error", texto: "No se pudo enviar la solicitud." });
+      setMensaje({ tipo: "error", texto: "No pudimos enviar tu pedido. Inténtalo de nuevo o llama a recepción." });
+    } finally {
+      setEnviando(false);
     }
   };
 
-  if (cargando) {
-    return <p className="p-6 text-center text-slate-500 text-sm">Cargando tu estadía...</p>;
-  }
-
-  if (sinEstadia) {
-    // Antes de llegar (o despues de salir) el portal muestra sus reservas en vez de quedar vacio.
-    return (
-      <div className="flex flex-col gap-6 max-w-[1080px]">
-        <div>
-          <p className="text-[12px] text-slate-500 uppercase font-semibold tracking-wider">Portal del huésped</p>
-          <h1 className="text-xl text-slate-900 mt-0.5">Hola de nuevo</h1>
-          <p className="text-slate-600 text-sm mt-1">
-            Cuando hagas tu check-in, aquí verás tu cuenta y podrás pedir servicios. Mientras tanto, revisa tus reservas.
-          </p>
-        </div>
-        <MisReservasPortal />
-      </div>
-    );
-  }
+  const nombre = perfil?.nombres?.split(" ")[0];
+  const debe = (folio?.saldoPendiente ?? 0) > 0;
 
   return (
-    <div className="space-y-4 font-sans text-slate-800 text-sm max-w-[1080px]">
-      <div>
-        <p className="text-[12px] text-slate-500 uppercase font-semibold tracking-wider">Portal del huésped</p>
-        <h1 className="text-xl text-slate-900 mt-0.5">
-          Habitación {folio?.habitacion ?? "—"}
-        </h1>
-        <p className="text-slate-600 text-sm mt-0.5">
-          Consulta tu cuenta, revisa tus consumos y pide servicios desde aquí.
-        </p>
-      </div>
-
-      {mensaje && (
-        <div
-          className={`flex items-start gap-2 p-3 rounded-lg border text-xs ${
-            mensaje.tipo === "ok"
-              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-              : "bg-red-50 border-red-300 text-red-800"
-          }`}
-        >
-          {mensaje.tipo === "ok" ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-          <span>{mensaje.texto}</span>
+    <main className="flex flex-col">
+      {/* Saludo */}
+      <section className="bg-gradient-to-br from-[#2D5A27] to-[#1E3F1A] text-white">
+        <div className="max-w-[1180px] mx-auto px-4 sm:px-6 py-10 sm:py-14 flex flex-wrap items-end justify-between gap-6">
+          <div className="flex flex-col gap-2 max-w-[640px]">
+            <span className="inline-flex items-center gap-2 text-[13px] font-semibold tracking-[0.12em] uppercase text-emerald-100">
+              <Sparkles size={15} /> Mi cuenta
+            </span>
+            <h1 className="m-0 font-display font-semibold text-[clamp(32px,5vw,48px)] leading-[1.05]">
+              {saludo()}{nombre ? `, ${nombre}` : ""}
+            </h1>
+            <p className="m-0 text-base sm:text-lg leading-relaxed text-emerald-50/90">
+              {cargando
+                ? "Estamos preparando tu información…"
+                : sinEstadia
+                  ? "Aquí tienes tus reservas. Cuando hagas tu check-in, también verás tu cuenta y podrás pedir servicios a tu habitación."
+                  : `Estás en la habitación ${folio?.habitacion ?? "—"}. Pide lo que necesites y revisa tu cuenta cuando quieras.`}
+            </p>
+          </div>
+          <Link to="/hospedaje" className="inline-flex items-center gap-2 min-h-[48px] px-6 rounded-full bg-terracota hover:bg-terracota-oscuro text-white font-bold">
+            <CalendarPlus size={18} /> Nueva reserva
+          </Link>
         </div>
-      )}
+      </section>
 
-      <div className="flex gap-1 border-b border-slate-200">
-        {([
-          { id: "folio", label: "Mi cuenta", icon: Receipt },
-          { id: "consumos", label: "Consumos", icon: Coffee },
-          { id: "solicitudes", label: "Servicios", icon: ConciergeBell },
-          { id: "reservas", label: "Mis reservas", icon: CalendarDays },
-        ] as const).map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-3 py-2 text-xs font-semibold flex items-center gap-1.5 border-b-2 -mb-px ${
-                tab === t.id
-                  ? "border-emerald-700 text-emerald-800"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              <Icon size={13} /> {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="max-w-[1180px] w-full mx-auto px-4 sm:px-6 py-10 flex flex-col gap-10">
+        {cargando && <div className="h-40 rounded-[22px] bg-slate-100 animate-pulse" />}
 
-      {tab === "folio" && folio && (
-        <div className="space-y-3 max-w-lg">
-          <div
-            className={`p-4 rounded-xl border shadow-sm ${
-              folio.saldoPendiente <= 0
-                ? "bg-emerald-50 border-emerald-300"
-                : "bg-amber-50 border-amber-300"
-            }`}
-          >
-            <p className="text-[12px] font-bold uppercase text-slate-500">Saldo pendiente</p>
-            <p
-              className={`text-3xl font-bold ${
-                folio.saldoPendiente <= 0 ? "text-emerald-700" : "text-amber-800"
-              }`}
-            >
-              S/ {Math.abs(Number(folio.saldoPendiente ?? 0)).toFixed(2)}
-            </p>
-            <p className="text-[12px] text-slate-500 mt-0.5">
-              {folio.saldoPendiente <= 0 ? "Tu cuenta esta al dia" : "Por pagar al check-out"}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#EFE6D6] divide-y divide-slate-100">
-            {[
-              { label: "Alojamiento", value: folio.totalAlojamiento },
-              { label: "Consumos", value: folio.totalConsumos },
-              { label: "Pagos realizados", value: folio.totalPagos },
-            ].map((f) => (
-              <div key={f.label} className="flex items-center justify-between p-3">
-                <span className="text-slate-600">{f.label}</span>
-                <span className="font-bold text-slate-900">
-                  S/ {Number(f.value ?? 0).toFixed(2)}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#EFE6D6] p-3 text-xs text-slate-500 space-y-1">
-            <p>
-              Check-in:{" "}
-              {folio.fechaCheckin ? folio.fechaCheckin.slice(0, 16).replace("T", " ") : "—"}
-            </p>
-            <p>Salida prevista: {folio.fechaCheckoutPrevisto ?? "—"}</p>
-          </div>
-        </div>
-      )}
-
-      {tab === "consumos" && (
-        <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden max-w-lg">
-          {consumos.length === 0 ? (
-            <p className="p-6 text-center text-slate-400 text-xs">
-              Todavia no tienes consumos registrados.
-            </p>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {consumos.map((c) => (
-                <div key={c.idConsumo} className="flex items-center justify-between p-3">
-                  <div>
-                    <p className="font-semibold text-slate-800">
-                      {c.cantidad}x {c.producto?.nombre ?? "—"}
-                    </p>
-                    <p className="text-[12px] text-slate-400">
-                      {c.fechaRegistro ? c.fechaRegistro.slice(0, 16).replace("T", " ") : "—"}
-                    </p>
-                  </div>
-                  <span className="font-bold text-slate-900">
-                    S/ {Number(c.totalConsumo ?? 0).toFixed(2)}
-                  </span>
+        {!cargando && !sinEstadia && folio && (
+          <section aria-labelledby="h-estadia" className="flex flex-col gap-5">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+              <div className={`${tarjeta} p-5 flex items-center gap-4`}>
+                <span className="w-12 h-12 rounded-2xl bg-huerto-suave text-huerto flex items-center justify-center"><BedDouble size={22} /></span>
+                <div className="flex flex-col">
+                  <span className="text-[13px] text-slate-600">Tu habitación</span>
+                  <strong id="h-estadia" className="font-display text-2xl">{folio.habitacion ?? "—"}</strong>
                 </div>
-              ))}
+              </div>
+              <div className={`${tarjeta} p-5 flex flex-col`}>
+                <span className="text-[13px] text-slate-600">Llegaste</span>
+                <strong className="text-lg">{fechaHora(folio.fechaCheckin)}</strong>
+              </div>
+              <div className={`${tarjeta} p-5 flex flex-col`}>
+                <span className="text-[13px] text-slate-600">Salida prevista</span>
+                <strong className="text-lg">{fechaDMA(folio.fechaCheckoutPrevisto)} · hasta las 12:00</strong>
+              </div>
+              <div className={`rounded-[22px] border p-5 flex flex-col ${debe ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200"}`}>
+                <span className="text-[13px] text-slate-600">{debe ? "Por pagar al salir" : "Tu cuenta"}</span>
+                <strong className={`font-display text-2xl ${debe ? "text-amber-800" : "text-emerald-800"}`}>{debe ? soles(folio.saldoPendiente) : "Al día"}</strong>
+              </div>
             </div>
-          )}
-        </div>
-      )}
 
-      {tab === "reservas" && <MisReservasPortal />}
-
-      {tab === "solicitudes" && (
-        <div className="space-y-4 max-w-lg">
-          <div className="bg-white p-4 rounded-2xl border border-[#EFE6D6] space-y-3">
-            <h3 className="font-bold text-slate-800 text-xs border-b border-slate-100 pb-2">
-              Pedir un servicio
-            </h3>
-            <textarea
-              rows={2}
-              value={form.descripcion}
-              onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
-              placeholder="Toallas extra, limpieza de habitacion, una bebida..."
-              className="w-full border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-            />
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                value={form.idProducto}
-                onChange={(e) => setForm((f) => ({ ...f, idProducto: e.target.value }))}
-                className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              >
-                <option value="">Sin producto (solo pedido)</option>
-                {productos.map((p) => (
-                  <option key={p.idProducto} value={p.idProducto}>
-                    {p.nombre} — S/ {p.precioVenta.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                min={1}
-                value={form.cantidad}
-                onChange={(e) => setForm((f) => ({ ...f, cantidad: e.target.value }))}
-                className="border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
-              />
+            <div role="tablist" aria-label="Tu estadía" className="flex flex-wrap gap-2">
+              {([
+                { id: "folio", label: "Mi cuenta", icon: Receipt },
+                { id: "consumos", label: "Consumos", icon: Coffee },
+                { id: "solicitudes", label: "Pedir un servicio", icon: ConciergeBell },
+              ] as const).map((t) => {
+                const Icon = t.icon;
+                const activa = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    aria-selected={activa}
+                    onClick={() => setTab(t.id)}
+                    className={`min-h-[44px] px-5 rounded-full text-sm font-bold inline-flex items-center gap-2 border transition-colors ${
+                      activa ? "bg-huerto text-white border-huerto" : "bg-white text-tinta border-slate-300 hover:border-huerto"
+                    }`}
+                  >
+                    <Icon size={16} /> {t.label}
+                  </button>
+                );
+              })}
             </div>
-            {form.idProducto && (
-              <p className="text-[12px] text-amber-700 bg-amber-50 rounded px-2 py-1.5">
-                Al elegir un producto, el importe se cargara a tu cuenta.
-              </p>
-            )}
-            <button
-              onClick={enviarSolicitud}
-              className="w-full bg-[#2D5A27] hover:bg-[#1E3F1A] text-white text-xs font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5"
-            >
-              <Plus size={13} /> Enviar solicitud
-            </button>
-          </div>
 
-          <div className="bg-white rounded-2xl border border-[#EFE6D6] overflow-hidden">
-            <div className="p-3 border-b border-slate-100">
-              <span className="font-bold text-slate-700 text-xs">
-                Mis solicitudes ({solicitudes.length})
-              </span>
-            </div>
-            {solicitudes.length === 0 ? (
-              <p className="p-4 text-center text-slate-400 text-xs">Sin solicitudes aun.</p>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {solicitudes.map((s) => (
-                  <div key={s.idSolicitud} className="p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-slate-700 flex-1">{s.descripcion}</p>
-                      <span
-                        className={`text-[11px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                          ESTADO_BADGE[s.estado] ?? "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {s.estado}
-                      </span>
-                    </div>
-                    <p className="text-[12px] text-slate-400 mt-0.5">
-                      {s.fechaSolicitud
-                        ? s.fechaSolicitud.slice(0, 16).replace("T", " ")
-                        : "—"}
-                      {s.esCobrable && s.producto
-                        ? ` · ${s.cantidad}x ${s.producto.nombre} (S/ ${(
-                            Number(s.montoUnidad) * s.cantidad
-                          ).toFixed(2)})`
-                        : ""}
-                    </p>
-                  </div>
-                ))}
+            {mensaje && (
+              <div role="status" className={`flex items-start gap-2 px-4 py-3 rounded-2xl text-sm font-semibold ${mensaje.tipo === "ok" ? "bg-emerald-100 text-emerald-900" : "bg-red-100 text-red-900"}`}>
+                {mensaje.tipo === "ok" ? <CheckCircle size={17} /> : <AlertCircle size={17} />}
+                <span>{mensaje.texto}</span>
               </div>
             )}
-          </div>
-        </div>
-      )}
-    </div>
+
+            {tab === "folio" && (
+              <div className={`${tarjeta} p-5 sm:p-6 max-w-[620px]`}>
+                <dl className="m-0 grid grid-cols-[1fr_auto] gap-3 text-[15px]">
+                  <dt className="text-slate-600">Alojamiento</dt><dd className="m-0 font-semibold">{soles(folio.totalAlojamiento)}</dd>
+                  <dt className="text-slate-600">Consumos y servicios</dt><dd className="m-0 font-semibold">{soles(folio.totalConsumos)}</dd>
+                  <dt className="text-emerald-800">Pagado</dt><dd className="m-0 font-semibold text-emerald-800">− {soles(folio.totalPagos)}</dd>
+                  <dt className="pt-3 border-t border-[#F1EADD] font-bold">{debe ? "Saldo por pagar" : Number(folio.saldoPendiente) < 0 ? "Saldo a tu favor" : "Saldo"}</dt>
+                  <dd className="m-0 pt-3 border-t border-[#F1EADD] font-bold">{soles(folio.saldoPendiente)}</dd>
+                </dl>
+                <p className="m-0 mt-4 text-[13px] text-slate-600">El saldo se paga en recepción al salir. Si ves algo que no reconoces, avísanos.</p>
+              </div>
+            )}
+
+            {tab === "consumos" && (
+              <div className={`${tarjeta} overflow-hidden max-w-[620px]`}>
+                {consumos.length === 0 ? (
+                  <p className="m-0 p-6 text-center text-slate-600 text-sm">Todavía no tienes consumos. Lo que pidas a cocina, bar o recepción aparecerá aquí.</p>
+                ) : (
+                  <ul className="m-0 p-0 list-none divide-y divide-[#F1EADD]">
+                    {consumos.map((c) => (
+                      <li key={c.idConsumo} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{c.cantidad} × {c.producto?.nombre ?? "—"}</span>
+                          <span className="text-[13px] text-slate-500">{fechaHora(c.fechaRegistro)}</span>
+                        </div>
+                        <strong>{soles(c.totalConsumo)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {tab === "solicitudes" && (
+              <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))] items-start">
+                <div className={`${tarjeta} p-5 sm:p-6 flex flex-col gap-4`}>
+                  <h2 className="m-0 font-display text-2xl font-semibold">¿Qué necesitas?</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {PEDIDOS_RAPIDOS.map((p) => (
+                      <button key={p} type="button" onClick={() => setForm((f) => ({ ...f, descripcion: p }))}
+                        className="min-h-[38px] px-3.5 rounded-full border border-slate-300 bg-arena text-[13px] font-semibold hover:border-huerto">
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex flex-col gap-1.5 text-sm font-semibold">Tu pedido
+                    <textarea rows={3} value={form.descripcion} onChange={(e) => setForm((f) => ({ ...f, descripcion: e.target.value }))}
+                      placeholder="Ej. toallas extra para dos personas"
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[15px] font-normal focus:outline-none focus:ring-2 focus:ring-huerto/30 focus:border-huerto" />
+                  </label>
+                  <div className="grid grid-cols-[1fr_96px] gap-3">
+                    <label className="flex flex-col gap-1.5 text-sm font-semibold">Algo de la carta (opcional)
+                      <select value={form.idProducto} onChange={(e) => setForm((f) => ({ ...f, idProducto: e.target.value }))}
+                        className="min-h-[46px] rounded-xl border border-slate-300 bg-white px-3 text-[15px] font-normal focus:outline-none focus:ring-2 focus:ring-huerto/30">
+                        <option value="">Solo el pedido</option>
+                        {productos.map((p) => (
+                          <option key={p.idProducto} value={p.idProducto}>{p.nombre} — S/ {Number(p.precioVenta).toFixed(2)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1.5 text-sm font-semibold">Cantidad
+                      <input type="number" min={1} value={form.cantidad} onChange={(e) => setForm((f) => ({ ...f, cantidad: e.target.value }))}
+                        className="min-h-[46px] rounded-xl border border-slate-300 bg-white px-3 text-[15px] font-normal focus:outline-none focus:ring-2 focus:ring-huerto/30" />
+                    </label>
+                  </div>
+                  {form.idProducto && (
+                    <p className="m-0 text-[13px] text-amber-900 bg-amber-100 rounded-xl px-3 py-2">El importe se sumará a tu cuenta.</p>
+                  )}
+                  <button onClick={enviarSolicitud} disabled={enviando}
+                    className="min-h-[50px] rounded-full bg-huerto hover:bg-huerto-oscuro disabled:opacity-60 text-white font-bold inline-flex items-center justify-center gap-2">
+                    <Send size={17} /> {enviando ? "Enviando…" : "Enviar a recepción"}
+                  </button>
+                </div>
+
+                <div className={`${tarjeta} overflow-hidden`}>
+                  <h2 className="m-0 px-5 py-4 border-b border-[#F1EADD] text-base font-bold">Tus pedidos ({solicitudes.length})</h2>
+                  {solicitudes.length === 0 ? (
+                    <p className="m-0 p-6 text-center text-slate-600 text-sm">Aún no has pedido nada.</p>
+                  ) : (
+                    <ul className="m-0 p-0 list-none divide-y divide-[#F1EADD]">
+                      {solicitudes.map((s) => {
+                        const estado = ESTADO_SOLICITUD[s.estado] ?? { texto: s.estado, clase: "bg-slate-100 text-slate-600" };
+                        return (
+                          <li key={s.idSolicitud} className="px-5 py-3.5 flex flex-col gap-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="font-semibold">{s.descripcion}</span>
+                              <span className={`text-[12px] px-2.5 py-0.5 rounded-full font-bold shrink-0 ${estado.clase}`}>{estado.texto}</span>
+                            </div>
+                            <span className="text-[13px] text-slate-500">
+                              {fechaHora(s.fechaSolicitud)}
+                              {s.esCobrable && s.producto ? ` · ${s.cantidad} × ${s.producto.nombre} (${soles(Number(s.montoUnidad) * s.cantidad)})` : ""}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {!cargando && <MisReservasPortal />}
+      </div>
+    </main>
   );
 }

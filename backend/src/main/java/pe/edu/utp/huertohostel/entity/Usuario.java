@@ -49,7 +49,20 @@ public class Usuario {
     @Column(name = "ultimo_acceso")
     private LocalDateTime ultimoAcceso;
 
+    /** Cuenta de Google ligada (solo huespedes): el "sub" del token de Google. */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "google_sub", length = 64)
+    private String googleSub;
+
     public Usuario() {}
+
+    public String getGoogleSub() {
+        return googleSub;
+    }
+
+    public void setGoogleSub(String googleSub) {
+        this.googleSub = googleSub;
+    }
 
     public Integer getIdUsuario() {
         return idUsuario;

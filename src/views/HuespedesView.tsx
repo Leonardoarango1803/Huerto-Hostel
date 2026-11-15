@@ -6,7 +6,7 @@ import { puede } from "../auth/permisos";
 import { clientesApi } from "../api/clientes";
 import { reservasApi } from "../api/reservas";
 import { consultarDni, consultarRuc } from "../api/decolecta";
-import type { Cliente, NuevoClienteRequest, EstadisticasClientes } from "../api/types";
+import type { Cliente, NuevoClienteRequest, EstadisticasClientes, CuentaPortal } from "../api/types";
 import {
   Button,
   SearchBar,
@@ -27,6 +27,23 @@ const FILTER_OPTIONS = [
   { label: "Activos", value: "ACTIVOS" },
   { label: "Inactivos", value: "INACTIVOS" },
 ];
+
+/** De donde vino cada huesped y si tiene cuenta web: una sola lista, con filtros (no secciones separadas). */
+const FILTROS_ORIGEN = [
+  { value: "", label: "Todos los orígenes" },
+  { value: "RECEPCION", label: "Registrados en recepción" },
+  { value: "WEB", label: "Registrados en la web" },
+  { value: "GOOGLE", label: "Registrados con Google" },
+  { value: "CON_CUENTA", label: "Con cuenta web" },
+  { value: "SIN_CUENTA", label: "Sin cuenta web" },
+];
+
+const ORIGEN_LABEL: Record<string, string> = { RECEPCION: "Recepción", WEB: "Web", GOOGLE: "Google" };
+
+/** Texto de la etiqueta "Cuenta web" de un huesped. */
+function etiquetaCuenta(c: CuentaPortal): string {
+  return "Cuenta web" + (c.google ? " · Google" : "") + (c.activa ? "" : " (desactivada)");
+}
 
 function formatFecha(fecha?: string) {
   if (!fecha) return "—";
@@ -81,6 +98,9 @@ export function HuespedesView() {
   const [dniLoading, setDniLoading] = useState(false);
   const [checkinWarning, setCheckinWarning] = useState<string | null>(null);
   const [accesoCliente, setAccesoCliente] = useState<Cliente | null>(null);
+  const [filtroOrigen, setFiltroOrigen] = useState("");
+  // idCliente -> su cuenta del portal (si tiene). Si falla, la lista se ve igual sin las etiquetas.
+  const [cuentas, setCuentas] = useState<Map<number, CuentaPortal>>(new Map());
 
   useEffect(() => {
     cargarDatos();
@@ -93,6 +113,7 @@ export function HuespedesView() {
       const [clts] = await Promise.all([
         clientesApi.listar(),
         clientesApi.estadisticas().then(setEstadisticas).catch(() => null),
+        clientesApi.cuentasPortal().then((l) => setCuentas(new Map(l.map((c) => [c.idCliente, c])))).catch(() => null),
       ]);
       setClientes(clts);
     } catch {
@@ -215,16 +236,22 @@ export function HuespedesView() {
         return true;
       })
       .filter((c) => {
+        if (!filtroOrigen) return true;
+        if (filtroOrigen === "CON_CUENTA") return cuentas.has(c.idCliente);
+        if (filtroOrigen === "SIN_CUENTA") return !cuentas.has(c.idCliente);
+        return (c.origen ?? "RECEPCION") === filtroOrigen;
+      })
+      .filter((c) => {
         if (!searchTerm) return true;
         const q = searchTerm.toLowerCase();
         return (
           `${c.nombres} ${c.apellidos}`.toLowerCase().includes(q) ||
-          c.numeroDocumento.includes(q) ||
+          (c.numeroDocumento ?? "").includes(q) ||
           (c.correo ?? "").toLowerCase().includes(q) ||
           (c.telefono ?? "").includes(q)
         );
       });
-  }, [clientes, activeFilter, searchTerm]);
+  }, [clientes, activeFilter, searchTerm, filtroOrigen, cuentas]);
 
   return (
     <div className="space-y-4 font-sans text-slate-800 text-xs bg-[#FBF7F0] -m-8 p-6 min-h-screen">
@@ -246,8 +273,9 @@ export function HuespedesView() {
             onClick={() => {
               const csv = filtrados.map((c) => [
                 c.nombres, c.apellidos, c.tipoDocumento, c.numeroDocumento, c.correo ?? "", c.telefono ?? "", c.nacionalidad ?? "",
+                ORIGEN_LABEL[c.origen ?? "RECEPCION"] ?? "", cuentas.has(c.idCliente) ? (cuentas.get(c.idCliente)?.google ? "Sí (Google)" : "Sí") : "No",
               ].join(",")).join("\n");
-              const blob = new Blob([`Nombres,Apellidos,TipoDoc,Documento,Correo,Teléfono,Nacionalidad\n${csv}`], { type: "text/csv" });
+              const blob = new Blob([`Nombres,Apellidos,TipoDoc,Documento,Correo,Teléfono,Nacionalidad,Origen,Cuenta web\n${csv}`], { type: "text/csv" });
               const a = document.createElement("a");
               a.href = URL.createObjectURL(blob);
               a.download = "huespedes.csv";
@@ -309,6 +337,14 @@ export function HuespedesView() {
             className="flex-1 max-w-sm"
           />
           <FilterPills options={FILTER_OPTIONS} active={activeFilter} onSelect={setActiveFilter} />
+          <select
+            value={filtroOrigen}
+            onChange={(e) => setFiltroOrigen(e.target.value)}
+            aria-label="Filtrar por origen y cuenta web"
+            className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
+          >
+            {FILTROS_ORIGEN.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
         <span className="text-[12px] text-slate-400">{filtrados.length} registros</span>
       </div>
@@ -343,9 +379,27 @@ export function HuespedesView() {
                     {c.estado === false && (
                       <span className="text-[11px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold">INACTIVO</span>
                     )}
+                    {!c.numeroDocumento && (
+                      <span className="text-[11px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold" title="Creó su cuenta con Google: dará su documento en su primera reserva">
+                        Sin documento
+                      </span>
+                    )}
+                    {c.origen && c.origen !== "RECEPCION" && (
+                      <span className="text-[11px] bg-terracota/10 text-terracota-oscuro px-1.5 py-0.5 rounded font-semibold" title="Se registró solo, desde la web pública">
+                        Origen: {ORIGEN_LABEL[c.origen] ?? c.origen}
+                      </span>
+                    )}
+                    {cuentas.get(c.idCliente) && (
+                      <span
+                        className={"text-[11px] px-1.5 py-0.5 rounded font-semibold " + (cuentas.get(c.idCliente)?.activa ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500")}
+                        title={"Usuario del portal: " + cuentas.get(c.idCliente)?.usuario}
+                      >
+                        {etiquetaCuenta(cuentas.get(c.idCliente) as CuentaPortal)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-[12px] text-slate-500 flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span>{c.tipoDocumento} {c.numeroDocumento}</span>
+                    <span>{c.numeroDocumento ? `${c.tipoDocumento} ${c.numeroDocumento}` : "Documento pendiente"}</span>
                     {c.correo && <span className="truncate max-w-[160px]">{c.correo}</span>}
                     {c.telefono && <span>{c.telefono}</span>}
                     {c.nacionalidad && <span>{c.nacionalidad}</span>}

@@ -14,4 +14,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     /** Acceso al portal de un huesped (usuario de tipo CLIENTE). */
     Optional<Usuario> findByClienteIdCliente(Integer idCliente);
+
+    /** Cuenta de huesped ligada a una cuenta de Google. */
+    Optional<Usuario> findByGoogleSub(String googleSub);
+
+    /** Cuentas del portal de los huespedes (para marcar en Huespedes quien tiene cuenta web). */
+    java.util.List<Usuario> findByClienteIsNotNull();
 }

@@ -8,6 +8,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,10 +42,16 @@ public class AuthController {
     private final ProteccionLoginService proteccion;
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaGestionService auditoria;
+    private final pe.edu.utp.huertohostel.security.CaptchaService captcha;
+    private final pe.edu.utp.huertohostel.service.LoginGoogleService loginGoogle;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService,
                           CuentaService cuentaService, ProteccionLoginService proteccion,
-                          UsuarioRepository usuarioRepository, AuditoriaGestionService auditoria) {
+                          UsuarioRepository usuarioRepository, AuditoriaGestionService auditoria,
+                          pe.edu.utp.huertohostel.security.CaptchaService captcha,
+                          pe.edu.utp.huertohostel.service.LoginGoogleService loginGoogle) {
+        this.captcha = captcha;
+        this.loginGoogle = loginGoogle;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.cuentaService = cuentaService;
@@ -64,6 +71,9 @@ public class AuthController {
         String ip = ipCliente(http);
         String username = request.getUsername();
         proteccion.verificar(username, ip);
+        // Captcha en todo inicio de sesion con contrasena (personal y huespedes, en el admin y en la web), antes de
+        // revisar la clave. "Continuar con Google" no lo pide: Google ya filtra a los robots.
+        captcha.exigir(request.getCaptcha(), ip);
 
         Authentication authentication;
         try {
@@ -94,6 +104,25 @@ public class AuthController {
                 userDetails.getIdUsuario(),
                 userDetails.isDebeCambiarPassword()
         ));
+    }
+
+    /**
+     * "Continuar con Google" (solo huespedes, solo en la web). Recibe el comprobante que Google dio al navegador y abre
+     * sesion (misma respuesta que /login). La primera vez crea la cuenta; el documento se pide en su primera reserva.
+     */
+    @PostMapping("/google")
+    public ResponseEntity<Map<String, Object>> loginConGoogle(@RequestBody Map<String, String> body) {
+        String sitio = validarSitio(body.get("sitio"));
+        if (SITIO_ADMIN.equals(sitio)) {
+            throw new SitioIncorrectoException("El personal entra con su usuario y contraseña, no con Google.");
+        }
+        return ResponseEntity.ok(loginGoogle.entrar(body.get("credential")));
+    }
+
+    /** Que opciones de acceso tiene encendidas el servidor (para que la pantalla muestre o no el boton de Google). */
+    @GetMapping("/opciones")
+    public ResponseEntity<Map<String, Object>> opciones() {
+        return ResponseEntity.ok(Map.of("google", loginGoogle.googleActivo(), "captcha", captcha.activo()));
     }
 
     /**

@@ -82,7 +82,7 @@ class ReservaServiceTest {
         tipo.setPrecioNoche(new BigDecimal("100"));
         habitacion.setTipoHabitacion(tipo);
         when(clienteRepository.findById(1)).thenReturn(Optional.of(cliente));
-        when(habitacionRepository.findById(2)).thenReturn(Optional.of(habitacion));
+        when(habitacionRepository.findByIdParaActualizar(2)).thenReturn(Optional.of(habitacion));
         when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         NuevaReservaRequest req = new NuevaReservaRequest();
@@ -108,7 +108,7 @@ class ReservaServiceTest {
         tipo.setPrecioNoche(new BigDecimal("100"));
         habitacion.setTipoHabitacion(tipo);
         when(clienteRepository.findById(1)).thenReturn(Optional.of(cliente));
-        when(habitacionRepository.findById(2)).thenReturn(Optional.of(habitacion));
+        when(habitacionRepository.findByIdParaActualizar(2)).thenReturn(Optional.of(habitacion));
         when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         NuevaReservaRequest req = new NuevaReservaRequest();
@@ -152,7 +152,7 @@ class ReservaServiceTest {
         tipo.setPrecioNoche(new BigDecimal("100"));
         habitacion.setTipoHabitacion(tipo);
         when(clienteRepository.findById(1)).thenReturn(Optional.of(cliente));
-        when(habitacionRepository.findById(2)).thenReturn(Optional.of(habitacion));
+        when(habitacionRepository.findByIdParaActualizar(2)).thenReturn(Optional.of(habitacion));
         when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         NuevaReservaRequest req = new NuevaReservaRequest();
@@ -176,6 +176,23 @@ class ReservaServiceTest {
         assertThrows(IllegalStateException.class, () -> servicio().realizarCheckin(10));
 
         verifyNoInteractions(reservaRepository, estadiaRepository, habitacionRepository);
+    }
+
+    @Test
+    void sinDocumentoDelTitularNoHayCheckin() {
+        Habitacion habitacion = habitacion(2, EstadoOperativoHab.RESERVADO);
+        Reserva reserva = reserva(10, EstadoReserva.CONFIRMADA, habitacion);
+        pe.edu.utp.huertohostel.entity.Cliente sinDoc = new pe.edu.utp.huertohostel.entity.Cliente();
+        sinDoc.setNombres("Ana");
+        reserva.setCliente(sinDoc);
+        when(reservaRepository.findById(10)).thenReturn(Optional.of(reserva));
+        when(estadiaRepository.findByReservaIdReserva(10)).thenReturn(Optional.empty());
+
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> servicio().realizarCheckin(10));
+
+        assertTrue(e.getMessage().contains("documento"));
+        assertEquals(EstadoReserva.CONFIRMADA, reserva.getEstadoReserva());
+        assertEquals(EstadoOperativoHab.RESERVADO, habitacion.getEstadoOperativo());
     }
 
     @Test
@@ -321,5 +338,53 @@ class ReservaServiceTest {
         req.setMonto(new BigDecimal(monto));
         req.setMetodoPago("EFECTIVO");
         return req;
+    }
+
+    @Test
+    void reservarBloqueaLaHabitacionAntesDeRevisarElCruceDeFechas() {
+        // Sin el bloqueo, dos reservas simultaneas de la misma habitacion revisaban el cruce a la vez, ninguna veia
+        // a la otra y se guardaban ambas. Con la fila bloqueada, la segunda espera y ya ve la primera.
+        Cliente cliente = new Cliente();
+        cliente.setIdCliente(1);
+        Habitacion habitacion = habitacion(2, EstadoOperativoHab.DISPONIBLE);
+        TipoHabitacion tipo = new TipoHabitacion();
+        tipo.setPrecioNoche(new BigDecimal("100"));
+        habitacion.setTipoHabitacion(tipo);
+        when(clienteRepository.findById(1)).thenReturn(Optional.of(cliente));
+        when(habitacionRepository.findByIdParaActualizar(2)).thenReturn(Optional.of(habitacion));
+        when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        NuevaReservaRequest req = new NuevaReservaRequest();
+        req.setIdCliente(1);
+        req.setIdHabitacion(2);
+        req.setFechaCheckinPrevisto(HOY.plusDays(5));
+        req.setFechaCheckoutPrevisto(HOY.plusDays(7));
+
+        servicio().registrar(req);
+
+        org.mockito.InOrder orden = org.mockito.Mockito.inOrder(habitacionRepository, reservaRepository);
+        orden.verify(habitacionRepository).findByIdParaActualizar(2);
+        orden.verify(reservaRepository).findConflictos(org.mockito.ArgumentMatchers.eq(2), any(), any(), any());
+        orden.verify(reservaRepository).save(any());
+        org.mockito.Mockito.verify(habitacionRepository, org.mockito.Mockito.never()).findById(2);
+    }
+
+    @Test
+    void siYaHayUnaReservaQueSeCruzaLaSegundaSeRechazaSinGuardar() {
+        Cliente cliente = new Cliente();
+        cliente.setIdCliente(1);
+        Habitacion habitacion = habitacion(2, EstadoOperativoHab.DISPONIBLE);
+        when(clienteRepository.findById(1)).thenReturn(Optional.of(cliente));
+        when(habitacionRepository.findByIdParaActualizar(2)).thenReturn(Optional.of(habitacion));
+        when(reservaRepository.findConflictos(org.mockito.ArgumentMatchers.eq(2), any(), any(), any())).thenReturn(java.util.List.of(new Reserva()));
+
+        NuevaReservaRequest req = new NuevaReservaRequest();
+        req.setIdCliente(1);
+        req.setIdHabitacion(2);
+        req.setFechaCheckinPrevisto(HOY.plusDays(5));
+        req.setFechaCheckoutPrevisto(HOY.plusDays(7));
+
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> servicio().registrar(req));
+        org.mockito.Mockito.verify(reservaRepository, org.mockito.Mockito.never()).save(any());
     }
 }

@@ -2,6 +2,7 @@ import api from "./axiosConfig";
 import type {
   AccesoPortal,
   Cliente,
+  CuentaPortal,
   EstadisticasClientes,
   NuevoClienteRequest,
 } from "./types";
@@ -24,6 +25,9 @@ export const clientesApi = {
     api.get<EstadisticasClientes>("/api/v1/clientes/estadisticas").then((r) => r.data),
 
   // --- Acceso al Portal del Huesped ---
+
+  /** Quienes tienen cuenta del portal (una sola consulta para toda la lista). */
+  cuentasPortal: () => api.get<CuentaPortal[]>("/api/v1/clientes/cuentas-portal").then((r) => r.data),
 
   consultarAcceso: (idCliente: number) =>
     api.get<AccesoPortal>(`/api/v1/clientes/${idCliente}/acceso`).then((r) => r.data),

@@ -74,6 +74,8 @@ export function ReservasView() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>(["PENDIENTE_ADELANTO"]);
+  /** "" = todos los canales; ONLINE = hechas por el huesped en la web; PRESENCIAL = en mostrador. */
+  const [filtroCanal, setFiltroCanal] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -232,6 +234,7 @@ export function ReservasView() {
   const filtradas = useMemo(() => {
     return reservas
       .filter((r) => !hiddenCanceladas.includes(r.idReserva))
+      .filter((r) => !filtroCanal || r.canalReserva === filtroCanal)
       .filter((r) => {
         if (activeFilters.length === 0) return r.estadoReserva !== "CANCELADA";
         return activeFilters.includes(r.estadoReserva);
@@ -242,7 +245,7 @@ export function ReservasView() {
         const nombre = `${r.cliente.nombres} ${r.cliente.apellidos}`.toLowerCase();
         return (
           nombre.includes(q) ||
-          r.cliente.numeroDocumento.includes(q) ||
+          (r.cliente.numeroDocumento ?? "").includes(q) ||
           formatCodigo(r.idReserva).toLowerCase().includes(q) ||
           r.habitacion.numero.toLowerCase().includes(q)
         );
@@ -253,7 +256,7 @@ export function ReservasView() {
         if (a.estadoReserva !== "CANCELADA" && b.estadoReserva === "CANCELADA") return -1;
         return 0;
       });
-  }, [reservas, activeFilters, searchTerm, hiddenCanceladas]);
+  }, [reservas, activeFilters, searchTerm, hiddenCanceladas, filtroCanal]);
 
   const selectedReserva = reservas.find((r) => r.idReserva === selectedId);
 
@@ -334,6 +337,16 @@ export function ReservasView() {
             className="flex-1 max-w-xs"
           />
           <FilterPills options={FILTER_OPTIONS} activeValues={activeFilters} onSelectMulti={setActiveFilters} />
+          <select
+            value={filtroCanal}
+            onChange={(e) => setFiltroCanal(e.target.value)}
+            aria-label="Filtrar por canal"
+            className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#2D5A27]"
+          >
+            <option value="">Todos los canales</option>
+            <option value="ONLINE">En línea (web)</option>
+            <option value="PRESENCIAL">Mostrador</option>
+          </select>
         </div>
         <span className="text-[12px] text-slate-400">{filtradas.length} registros</span>
       </div>
@@ -625,7 +638,7 @@ export function ReservasView() {
             <option value="">— Seleccionar cliente —</option>
             {clientes.map((c) => (
               <option key={c.idCliente} value={c.idCliente}>
-                {c.nombres} {c.apellidos} ({c.tipoDocumento} {c.numeroDocumento})
+                {c.nombres} {c.apellidos} ({c.numeroDocumento ? `${c.tipoDocumento} ${c.numeroDocumento}` : "sin documento"})
               </option>
             ))}
           </Select>

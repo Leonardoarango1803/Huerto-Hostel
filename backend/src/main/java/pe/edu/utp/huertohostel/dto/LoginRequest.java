@@ -13,6 +13,17 @@ public class LoginRequest {
     /** "admin" (portal administrativo, solo personal) o "web" (solo huespedes). Opcional. */
     private String sitio;
 
+    /** Token del widget anti-robots (Cloudflare Turnstile). Se exige al personal cuando esta configurado. */
+    private String captcha;
+
+    public String getCaptcha() {
+        return captcha;
+    }
+
+    public void setCaptcha(String captcha) {
+        this.captcha = captcha;
+    }
+
     public LoginRequest() {
     }
 

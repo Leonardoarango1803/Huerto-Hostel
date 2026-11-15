@@ -63,6 +63,8 @@ const WEB =
         Hospedaje: pantalla(() => import("./views/web/HospedajeWeb"), "HospedajeWeb"),
         Detalle: pantalla(() => import("./views/web/DetalleWeb"), "DetalleWeb"),
         Reservar: pantalla(() => import("./views/web/ReservarWeb"), "ReservarWeb"),
+        Ingresar: pantalla(() => import("./views/web/IngresarWeb"), "IngresarWeb"),
+        Portal: pantalla(() => import("./views/web/PortalWeb"), "PortalWeb"),
       };
 
 /** Cocina y bar dejan su tablero de comandas a la vista sin tocarlo: a ellos no se les cierra por inactividad. */
@@ -139,11 +141,17 @@ export function App() {
             <Route path="/hospedaje" element={<WEB.Hospedaje />} />
             <Route path="/hospedaje/:idTipo" element={<WEB.Detalle />} />
             <Route path="/reservar" element={<WEB.Reservar />} />
+            {/* Antes el registro con Google tenia su propia pagina: ahora Google crea la cuenta al entrar. */}
+            <Route path="/registro" element={<Navigate to="/ingresar" replace />} />
+            {/* El huesped entra y usa su portal sin salir de la web (misma cabecera y pie). */}
+            <Route path="/ingresar" element={<WEB.Ingresar />} />
+            <Route path="/portal" element={<WEB.Portal />} />
           </>
         ) : (
           <Route path="/" element={<InicioAdmin />} />
         )}
-        <Route path="/login" element={<LoginView />} />
+        {/* En la web publicada /login es "Mi cuenta"; con todo junto (desarrollo) sigue siendo el login comun. */}
+        <Route path="/login" element={import.meta.env.VITE_SITIO === "web" ? <Navigate to="/ingresar" replace /> : <LoginView />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/*" element={<AppLayout />} />
         </Route>

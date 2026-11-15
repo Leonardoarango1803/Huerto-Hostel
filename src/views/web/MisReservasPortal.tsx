@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Info } from "lucide-react";
+import { DetalleReservaModal } from "./DetalleReservaModal";
 import { misReservasApi, type MiReserva } from "../../api/publico";
 import { fechaCorta, fotoDeTipo, soles } from "./utils";
 
@@ -19,6 +20,7 @@ export function MisReservasPortal() {
   const [lista, setLista] = useState<MiReserva[] | null>(null);
   const [error, setError] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>("proximas");
+  const [detalle, setDetalle] = useState<MiReserva | null>(null);
 
   useEffect(() => {
     misReservasApi.listar().then(setLista).catch(() => setError(true));
@@ -76,10 +78,15 @@ export function MisReservasPortal() {
               <span>Total <strong className="text-tinta">{soles(r.total)}</strong></span>
               <span>Pagado <strong className="text-emerald-800">{soles(r.pagado)}</strong></span>
               {r.estado !== "CANCELADA" && <span>Saldo <strong className="text-tinta">{soles(r.saldo)}</strong></span>}
+              <button type="button" onClick={() => setDetalle(r)}
+                className="ml-auto inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-full border border-slate-300 bg-white text-[13px] font-bold text-tinta hover:border-huerto">
+                <Info size={15} /> Ver detalles
+              </button>
             </div>
           </div>
         </article>
       ))}
+      {detalle && <DetalleReservaModal reserva={detalle} onCerrar={() => setDetalle(null)} />}
     </section>
   );
 }

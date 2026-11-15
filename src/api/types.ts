@@ -10,6 +10,8 @@ export interface Cliente {
   fechaNacimiento?: string;
   estado?: boolean;
   fechaRegistro?: string;
+  /** Donde se creo la ficha: RECEPCION, WEB o GOOGLE. */
+  origen?: "RECEPCION" | "WEB" | "GOOGLE";
 }
 
 export interface TipoHabitacion {
@@ -522,4 +524,13 @@ export interface MiFolio {
   habitacion?: string;
   fechaCheckin?: string;
   fechaCheckoutPrevisto?: string;
+}
+
+/** Cuenta del portal de un huesped (para la etiqueta "Cuenta web" de la lista de Huespedes). */
+export interface CuentaPortal {
+  idCliente: number;
+  usuario: string;
+  activa: boolean;
+  google: boolean;
+  ultimoAcceso?: string | null;
 }

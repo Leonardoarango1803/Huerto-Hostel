@@ -1,6 +1,7 @@
 package pe.edu.utp.huertohostel.exception;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -9,7 +10,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -84,6 +87,14 @@ public class GlobalExceptionHandler {
     }
 
     /** Cuenta de huesped en el portal administrativo, o del personal en la web. */
+    /** El login del personal no paso el captcha (Turnstile). */
+    @ExceptionHandler(CaptchaInvalidoException.class)
+    public ResponseEntity<Map<String, Object>> handleCaptcha(CaptchaInvalidoException ex) {
+        Map<String, Object> body = buildResponse(HttpStatus.BAD_REQUEST, "Verificacion requerida", ex.getMessage());
+        body.put("codigo", "CAPTCHA_INVALIDO");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(SitioIncorrectoException.class)
     public ResponseEntity<Map<String, Object>> handleSitioIncorrecto(SitioIncorrectoException ex) {
         Map<String, Object> body = buildResponse(HttpStatus.FORBIDDEN, "Sitio incorrecto", ex.getMessage());
@@ -96,6 +107,41 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(buildResponse(HttpStatus.BAD_REQUEST, "Solicitud invalida", ex.getMessage()));
+    }
+
+    /** SQLState de PostgreSQL cuando se viola una restriccion EXCLUDE (por ejemplo ex_reserva_sin_cruce). */
+    static final String VIOLACION_EXCLUSION = "23P01";
+
+    /**
+     * La base rechazo una reserva que se cruza con otra (la regla de respaldo de V29). Llega aqui solo si dos
+     * peticiones se adelantaron al bloqueo del codigo: se responde como cualquier conflicto de reserva, no como error.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        if (VIOLACION_EXCLUSION.equals(sqlState(ex))) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(buildResponse(HttpStatus.CONFLICT, "Operacion no permitida",
+                            "La habitacion ya tiene una reserva en esas fechas: alguien la tomo hace un momento. Elige otra habitacion o fechas."));
+        }
+        return handleGenericException(ex);
+    }
+
+    private static String sqlState(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof SQLException sql && sql.getSQLState() != null) {
+                return sql.getSQLState();
+            }
+        }
+        return null;
+    }
+
+    /** Una ruta que no existe es un 404 (Spring la reporta como "No static resource" y caia como error 500). */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex) {
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(buildResponse(HttpStatus.NOT_FOUND, "Ruta no encontrada", "No existe /" + ex.getResourcePath()));
     }
 
     @ExceptionHandler(Exception.class)

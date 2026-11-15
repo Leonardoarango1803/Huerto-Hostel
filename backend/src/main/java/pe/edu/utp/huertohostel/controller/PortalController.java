@@ -22,10 +22,29 @@ public class PortalController {
 
     private final PortalService portalService;
     private final ReservaWebService reservaWebService;
+    private final pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService;
 
-    public PortalController(PortalService portalService, ReservaWebService reservaWebService) {
+    public PortalController(PortalService portalService, ReservaWebService reservaWebService,
+                            pe.edu.utp.huertohostel.service.UsuarioActualService usuarioActualService) {
         this.portalService = portalService;
         this.reservaWebService = reservaWebService;
+        this.usuarioActualService = usuarioActualService;
+    }
+
+    /** Con quien hablamos: nombre para saludarlo en su portal y si entra con Google. */
+    @GetMapping("/perfil")
+    public ResponseEntity<Map<String, Object>> perfil() {
+        pe.edu.utp.huertohostel.entity.Usuario u = usuarioActualService.obtenerUsuario();
+        pe.edu.utp.huertohostel.entity.Cliente c = usuarioActualService.obtenerCliente();
+        Map<String, Object> r = new java.util.LinkedHashMap<>();
+        r.put("nombres", c.getNombres());
+        r.put("apellidos", c.getApellidos());
+        r.put("correo", c.getCorreo());
+        r.put("usuario", u.getUsername());
+        r.put("google", u.getGoogleSub() != null);
+        // Sin documento (cuenta creada con Google): la primera reserva lo pide como titular.
+        r.put("tieneDocumento", c.getNumeroDocumento() != null && !c.getNumeroDocumento().isBlank());
+        return ResponseEntity.ok(r);
     }
 
     /** Todas las reservas del huesped (proximas, pasadas y canceladas) con lo pagado y el saldo. */
@@ -40,9 +59,18 @@ public class PortalController {
         return ResponseEntity.status(HttpStatus.CREATED).body(reservaWebService.reservarComoCliente(req));
     }
 
+    /** 204 sin contenido si el huesped no esta alojado ahora: el portal muestra entonces solo sus reservas. */
     @GetMapping("/folio")
     public ResponseEntity<Map<String, Object>> miFolio() {
-        return ResponseEntity.ok(portalService.miFolio());
+        return portalService.miFolioSiHay()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /** Catalogo para pedir servicios a la habitacion (el catalogo interno /productos es solo del personal). */
+    @GetMapping("/productos")
+    public ResponseEntity<List<Map<String, Object>>> productosParaPedir() {
+        return ResponseEntity.ok(portalService.productosParaPedir());
     }
 
     @GetMapping("/consumos")

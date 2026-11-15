@@ -26,9 +26,17 @@ import java.util.Map;
 public class PublicoController {
 
     private final ReservaWebService reservaWebService;
+    private final pe.edu.utp.huertohostel.security.CaptchaService captcha;
+    private final pe.edu.utp.huertohostel.repository.UsuarioRepository usuarioRepository;
+    private final pe.edu.utp.huertohostel.security.JwtService jwtService;
 
-    public PublicoController(ReservaWebService reservaWebService) {
+    public PublicoController(ReservaWebService reservaWebService, pe.edu.utp.huertohostel.security.CaptchaService captcha,
+                             pe.edu.utp.huertohostel.repository.UsuarioRepository usuarioRepository,
+                             pe.edu.utp.huertohostel.security.JwtService jwtService) {
         this.reservaWebService = reservaWebService;
+        this.captcha = captcha;
+        this.usuarioRepository = usuarioRepository;
+        this.jwtService = jwtService;
     }
 
     @GetMapping("/tipos-habitacion")
@@ -44,9 +52,27 @@ public class PublicoController {
         return ResponseEntity.ok(reservaWebService.disponibilidad(llegada, salida, huespedes));
     }
 
-    /** Crea la cuenta del huesped, la reserva y cobra el adelanto en un solo paso (todo o nada). */
+    /**
+     * Crea la cuenta del huesped, la reserva y cobra el adelanto en un solo paso (todo o nada). Es lo unico que se escribe
+     * sin sesion, asi que pide el captcha (si esta configurado): sin el, un robot podria llenar el hotel de reservas.
+     */
     @PostMapping("/reservas")
-    public ResponseEntity<Map<String, Object>> reservar(@RequestBody ReservaWebRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(reservaWebService.reservarComoNuevo(req));
+    public ResponseEntity<Map<String, Object>> reservar(@RequestBody ReservaWebRequest req,
+                                                        jakarta.servlet.http.HttpServletRequest http) {
+        captcha.exigir(req.getCaptcha(), http.getRemoteAddr());
+        Map<String, Object> r = new java.util.LinkedHashMap<>(reservaWebService.reservarComoNuevo(req));
+        // La cuenta recien creada entra sola: el captcha ya se verifico en esta misma peticion (el login aparte pediria
+        // otro, y el token es de un solo uso).
+        usuarioRepository.findByUsername(String.valueOf(r.get("usuario"))).ifPresent(u -> {
+            Map<String, Object> sesion = new java.util.LinkedHashMap<>();
+            sesion.put("token", jwtService.generateToken(u.getUsername(), "CLIENTE", u.getIdUsuario(),
+                    pe.edu.utp.huertohostel.security.CustomUserDetails.selloDe(u)));
+            sesion.put("username", u.getUsername());
+            sesion.put("role", "CLIENTE");
+            sesion.put("userId", u.getIdUsuario());
+            sesion.put("debeCambiarPassword", false);
+            r.put("sesion", sesion);
+        });
+        return ResponseEntity.status(HttpStatus.CREATED).body(r);
     }
 }

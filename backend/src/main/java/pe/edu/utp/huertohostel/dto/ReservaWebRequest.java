@@ -23,6 +23,11 @@ public class ReservaWebRequest {
     private String correo;
     private String telefono;
     private String password;
+    /** Token del captcha (Cloudflare Turnstile): se exige al reservar sin sesion, cuando esta configurado. */
+    private String captcha;
+
+    public String getCaptcha() { return captcha; }
+    public void setCaptcha(String captcha) { this.captcha = captcha; }
 
     private String horaLlegada;
     /** TARJETA o YAPE. */

@@ -114,8 +114,14 @@ public class ClienteService {
         Cliente cliente = obtenerPorId(id);
         cliente.setNombres(datos.getNombres());
         cliente.setApellidos(datos.getApellidos());
-        cliente.setNumeroDocumento(datos.getNumeroDocumento());
-        cliente.setTipoDocumento(datos.getTipoDocumento());
+        String doc = datos.getNumeroDocumento() == null || datos.getNumeroDocumento().isBlank() ? null : datos.getNumeroDocumento().trim();
+        if (doc != null && !doc.equals(cliente.getNumeroDocumento())
+                && clienteRepository.findByNumeroDocumento(doc).filter(o -> !o.getIdCliente().equals(id)).isPresent()) {
+            throw new IllegalStateException("Ya existe otro huésped con el documento " + doc + ".");
+        }
+        cliente.setNumeroDocumento(doc);
+        cliente.setTipoDocumento(doc == null ? null
+                : (datos.getTipoDocumento() == null || datos.getTipoDocumento().isBlank() ? "DNI" : datos.getTipoDocumento()));
         cliente.setTelefono(datos.getTelefono());
         cliente.setCorreo(datos.getCorreo());
         return clienteRepository.save(cliente);

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Coffee, MapPin, Waves, Wifi, Car, Sprout, Mountain, Wine, Flame } from "lucide-react";
 import { publicoApi, type TipoPublico } from "../../api/publico";
 import { WebLayout } from "./WebLayout";
 import { BuscadorFechas } from "./BuscadorFechas";
-import { FOTOS, aParams, busquedaPorDefecto, fotoDeTipo, soles } from "./utils";
+import { FOTOS, aParams, busquedaPorDefecto, fotoDeTipo, irASeccion, soles } from "./utils";
 
 const INCLUYE = [
   { icono: Coffee, titulo: "Desayuno de campo", texto: "Fruta del huerto, pan y café cada mañana." },
@@ -26,6 +26,14 @@ const tituloSeccion = "font-display font-semibold text-[clamp(30px,4vw,44px)] le
 export function InicioWeb() {
   const navigate = useNavigate();
   const [tipos, setTipos] = useState<TipoPublico[] | null>(null);
+  const { hash } = useLocation();
+
+  // Si llega desde otra pagina con #experiencias o #ubicacion, se desliza hasta esa seccion al cargar.
+  useEffect(() => {
+    if (!hash) return;
+    const t = window.setTimeout(() => irASeccion(hash.slice(1)), 120);
+    return () => window.clearTimeout(t);
+  }, [hash]);
 
   useEffect(() => {
     publicoApi.tipos().then(setTipos).catch(() => setTipos([]));
@@ -213,7 +221,7 @@ export function InicioWeb() {
             <Link to="/hospedaje" className="inline-flex items-center min-h-[52px] px-6 rounded-full bg-terracota hover:bg-terracota-oscuro font-bold">
               Reservar mi habitación
             </Link>
-            <Link to="/login" className="inline-flex items-center min-h-[52px] px-6 rounded-full border border-white/50 hover:bg-white/10 font-bold">
+            <Link to="/ingresar" className="inline-flex items-center min-h-[52px] px-6 rounded-full border border-white/50 hover:bg-white/10 font-bold">
               Entrar a mi portal
             </Link>
           </div>

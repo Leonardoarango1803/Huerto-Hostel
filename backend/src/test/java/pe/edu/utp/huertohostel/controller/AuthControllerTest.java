@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -44,12 +45,15 @@ class AuthControllerTest {
     @Mock CuentaService cuentaService;
     @Mock UsuarioRepository usuarioRepository;
     @Mock AuditoriaGestionService auditoria;
+    @Mock pe.edu.utp.huertohostel.security.CaptchaService captcha;
+    @Mock pe.edu.utp.huertohostel.service.LoginGoogleService loginGoogle;
 
     private final ProteccionLoginService proteccion = new ProteccionLoginService(Clock.systemUTC());
 
     private AuthController controller() {
         lenient().when(jwtService.generateToken(anyString(), anyString(), any(), anyLong())).thenReturn("token");
-        return new AuthController(authenticationManager, jwtService, cuentaService, proteccion, usuarioRepository, auditoria);
+        return new AuthController(authenticationManager, jwtService, cuentaService, proteccion, usuarioRepository, auditoria,
+                captcha, loginGoogle);
     }
 
     private static LoginRequest pedido(String usuario, String clave, String sitio) {
@@ -148,5 +152,60 @@ class AuthControllerTest {
         assertEquals("10.0.0.1", AuthController.ipCliente(http));
         http.addHeader("X-Forwarded-For", "181.65.1.2, 10.0.0.5");
         assertEquals("181.65.1.2", AuthController.ipCliente(http));
+    }
+
+    // ------------------------------------------------------------------ captcha y Google
+
+    private void cuenta(String usuario, pe.edu.utp.huertohostel.entity.TipoUsuarioEnum tipo) {
+        Usuario u = new Usuario();
+        u.setUsername(usuario);
+        u.setTipoUsuario(tipo);
+        lenient().when(usuarioRepository.findByUsername(usuario)).thenReturn(Optional.of(u));
+    }
+
+    @Test
+    void elPortalAdministrativoExigeElCaptchaAntesDeRevisarLaClave() {
+        doThrow(new pe.edu.utp.huertohostel.exception.CaptchaInvalidoException("x")).when(captcha).exigir(any(), anyString());
+        assertThrows(pe.edu.utp.huertohostel.exception.CaptchaInvalidoException.class,
+                () -> controller().login(pedido("recepcion", "buena", "admin"), desde("1.1.1.1")));
+        verify(authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void unaCuentaDelPersonalNoSeSaltaElCaptchaEntrandoPorLaWeb() {
+        cuenta("recepcion", pe.edu.utp.huertohostel.entity.TipoUsuarioEnum.EMPLEADO);
+        doThrow(new pe.edu.utp.huertohostel.exception.CaptchaInvalidoException("x")).when(captcha).exigir(any(), anyString());
+        assertThrows(pe.edu.utp.huertohostel.exception.CaptchaInvalidoException.class,
+                () -> controller().login(pedido("recepcion", "buena", "web"), desde("1.1.1.1")));
+        verify(authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void elHuespedEnLaWebTambienPasaPorElCaptcha() {
+        doThrow(new pe.edu.utp.huertohostel.exception.CaptchaInvalidoException("x")).when(captcha).exigir(any(), anyString());
+        assertThrows(pe.edu.utp.huertohostel.exception.CaptchaInvalidoException.class,
+                () -> controller().login(pedido("cliente@correo.com", "buena", "web"), desde("1.1.1.1")));
+        verify(authenticationManager, never()).authenticate(any());
+    }
+
+    @Test
+    void elHuespedConCaptchaValidoEntraPorLaWeb() {
+        aceptar("cliente@correo.com", "CLIENTE");
+        LoginResponse r = controller().login(pedido("cliente@correo.com", "buena", "web"), desde("1.1.1.1")).getBody();
+        assertEquals("CLIENTE", r.getRole());
+        verify(captcha).exigir(any(), anyString());
+    }
+
+    @Test
+    void googleNoSeUsaEnElPortalAdministrativo() {
+        assertThrows(SitioIncorrectoException.class,
+                () -> controller().loginConGoogle(java.util.Map.of("credential", "x", "sitio", "admin")));
+        verify(loginGoogle, never()).entrar(any());
+    }
+
+    @Test
+    void googleEnLaWebDelegaEnElServicio() {
+        when(loginGoogle.entrar("cred")).thenReturn(java.util.Map.of("registroPendiente", true));
+        assertEquals(true, controller().loginConGoogle(java.util.Map.of("credential", "cred", "sitio", "web")).getBody().get("registroPendiente"));
     }
 }

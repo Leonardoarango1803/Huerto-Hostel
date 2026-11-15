@@ -10,4 +10,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
     boolean existsByNumeroDocumento(String numeroDocumento);
     /** El correo del cliente es UNIQUE en la base. */
     boolean existsByCorreoIgnoreCase(String correo);
+
+    Optional<Cliente> findFirstByCorreoIgnoreCase(String correo);
 }

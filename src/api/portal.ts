@@ -6,9 +6,35 @@ import type {
   SolicitudServicio,
 } from "./types";
 
+/** Con quien hablamos en el portal (para saludarlo por su nombre). */
+export interface PerfilHuesped {
+  nombres: string;
+  apellidos: string;
+  correo?: string | null;
+  usuario: string;
+  google: boolean;
+  /** false si creo la cuenta con Google y aun no reservo: su primera reserva pide el documento del titular. */
+  tieneDocumento: boolean;
+}
+
+/** Producto que el huesped puede pedir desde su portal. */
+export interface ProductoParaPedir {
+  idProducto: number;
+  nombre: string;
+  categoria: "COCINA" | "BAR" | "DIRECTO";
+  precioVenta: number;
+}
+
 /** Autoservicio del huesped: el backend resuelve su estadia activa. */
 export const portalApi = {
-  miFolio: () => api.get<MiFolio>("/api/v1/portal/folio").then((r) => r.data),
+  perfil: () => api.get<PerfilHuesped>("/api/v1/portal/perfil").then((r) => r.data),
+
+  /** null si el huesped no esta alojado ahora (el backend responde 204): el portal muestra solo sus reservas. */
+  miFolio: () =>
+    api.get<MiFolio | "">("/api/v1/portal/folio").then((r) => (r.status === 204 || !r.data ? null : r.data)),
+
+  /** Lo que puede pedir a su habitacion (el catalogo /productos es solo del personal). */
+  productos: () => api.get<ProductoParaPedir[]>("/api/v1/portal/productos").then((r) => r.data),
 
   misConsumos: () =>
     api.get<ConsumoEstadia[]>("/api/v1/portal/consumos").then((r) => r.data),

@@ -39,6 +39,8 @@ export interface ReservaWebPedido {
   correo?: string;
   telefono?: string;
   password?: string;
+  /** Token del captcha (Cloudflare Turnstile): se pide al reservar sin sesion. */
+  captcha?: string;
   horaLlegada?: string;
   metodoPago: "TARJETA" | "YAPE";
   codigoOperacion?: string;
@@ -46,6 +48,8 @@ export interface ReservaWebPedido {
 }
 
 export interface ReservaWebHecha {
+  /** Reserva sin sesion: la cuenta recien creada ya entra con esta sesion. */
+  sesion?: { token: string; username: string; role: string; userId: number; debeCambiarPassword?: boolean };
   idReserva: number;
   codigo: string;
   estado: string;
@@ -75,6 +79,13 @@ export interface MiReserva {
   total: number;
   pagado: number;
   saldo: number;
+  /** Para "Ver detalles": el tipo de habitacion, sus datos y los pagos de la reserva. */
+  idTipoHabitacion?: number | null;
+  descripcion?: string | null;
+  capacidad?: number | null;
+  precioNoche?: number | null;
+  observaciones?: string | null;
+  pagos?: { fecha: string | null; monto: number; metodo: string | null; concepto: string | null }[];
 }
 
 /** Web publica (sin sesion). */

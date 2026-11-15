@@ -70,6 +70,8 @@ class MatrizPermisosTest {
 
         // Publicos (permitAll en SecurityConfig)
         m.put("POST /api/v1/auth/login", PUBLICO);
+        m.put("POST /api/v1/auth/google", PUBLICO);
+        m.put("GET /api/v1/auth/opciones", PUBLICO);
         // Cualquier sesion abierta (la clave temporal solo permite esta ruta); el filtro JWT exige estar autenticado
         m.put("POST /api/v1/auth/cambiar-password", PUBLICO);
         m.put("GET /api/v1/ping", PUBLICO);
@@ -105,6 +107,7 @@ class MatrizPermisosTest {
         m.put("GET /api/v1/clientes/{id}", COBRO);
         m.put("GET /api/v1/clientes/buscar", COBRO);
         m.put("GET /api/v1/clientes/estadisticas", COBRO);
+        m.put("GET /api/v1/clientes/cuentas-portal", COBRO);
         m.put("POST /api/v1/clientes", RECEPCION);
         m.put("PUT /api/v1/clientes/{id}", RECEPCION);
         m.put("GET /api/v1/clientes/consultar-dni", RECEPCION);
@@ -195,7 +198,8 @@ class MatrizPermisosTest {
         // Portal del huesped
         for (String ruta : List.of("GET /api/v1/portal/folio", "GET /api/v1/portal/consumos",
                 "GET /api/v1/portal/solicitudes", "POST /api/v1/portal/solicitudes",
-                "GET /api/v1/portal/reservas", "POST /api/v1/portal/reservas")) {
+                "GET /api/v1/portal/reservas", "POST /api/v1/portal/reservas", "GET /api/v1/portal/perfil",
+                "GET /api/v1/portal/productos")) {
             m.put(ruta, SOLO_CLIENTE);
         }
 

@@ -38,6 +38,13 @@ public class ClienteController {
 
     // ---------- Acceso al Portal del Huesped (RF32) ----------
 
+    /** Huespedes con cuenta del portal (para la etiqueta "Cuenta web" y el filtro de la lista). */
+    @PreAuthorize(Roles.CONSULTA_COBRO)
+    @GetMapping("/cuentas-portal")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> cuentasPortal() {
+        return ResponseEntity.ok(accesoPortalService.cuentasPorCliente());
+    }
+
     @GetMapping("/{id}/acceso")
     public ResponseEntity<AccesoPortalResponse> consultarAcceso(@PathVariable @NonNull Integer id) {
         return ResponseEntity.ok(accesoPortalService.consultar(id));

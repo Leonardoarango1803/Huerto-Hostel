@@ -43,7 +43,23 @@ public class Cliente {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
+    /** Donde se creo la ficha: RECEPCION, WEB o GOOGLE. Informativo; no cambia despues de crearla. */
+    @Column(name = "origen", length = 10, nullable = false, updatable = false)
+    private String origen = ORIGEN_RECEPCION;
+
+    public static final String ORIGEN_RECEPCION = "RECEPCION";
+    public static final String ORIGEN_WEB = "WEB";
+    public static final String ORIGEN_GOOGLE = "GOOGLE";
+
     public Cliente() {}
+
+    public String getOrigen() {
+        return origen;
+    }
+
+    public void setOrigen(String origen) {
+        this.origen = origen;
+    }
 
     public Integer getIdCliente() {
         return idCliente;

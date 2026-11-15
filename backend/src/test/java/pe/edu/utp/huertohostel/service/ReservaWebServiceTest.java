@@ -275,6 +275,148 @@ class ReservaWebServiceTest {
 
     // ------------------------------------------------------------------ ayudas
 
+    // ------------------------------------------------------------------ con Google y origen de la ficha
+
+    @Test
+    void unaFichaNuevaDeLaWebQuedaConOrigenWeb() {
+        servicio().reservarComoNuevo(pedido());
+        ArgumentCaptor<Cliente> c = ArgumentCaptor.forClass(Cliente.class);
+        verify(clienteRepository).save(c.capture());
+        assertEquals(Cliente.ORIGEN_WEB, c.getValue().getOrigen());
+    }
+
+    // ------------------------------------------------------------------ titular en la primera reserva (cuenta de Google)
+
+    /** Cuenta creada con Google: tiene nombre y correo, pero todavia no documento. */
+    private Cliente cuentaSinDocumento() {
+        Cliente c = new Cliente();
+        c.setIdCliente(90);
+        c.setNombres("Ana");
+        c.setApellidos("");
+        c.setCorreo("ana@gmail.com");
+        c.setOrigen(Cliente.ORIGEN_GOOGLE);
+        when(usuarioActualService.obtenerCliente()).thenReturn(c);
+        return c;
+    }
+
+    private static ReservaWebRequest pedidoConTitular() {
+        ReservaWebRequest r = pedido();
+        r.setCorreo(null);
+        r.setPassword(null);
+        r.setNombres("Ana Lucía");
+        r.setApellidos("Rojas Peña");
+        return r;
+    }
+
+    @Test
+    void laPrimeraReservaConGooglePideYGuardaElDocumentoDelTitular() {
+        Cliente c = cuentaSinDocumento();
+
+        servicio().reservarComoCliente(pedidoConTitular());
+
+        assertEquals("DNI", c.getTipoDocumento());
+        assertEquals("47629124", c.getNumeroDocumento());
+        assertEquals("Ana Lucía", c.getNombres());
+        assertEquals("Rojas Peña", c.getApellidos());
+        verify(clienteRepository).save(c);
+        verify(reservaService).registrar(any());
+    }
+
+    @Test
+    void sinDocumentoNoSePuedeHacerLaPrimeraReserva() {
+        cuentaSinDocumento();
+        ReservaWebRequest req = pedidoConTitular();
+        req.setNumeroDocumento(" ");
+
+        assertThrows(IllegalArgumentException.class, () -> servicio().reservarComoCliente(req));
+        verify(reservaService, never()).registrar(any());
+    }
+
+    @Test
+    void conDocumentoYaGuardadoNoSeVuelveAPedirNiSeCambia() {
+        Cliente c = new Cliente();
+        c.setIdCliente(91);
+        c.setTipoDocumento("DNI");
+        c.setNumeroDocumento("11112222");
+        c.setNombres("Luis");
+        c.setApellidos("Paz");
+        when(usuarioActualService.obtenerCliente()).thenReturn(c);
+        ReservaWebRequest req = pedidoConTitular();
+        req.setNumeroDocumento(null);
+
+        servicio().reservarComoCliente(req);
+
+        assertEquals("11112222", c.getNumeroDocumento());
+        assertEquals("Luis", c.getNombres());
+        verify(clienteRepository, never()).save(c);
+    }
+
+    @Test
+    void siElDocumentoEsDeUnHuespedDeRecepcionLaCuentaPasaASuFichaYNoSeDuplica() {
+        Cliente vacia = cuentaSinDocumento();
+        Cliente vino = new Cliente();
+        vino.setIdCliente(5);
+        vino.setTipoDocumento("DNI");
+        vino.setNumeroDocumento("47629124");
+        vino.setNombres("Ana Lucía");
+        vino.setApellidos("Rojas Peña");
+        when(clienteRepository.findByNumeroDocumento("47629124")).thenReturn(Optional.of(vino));
+        when(usuarioRepository.findByClienteIdCliente(5)).thenReturn(Optional.empty());
+        when(reservaRepository.findByClienteIdCliente(90)).thenReturn(List.of());
+        pe.edu.utp.huertohostel.entity.Usuario cuenta = new pe.edu.utp.huertohostel.entity.Usuario();
+        cuenta.setCliente(vacia);
+        when(usuarioActualService.obtenerUsuario()).thenReturn(cuenta);
+
+        servicio().reservarComoCliente(pedidoConTitular());
+
+        assertEquals(vino, cuenta.getCliente(), "la cuenta queda en la ficha que ya existia");
+        assertEquals("ana@gmail.com", vino.getCorreo());
+        verify(clienteRepository).delete(vacia);
+        ArgumentCaptor<NuevaReservaRequest> nr = ArgumentCaptor.forClass(NuevaReservaRequest.class);
+        verify(reservaService).registrar(nr.capture());
+        assertEquals(5, nr.getValue().getIdCliente(), "la reserva es de la ficha de siempre");
+    }
+
+    @Test
+    void unDocumentoQueYaTieneOtraCuentaSeRechaza() {
+        cuentaSinDocumento();
+        Cliente otro = new Cliente();
+        otro.setIdCliente(6);
+        when(clienteRepository.findByNumeroDocumento("47629124")).thenReturn(Optional.of(otro));
+        when(usuarioRepository.findByClienteIdCliente(6)).thenReturn(Optional.of(new pe.edu.utp.huertohostel.entity.Usuario()));
+
+        assertThrows(IllegalStateException.class, () -> servicio().reservarComoCliente(pedidoConTitular()));
+        verify(reservaService, never()).registrar(any());
+        verify(clienteRepository, never()).delete(any());
+    }
+
+    @Test
+    void misReservasTraeElDetalleDeLaHabitacionYLosPagos() {
+        Cliente c = new Cliente();
+        c.setIdCliente(91);
+        when(usuarioActualService.obtenerCliente()).thenReturn(c);
+        Reserva r = new Reserva();
+        r.setIdReserva(142);
+        r.setHabitacion(h104);
+        r.setFechaCheckinPrevisto(LLEGADA);
+        r.setFechaCheckoutPrevisto(SALIDA);
+        r.setMontoAlojamientoTotal(new BigDecimal("300"));
+        r.setEstadoReserva(EstadoReserva.CONFIRMADA);
+        when(reservaRepository.findByClienteIdCliente(91)).thenReturn(List.of(r));
+        Pago p = new Pago();
+        p.setMonto(new BigDecimal("90"));
+        p.setMetodoPago(MetodoPago.PASARELA_ONLINE);
+        p.setConcepto(ConceptoPago.ADELANTO_RESERVA);
+        when(pagoRepository.findDeReservaOSuEstadia(142)).thenReturn(List.of(p));
+
+        Map<String, Object> m = servicio().misReservas().get(0);
+
+        assertEquals(2, m.get("idTipoHabitacion"));
+        assertEquals((short) 2, m.get("capacidad"));
+        assertEquals(1, ((List<?>) m.get("pagos")).size());
+        assertEquals(new BigDecimal("210"), m.get("saldo"));
+    }
+
     private static ReservaWebRequest pedido() {
         ReservaWebRequest r = new ReservaWebRequest();
         r.setIdTipoHabitacion(2);

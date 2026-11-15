@@ -16,6 +16,7 @@ import pe.edu.utp.huertohostel.entity.MetodoPago;
 import pe.edu.utp.huertohostel.entity.Pago;
 import pe.edu.utp.huertohostel.entity.Reserva;
 import pe.edu.utp.huertohostel.entity.TipoHabitacion;
+import pe.edu.utp.huertohostel.entity.Usuario;
 import pe.edu.utp.huertohostel.exception.PagoRechazadoException;
 import pe.edu.utp.huertohostel.repository.ClienteRepository;
 import pe.edu.utp.huertohostel.repository.HabitacionRepository;
@@ -215,6 +216,7 @@ public class ReservaWebService {
             cliente.setTelefono(req.getTelefono() == null ? null : req.getTelefono().trim());
             cliente.setEstado(true);
             cliente.setFechaRegistro(LocalDateTime.now(clock));
+            cliente.setOrigen(Cliente.ORIGEN_WEB);
         }
         cliente = clienteRepository.save(cliente);
 
@@ -225,11 +227,63 @@ public class ReservaWebService {
         return r;
     }
 
-    /** Portal: el huesped con sesion reserva otra vez sin volver a registrarse. */
+    /**
+     * Portal: el huesped con sesion reserva sin volver a registrarse. Si su cuenta aun no tiene documento (la creo con
+     * Google), esta primera reserva lo pide: queda guardado como el titular y no se vuelve a pedir.
+     */
     @Transactional
     public Map<String, Object> reservarComoCliente(ReservaWebRequest req) {
         Cliente cliente = usuarioActualService.obtenerCliente();
+        if (vacio(cliente.getNumeroDocumento())) {
+            cliente = completarTitular(cliente, req);
+        }
         return reservar(cliente, req);
+    }
+
+    /**
+     * Guarda el documento del titular en la cuenta. Si ese documento ya es de un huesped que vino antes (recepcion lo
+     * registro, sin cuenta), es la misma persona: la cuenta pasa a esa ficha y la ficha vacia se borra, para no
+     * duplicar huespedes. Si el documento ya tiene otra cuenta, se rechaza.
+     */
+    private Cliente completarTitular(Cliente actual, ReservaWebRequest req) {
+        validarTitular(req);
+        String tipo = normalizarTipoDocumento(req.getTipoDocumento());
+        String doc = req.getNumeroDocumento().trim();
+        String telefono = vacio(req.getTelefono()) ? null : req.getTelefono().trim();
+
+        Cliente otro = clienteRepository.findByNumeroDocumento(doc).orElse(null);
+        if (otro != null && !otro.getIdCliente().equals(actual.getIdCliente())) {
+            if (usuarioRepository.findByClienteIdCliente(otro.getIdCliente()).isPresent()) {
+                throw new IllegalStateException("Ese documento ya tiene otra cuenta. Entra con esa cuenta o consulta en recepción.");
+            }
+            if (!reservaRepository.findByClienteIdCliente(actual.getIdCliente()).isEmpty()) {
+                throw new IllegalStateException("Ese documento es de otro huésped registrado. Consulta en recepción.");
+            }
+            Usuario cuenta = usuarioActualService.obtenerUsuario();
+            String correo = actual.getCorreo();
+            cuenta.setCliente(otro);
+            usuarioRepository.save(cuenta);
+            // La ficha vacia libera el correo (es UNICO) y se borra: la persona ya existia.
+            actual.setCorreo(null);
+            clienteRepository.saveAndFlush(actual);
+            clienteRepository.delete(actual);
+            clienteRepository.flush();
+            if (correo != null && (otro.getCorreo() == null || !otro.getCorreo().equalsIgnoreCase(correo))) {
+                otro.setCorreo(correo);
+            }
+            if (telefono != null) {
+                otro.setTelefono(telefono);
+            }
+            return clienteRepository.save(otro);
+        }
+        actual.setTipoDocumento(tipo);
+        actual.setNumeroDocumento(doc);
+        actual.setNombres(req.getNombres().trim());
+        actual.setApellidos(req.getApellidos().trim());
+        if (telefono != null) {
+            actual.setTelefono(telefono);
+        }
+        return clienteRepository.save(actual);
     }
 
     /** Portal: las reservas del huesped, de la mas reciente a la mas antigua, con lo pagado y el saldo. */
@@ -254,7 +308,24 @@ public class ReservaWebService {
             m.put("salida", r.getFechaCheckoutPrevisto());
             m.put("noches", r.getNumNoches());
             m.put("habitacion", h != null ? h.getNumero() : null);
-            m.put("tipo", h != null && h.getTipoHabitacion() != null ? h.getTipoHabitacion().getNombre() : null);
+            TipoHabitacion t = h != null ? h.getTipoHabitacion() : null;
+            m.put("tipo", t != null ? t.getNombre() : null);
+            // Para "Ver detalles": la habitacion que le toco y lo que pago.
+            m.put("idTipoHabitacion", t != null ? t.getIdTipoHabitacion() : null);
+            m.put("descripcion", t != null ? t.getDescripcion() : null);
+            m.put("capacidad", t != null ? t.getCapacidadPersonas() : null);
+            m.put("precioNoche", t != null ? t.getPrecioNoche() : null);
+            m.put("observaciones", r.getObservaciones());
+            List<Map<String, Object>> pagos = new ArrayList<>();
+            for (Pago p : pagoRepository.findDeReservaOSuEstadia(r.getIdReserva())) {
+                Map<String, Object> pm = new LinkedHashMap<>();
+                pm.put("fecha", p.getFechaPago());
+                pm.put("monto", p.getMonto());
+                pm.put("metodo", p.getMetodoPago());
+                pm.put("concepto", p.getConcepto());
+                pagos.add(pm);
+            }
+            m.put("pagos", pagos);
             m.put("total", total);
             m.put("pagado", pagado);
             m.put("saldo", total.subtract(pagado).max(BigDecimal.ZERO));
@@ -395,6 +466,14 @@ public class ReservaWebService {
     }
 
     private void validarDatosPersonales(ReservaWebRequest req) {
+        validarTitular(req);
+        if (vacio(req.getCorreo()) || !CORREO.matcher(req.getCorreo().trim()).matches()) {
+            throw new IllegalArgumentException("Ingresa un correo válido: será tu usuario del portal.");
+        }
+    }
+
+    /** Documento, nombres y apellidos del titular de la reserva. */
+    private void validarTitular(ReservaWebRequest req) {
         if (vacio(req.getNumeroDocumento()) || vacio(req.getNombres()) || vacio(req.getApellidos())) {
             throw new IllegalArgumentException("Completa tu documento, nombres y apellidos.");
         }
@@ -405,9 +484,6 @@ public class ReservaWebService {
         }
         if (!doc.matches("[0-9A-Za-z]{6,20}")) {
             throw new IllegalArgumentException("Revisa el número de documento.");
-        }
-        if (vacio(req.getCorreo()) || !CORREO.matcher(req.getCorreo().trim()).matches()) {
-            throw new IllegalArgumentException("Ingresa un correo válido: será tu usuario del portal.");
         }
     }
 

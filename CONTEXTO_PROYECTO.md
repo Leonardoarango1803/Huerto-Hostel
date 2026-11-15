@@ -333,6 +333,8 @@ plantilla en `backend/.env.example`); en producción, en el dashboard de Render.
 | `DECOLECTA_API_KEY` | Render / `backend/.env` | Sí |
 | `FRONTEND_URL` | Render | Sí en prod: las dos URLs de Vercel separadas por coma |
 | `PORT` | Render lo asigna | Local: `8091` |
+| `GOOGLE_CLIENT_ID` | Render / `backend/.env` | No: sin él, "Continuar con Google" queda apagado |
+| `TURNSTILE_SECRET` | Render / `backend/.env` | No: sin ella, el captcha del personal queda apagado |
 
 El frontend usa:
 
@@ -341,6 +343,8 @@ El frontend usa:
 | `VITE_API_BASE_URL` | `http://localhost:8091` (configurable en `.env.local`) |
 | `VITE_SITIO` | sin definir = web y admin juntos (solo para desarrollar). En Vercel: `web` o `admin` |
 | `VITE_URL_WEB` | opcional: dirección de la web pública, para enlazarla desde el login del admin |
+| `VITE_GOOGLE_CLIENT_ID` | solo web: el mismo ID de cliente de Google que `GOOGLE_CLIENT_ID` |
+| `VITE_TURNSTILE_SITE_KEY` | web y admin: la clave PÚBLICA de Cloudflare Turnstile (la misma en los dos) |
 
 ---
 
@@ -385,6 +389,8 @@ El mismo repositorio se publica como dos sitios. Lo que cambia entre ellos es so
 | `VITE_SITIO` | `web` | `admin` |
 | `VITE_API_BASE_URL` | `https://<nombre>.onrender.com` | la misma |
 | `VITE_URL_WEB` | — | opcional: la dirección de la web |
+| `VITE_GOOGLE_CLIENT_ID` | el ID de cliente de Google | — |
+| `VITE_TURNSTILE_SITE_KEY` | — | la clave pública de Turnstile |
 
 Para cada proyecto: *Add New → Project*, importar el mismo repositorio, framework Vite, poner sus
 variables (en *Production* y *Preview*) y desplegar. El proyecto que ya existe puede quedar como la web
@@ -403,6 +409,57 @@ pública: solo agrégale `VITE_SITIO=web` y vuelve a desplegar.
   Restablecer la clave desbloquea la cuenta. Los bloqueos quedan en la bitácora de Usuarios.
 - En el admin la sesión se cierra tras 30 min sin uso (salvo cocina y bar, que dejan su tablero de
   comandas a la vista). La sesión dura como máximo 8 h.
+
+### Huéspedes: cuenta, reserva web y Google
+
+- El huésped **no necesita que el admin lo registre**: su cuenta del portal se crea sola con su primera
+  reserva web (paga el adelanto en el mismo paso). Recepción sigue pudiendo darle acceso desde Huéspedes
+  → Portal (por ejemplo, a quien llegó sin reservar por la web).
+- **Continuar con Google** (solo huéspedes, solo en la web): en el login entra si ya tiene cuenta
+  (se liga por su correo); si no, la web le pide reservar y la cuenta nace con esa reserva, con su nombre y
+  correo de Google y sin contraseña. El personal nunca entra con Google.
+- En Huéspedes hay una sola lista con etiquetas **Origen** (Recepción / Web / Google) y **Cuenta web**,
+  y un filtro por origen; en Reservas, un filtro por canal (En línea / Mostrador).
+
+Para encender Google (gratis):
+1. https://console.cloud.google.com → crear proyecto → *APIs y servicios → Pantalla de consentimiento
+   OAuth* (tipo Externo, nombre "El Huerto Hostel", correo de soporte).
+2. *Credenciales → Crear credenciales → ID de cliente de OAuth* → tipo **Aplicación web**. En
+   *Orígenes autorizados de JavaScript*: la URL de la web en Vercel y `http://localhost:5173` (y 5175).
+3. Copiar el ID (`...apps.googleusercontent.com`) en `GOOGLE_CLIENT_ID` (Render y `backend/.env`) y en
+  `VITE_GOOGLE_CLIENT_ID` (proyecto web de Vercel y `.env.local`). No es secreto, pero sin los orígenes
+  autorizados no funciona en otras webs.
+
+- Con Google y sin cuenta, el login lleva a **/registro**: la persona completa su documento (Google no lo
+  tiene) y queda con su cuenta y la sesión abierta, sin reservar todavía. También puede ir directo a reservar.
+- En Google Cloud, los *Orígenes autorizados de JavaScript* deben incluir cada dirección desde la que se abre la
+  web: `http://localhost`, `http://localhost:5173`, `http://localhost:5175` y la URL de Vercel. Si falta, la
+  consola muestra *"The given origin is not allowed for the given client ID"* (el cambio tarda unos minutos).
+
+### Desarrollo local: los dos sitios por separado
+
+| Comando | Puerto | Qué abre |
+|---|---|---|
+| `npm run dev` | 5173 | Web y admin juntos (por eso el login muestra captcha **y** Google) |
+| `npm run dev:web` | 5175 | Solo la web pública y el portal del huésped |
+| `npm run dev:admin` | 5174 | Solo el portal administrativo |
+
+Los tres usan tu `.env.development.local` (backend, Google y captcha). El backend debe aceptar esos
+orígenes: `FRONTEND_URL=http://localhost:5173,http://localhost:5174,http://localhost:5175` en `backend/.env`.
+
+### Captcha del personal (Cloudflare Turnstile)
+
+- Se pide en el login del portal administrativo y para cualquier cuenta del personal (aunque intente
+  entrar por la web). Los huéspedes no lo ven. Se suma al bloqueo por intentos fallidos.
+- Si Cloudflare no responde, el login se deja pasar (queda un aviso en el log) para que recepción no se
+  quede sin entrar; el bloqueo por intentos sigue activo.
+- Para encenderlo: https://dash.cloudflare.com → *Turnstile → Add widget* (modo *Managed*), dominio del
+  admin en Vercel y `localhost`. La **clave del sitio** va en `VITE_TURNSTILE_SITE_KEY` (Vercel admin) y la
+  **clave secreta** en `TURNSTILE_SECRET` (Render y `backend/.env`). Nunca subas la secreta al repositorio.
+- Claves de prueba de Cloudflare para desarrollar: sitio `1x00000000000000000000AA` y secreta
+  `1x0000000000000000000000000000000AA` (siempre aprueban).
+- `vercel.json` ya permite los scripts de Google (`accounts.google.com`) y de Cloudflare
+  (`challenges.cloudflare.com`) en su Content-Security-Policy.
 
 ### Flyway en producción
 

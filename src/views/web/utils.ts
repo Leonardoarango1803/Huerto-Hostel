@@ -68,6 +68,18 @@ export function leerBusqueda(params: URLSearchParams): Busqueda {
   return { llegada, salida, huespedes: Number.isFinite(h) && h >= 1 && h <= 8 ? Math.round(h) : def.huespedes };
 }
 
+/**
+ * Desliza la pagina hasta una seccion (con animacion, salvo que la persona pida menos movimiento) y deja el #seccion en
+ * la barra de direcciones sin recargar.
+ */
+export function irASeccion(id: string) {
+  const destino = document.getElementById(id);
+  if (!destino) return;
+  const reducir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  destino.scrollIntoView({ behavior: reducir ? "auto" : "smooth", block: "start" });
+  window.history.replaceState(window.history.state, "", "#" + id);
+}
+
 export function aParams(b: Busqueda, extra: Record<string, string | number> = {}): string {
   const p = new URLSearchParams({ llegada: b.llegada, salida: b.salida, huespedes: String(b.huespedes) });
   Object.entries(extra).forEach(([k, v]) => p.set(k, String(v)));

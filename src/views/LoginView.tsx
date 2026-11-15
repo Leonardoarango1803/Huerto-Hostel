@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useState, type FormEvent } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { rutaDeInicio } from "../auth/permisos";
 import { Eye, EyeOff } from "lucide-react";
@@ -7,6 +7,13 @@ import { LogoHuerto } from "../components/layout/LogoHuerto";
 import { MINUTOS_INACTIVIDAD, hayAvisoDeInactividad } from "../hooks/useCierrePorInactividad";
 import { SITIO, URL_WEB } from "../sitio";
 import fotoTerraza from "../assets/huerto-terraza.jpg";
+import { Captcha, captchaDisponible } from "../components/acceso/Captcha";
+import { GoogleBoton, googleDisponible } from "../components/acceso/GoogleBoton";
+
+/** Captcha en todo inicio de sesion con contrasena (el backend lo exige a todos). */
+const PIDE_CAPTCHA = captchaDisponible;
+/** Google es solo para huespedes: en el portal administrativo no aparece. */
+const OFRECE_GOOGLE = googleDisponible && SITIO !== "admin";
 
 /** Textos del login segun el sitio: el personal entra por el admin y los huespedes por la web. */
 const TEXTOS = {
@@ -30,7 +37,8 @@ const TEXTOS = {
     placeholderUsuario: "El correo con el que reservaste",
     ayuda: [
       "Entra con el correo que usaste al reservar o con el usuario que te dio recepción.",
-      "¿Olvidaste tu contraseña? Pídela en recepción.",
+      "¿Olvidaste tu contraseña? Pídela en recepción, o entra con Google si reservaste con ese correo.",
+      "¿Primera vez? Tu cuenta se crea con tu primera reserva.",
     ],
   },
   completo: {
@@ -53,8 +61,8 @@ function motivoDelRechazo(error: unknown): string {
   const respuesta = (error as { response?: { status?: number; data?: { message?: unknown } } })?.response;
   if (!respuesta) return "No pudimos conectar con el sistema. Revisa tu conexión e inténtalo de nuevo.";
   const mensaje = typeof respuesta.data?.message === "string" ? respuesta.data.message : "";
-  // 429: bloqueo por intentos fallidos; 403: cuenta de otro sitio. Ambos traen el motivo exacto.
-  if ((respuesta.status === 429 || respuesta.status === 403) && mensaje) return mensaje;
+  // 429: bloqueo por intentos fallidos; 403: cuenta de otro sitio; 400: falta el captcha. Traen el motivo exacto.
+  if ((respuesta.status === 429 || respuesta.status === 403 || respuesta.status === 400) && mensaje) return mensaje;
   return "Usuario o contraseña incorrectos.";
 }
 
@@ -64,7 +72,10 @@ export function LoginView() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, loginConGoogle } = useAuth();
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [reinicioCaptcha, setReinicioCaptcha] = useState(0);
+  const { user } = useAuth();
   const navigate = useNavigate();
   // El aviso se borra al volver a entrar (AuthContext.login), no al mostrarlo: asi resiste una recarga de la pagina.
   const [porInactividad] = useState(hayAvisoDeInactividad);
@@ -74,15 +85,39 @@ export function LoginView() {
     setError("");
     setLoading(true);
     try {
-      const usuario = await login(username, password);
+      const usuario = await login(username, password, captcha);
       // Cada rol entra directo a su pantalla de inicio.
       navigate(rutaDeInicio(usuario.role));
     } catch (err) {
       setError(motivoDelRechazo(err));
+      // El token del captcha es de un solo uso: tras un intento fallido hay que volver a marcarlo.
+      if (PIDE_CAPTCHA) {
+        setCaptcha(null);
+        setReinicioCaptcha((n) => n + 1);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const conGoogle = useCallback(async (credencial: string) => {
+    setError("");
+    setLoading(true);
+    try {
+      const u = await loginConGoogle(credencial);
+      navigate(rutaDeInicio(u.role));
+    } catch (err) {
+      const datos = (err as { response?: { data?: { message?: unknown } } })?.response?.data;
+      setError(typeof datos?.message === "string" ? datos.message : "No pudimos entrar con Google. Inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }, [loginConGoogle, navigate]);
+
+  // Con la sesion abierta, volver a /login lleva a su pantalla de inicio (no pide entrar otra vez).
+  if (user && !user.debeCambiarPassword) {
+    return <Navigate to={rutaDeInicio(user.role)} replace />;
+  }
 
   // En el admin el logo no lleva a la web (salvo que se configure su direccion); en la web vuelve al inicio.
   const logo = <LogoHuerto tono="claro" subtitulo={TEXTOS.subtituloLogo} />;
@@ -131,6 +166,7 @@ export function LoginView() {
             </div>
           )}
 
+
           <label htmlFor="username" className="flex flex-col gap-1.5 text-sm font-semibold">
             {TEXTOS.etiquetaUsuario}
             <input
@@ -169,13 +205,24 @@ export function LoginView() {
             </span>
           </label>
 
+          {PIDE_CAPTCHA && <Captcha onToken={setCaptcha} reinicio={reinicioCaptcha} />}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (PIDE_CAPTCHA && !captcha)}
             className="min-h-[52px] bg-huerto hover:bg-huerto-oscuro disabled:opacity-60 text-white rounded-xl font-bold text-base transition-colors"
           >
             {loading ? "Ingresando..." : "Entrar"}
           </button>
+
+          {OFRECE_GOOGLE && (
+            <div className="flex flex-col gap-3" aria-label="Entrar con Google">
+              <div className="flex items-center gap-3 text-[13px] text-slate-500">
+                <span className="h-px flex-1 bg-slate-300" /> o <span className="h-px flex-1 bg-slate-300" />
+              </div>
+              <GoogleBoton onCredencial={conGoogle} texto="continue_with" ancho={360} />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5 text-[13px] leading-relaxed text-slate-600 bg-arena-2 rounded-xl px-4 py-3">
             {TEXTOS.ayuda.map((linea) => (

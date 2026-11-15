@@ -60,6 +60,14 @@ app:
     # Horas de un turno abierto a partir de las cuales se avisa que se olvido cerrar (y el administrador puede forzar el cierre)
     horas-maximas-abierta: ${HORAS_MAXIMAS_CAJA_ABIERTA:16}
 
+  # Acceso de huespedes con "Continuar con Google": el ID de cliente OAuth (Google Cloud > Credenciales). Vacio = apagado.
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+
+  # Captcha del login del personal (Cloudflare Turnstile): clave SECRETA. Vacio = apagado.
+  turnstile:
+    secret: ${TURNSTILE_SECRET:}
+
   decolecta:
     api-key: ${DECOLECTA_API_KEY}
     base-url: https://api.decolecta.com

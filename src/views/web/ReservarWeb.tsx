@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AlertCircle, Check, CreditCard, Lock, Smartphone } from "lucide-react";
 import {
@@ -13,6 +13,9 @@ import { mensajeDeError } from "../../api/errores";
 import { useAuth } from "../../context/AuthContext";
 import { WebLayout } from "./WebLayout";
 import { PasosReserva } from "./PasosReserva";
+import { GoogleBoton, googleDisponible } from "../../components/acceso/GoogleBoton";
+import { Captcha, captchaDisponible } from "../../components/acceso/Captcha";
+import { portalApi, type PerfilHuesped } from "../../api/portal";
 import { aParams, fechaCorta, fechaLarga, fotoDeTipo, leerBusqueda, soles } from "./utils";
 
 type Metodo = "TARJETA" | "YAPE";
@@ -33,7 +36,7 @@ export function ReservarWeb() {
   const [params] = useSearchParams();
   const busqueda = useMemo(() => leerBusqueda(params), [params]);
   const idTipo = Number(params.get("tipo"));
-  const { user, login } = useAuth();
+  const { user, iniciarConSesion, loginConGoogle } = useAuth();
   const esCliente = user?.role === "CLIENTE";
   const esPersonal = !!user && !esCliente;
 
@@ -62,6 +65,42 @@ export function ReservarWeb() {
   const [rechazado, setRechazado] = useState(false);
   const [hecha, setHecha] = useState<ReservaWebHecha | null>(null);
   const [sesionIniciada, setSesionIniciada] = useState(false);
+  const [avisoGoogle, setAvisoGoogle] = useState<string | null>(null);
+  // Huesped con sesion: si su cuenta aun no tiene documento (la creo con Google), esta primera reserva lo pide.
+  const [perfil, setPerfil] = useState<PerfilHuesped | null>(null);
+  const pideTitular = esCliente && perfil !== null && !perfil.tieneDocumento;
+  // Captcha solo para quien reserva sin sesion (crea cuenta y reserva sin identificarse). Es de un solo uso.
+  const pideCaptcha = captchaDisponible && !esCliente && !esPersonal;
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [reinicioCaptcha, setReinicioCaptcha] = useState(0);
+
+  // Con Google la cuenta queda lista al instante: la pagina pasa a "reservar con tu cuenta".
+  const conGoogle = useCallback(async (credencial: string) => {
+    setError(null);
+    setAvisoGoogle(null);
+    try {
+      await loginConGoogle(credencial);
+      setAvisoGoogle("Entraste con Google. Ya puedes confirmar tu reserva.");
+    } catch (err) {
+      setError(mensajeDeError(err, "No pudimos usar tu cuenta de Google. Intenta de nuevo o llena tus datos."));
+    }
+  }, [loginConGoogle]);
+
+  useEffect(() => {
+    if (!esCliente) return;
+    let vigente = true;
+    portalApi.perfil()
+      .then((p) => {
+        if (!vigente) return;
+        setPerfil(p);
+        // El titular suele ser quien tiene la cuenta: se proponen su nombre y apellidos.
+        setForm((f) => ({ ...f, nombres: f.nombres || p.nombres || "", apellidos: f.apellidos || p.apellidos || "" }));
+      })
+      .catch(() => undefined);
+    return () => {
+      vigente = false;
+    };
+  }, [esCliente]);
 
   useEffect(() => {
     let vigente = true;
@@ -78,12 +117,15 @@ export function ReservarWeb() {
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const validar = (): string | null => {
-    if (!esCliente) {
-      if (!form.numeroDocumento.trim() || !form.nombres.trim() || !form.apellidos.trim()) return "Completa tu documento, nombres y apellidos.";
+    if (!esCliente || pideTitular) {
+      if (!form.numeroDocumento.trim() || !form.nombres.trim() || !form.apellidos.trim()) return "Completa el documento, los nombres y los apellidos del titular.";
       if (form.tipoDocumento === "DNI" && !/^\d{8}$/.test(form.numeroDocumento.trim())) return "El DNI debe tener 8 dígitos.";
+    }
+    if (!esCliente) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.correo.trim())) return "Ingresa un correo válido: será tu usuario del portal.";
       if (!claveValida(form.password)) return "La contraseña debe tener al menos 8 caracteres, con letras y números.";
       if (form.password !== form.password2) return "Las contraseñas no coinciden.";
+      if (pideCaptcha && !captcha) return "Espera a que termine la verificación de seguridad (abajo, junto al botón de pagar).";
     }
     if (metodo === "TARJETA" && form.tarjeta.replace(/\D/g, "").length < 13) return "Revisa el número de tarjeta.";
     if (metodo === "YAPE" && form.codigoOperacion.trim().length < 4) return "Ingresa el código de operación de Yape o Plin.";
@@ -98,7 +140,11 @@ export function ReservarWeb() {
       setError(problema);
       return;
     }
-    if (!tipo) return;
+    // Mientras carga la disponibilidad no hay precio: no se envia nada (el boton tambien espera).
+    if (!tipo) {
+      setError("Aún estamos cargando tu habitación. Inténtalo en un momento.");
+      return;
+    }
     setError(null);
     setRechazado(false);
     setEnviando(true);
@@ -116,7 +162,16 @@ export function ReservarWeb() {
     try {
       let r: ReservaWebHecha;
       if (esCliente) {
-        r = await misReservasApi.reservar(pedido);
+        r = await misReservasApi.reservar(pideTitular
+          ? {
+              ...pedido,
+              tipoDocumento: form.tipoDocumento,
+              numeroDocumento: form.numeroDocumento.trim(),
+              nombres: form.nombres.trim(),
+              apellidos: form.apellidos.trim(),
+              telefono: form.telefono.trim() || undefined,
+            }
+          : pedido);
       } else {
         r = await publicoApi.reservar({
           ...pedido,
@@ -127,12 +182,13 @@ export function ReservarWeb() {
           correo: form.correo.trim(),
           telefono: form.telefono.trim() || undefined,
           password: form.password,
+          captcha: captcha ?? undefined,
         });
-        // La cuenta recien creada entra sola para ir directo al portal.
-        try {
-          await login(r.usuario ?? form.correo.trim().toLowerCase(), form.password);
+        // La cuenta recien creada entra sola (el backend ya devuelve su sesion: el captcha no se pide dos veces).
+        if (r.sesion) {
+          iniciarConSesion(r.sesion);
           setSesionIniciada(true);
-        } catch {
+        } else {
           setSesionIniciada(false);
         }
       }
@@ -145,6 +201,11 @@ export function ReservarWeb() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       } else {
         setError(mensajeDeError(err, "No pudimos completar la reserva. Intenta de nuevo."));
+      }
+      // El token del captcha ya se uso: para reintentar hace falta uno nuevo.
+      if (pideCaptcha) {
+        setCaptcha(null);
+        setReinicioCaptcha((n) => n + 1);
       }
     } finally {
       setEnviando(false);
@@ -179,7 +240,7 @@ export function ReservarWeb() {
             )}
             <div className="flex flex-wrap gap-3 justify-center">
               <Link
-                to={sesionIniciada || esCliente ? "/portal" : "/login"}
+                to={sesionIniciada || esCliente ? "/portal" : "/ingresar"}
                 className="inline-flex items-center min-h-[52px] px-6 rounded-full bg-huerto hover:bg-huerto-oscuro text-white font-bold"
               >
                 {sesionIniciada || esCliente ? "Ir a mi portal" : "Iniciar sesión"}
@@ -241,12 +302,54 @@ export function ReservarWeb() {
             )}
 
             {esCliente ? (
-              <section className={tarjeta}>
-                <h2 className="m-0 text-lg font-bold">Reservas con tu cuenta</h2>
-                <p className="m-0 text-sm text-slate-600">Usaremos los datos que ya tenemos de ti ({user?.username}).</p>
+              <section className={tarjeta} aria-labelledby="h-cuenta-cliente">
+                <h2 id="h-cuenta-cliente" className="m-0 text-lg font-bold">{pideTitular ? "Titular de la reserva" : "Reservas con tu cuenta"}</h2>
+                {avisoGoogle && <p role="status" className="m-0 text-[13px] font-semibold text-emerald-800">{avisoGoogle}</p>}
+                {pideTitular ? (
+                  <>
+                    <p className="m-0 text-sm leading-relaxed text-slate-600">
+                      Es tu primera reserva: necesitamos el documento del titular. <strong className="text-tinta">Solo te lo pedimos esta vez</strong>;
+                      queda guardado en tu cuenta ({user?.username}) para las próximas.
+                    </p>
+                    <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+                      <label className={etiqueta}>Tipo de documento
+                        <select value={form.tipoDocumento} onChange={set("tipoDocumento")} className={campo}>
+                          <option value="DNI">DNI</option>
+                          <option value="CE">Carné de extranjería</option>
+                          <option value="PASAPORTE">Pasaporte</option>
+                        </select>
+                      </label>
+                      <label className={etiqueta}>Número de documento
+                        <input value={form.numeroDocumento} onChange={set("numeroDocumento")} inputMode={form.tipoDocumento === "DNI" ? "numeric" : "text"} autoComplete="off" className={campo} required />
+                      </label>
+                      <label className={etiqueta}>Nombres
+                        <input value={form.nombres} onChange={set("nombres")} autoComplete="given-name" className={campo} required />
+                      </label>
+                      <label className={etiqueta}>Apellidos
+                        <input value={form.apellidos} onChange={set("apellidos")} autoComplete="family-name" className={campo} required />
+                      </label>
+                      <label className={etiqueta}>Celular (opcional)
+                        <input type="tel" value={form.telefono} onChange={set("telefono")} autoComplete="tel" className={campo} />
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <p className="m-0 text-sm text-slate-600">Usaremos los datos que ya tenemos de ti ({user?.username}).</p>
+                )}
+                <label className={etiqueta}>Hora estimada de llegada (opcional)
+                  <input value={form.horaLlegada} onChange={set("horaLlegada")} placeholder="Ej. alrededor de las 15:30" className={campo} />
+                </label>
               </section>
             ) : (
               <>
+                {googleDisponible && !esPersonal && (
+                  <section aria-label="Reservar con Google" className={tarjeta}>
+                    <p className="m-0 text-sm text-slate-700">
+                      <strong>¿Tienes Google?</strong> Entra en un clic: tu cuenta queda lista y no necesitas contraseña. Solo te pediremos el documento del titular.
+                    </p>
+                    <GoogleBoton onCredencial={conGoogle} texto="continue_with" />
+                  </section>
+                )}
                 <section aria-labelledby="h-datos" className={tarjeta}>
                   <h2 id="h-datos" className="m-0 text-lg font-bold">1. Huésped principal</h2>
                   <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
@@ -291,7 +394,7 @@ export function ReservarWeb() {
                     </label>
                   </div>
                   <p className="m-0 text-[13px] text-slate-600">
-                    ¿Ya tienes cuenta? <Link to="/login" className="font-bold text-huerto">Inicia sesión</Link> y vuelve a esta página para reservar sin llenar tus datos.
+                    ¿Ya tienes cuenta? <Link to="/ingresar" className="font-bold text-huerto">Inicia sesión</Link> y vuelve a esta página para reservar sin llenar tus datos.
                   </p>
                 </section>
               </>
@@ -348,13 +451,14 @@ export function ReservarWeb() {
                 <input type="checkbox" checked={form.acepta} onChange={(e) => setForm((f) => ({ ...f, acepta: e.target.checked }))} className="w-5 h-5 mt-0.5 accent-[#2D5A27]" />
                 Acepto las condiciones de reserva: el adelanto confirma la habitación y el saldo se paga en el hostel.
               </label>
-              {error && <div role="alert" className="rounded-xl bg-red-100 text-red-900 px-4 py-3 text-sm font-semibold">{error} {/inicia sesi/i.test(error) && <Link to="/login" className="underline">Ir a iniciar sesión</Link>}</div>}
+              {pideCaptcha && <Captcha onToken={setCaptcha} reinicio={reinicioCaptcha} />}
+              {error && <div role="alert" className="rounded-xl bg-red-100 text-red-900 px-4 py-3 text-sm font-semibold">{error} {/inicia sesi/i.test(error) && <Link to="/ingresar" className="underline">Ir a iniciar sesión</Link>}</div>}
               <button
                 type="submit"
-                disabled={enviando || agotada || esPersonal}
+                disabled={enviando || !tipo || agotada || esPersonal || (pideCaptcha && !captcha)}
                 className="min-h-[54px] rounded-full bg-terracota hover:bg-terracota-oscuro disabled:opacity-60 disabled:cursor-not-allowed text-white text-base font-bold flex items-center justify-center gap-2.5"
               >
-                <Lock size={18} /> {enviando ? "Procesando pago…" : agotada ? "Ya no hay habitaciones libres" : "Pagar adelanto y confirmar"}
+                <Lock size={18} /> {enviando ? "Procesando pago…" : !tipo ? "Cargando tu habitación…" : agotada ? "Ya no hay habitaciones libres" : "Pagar adelanto y confirmar"}
               </button>
             </section>
           </form>
